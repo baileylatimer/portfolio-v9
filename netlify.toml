@@ -16,3 +16,6 @@
   for = "/build/*"
   [headers.values]
     "Cache-Control" = "public, max-age=31536000, immutable"
+
+[functions]
+  included_files = ["server.js"]
