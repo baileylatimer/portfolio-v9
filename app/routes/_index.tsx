@@ -1,7 +1,7 @@
 import type { MetaFunction, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getSanityClient } from "~/lib/sanity.client";
-import { Project } from "~/types/sanity";
+import type { Project } from "~/types/sanity";
 
 export const meta: MetaFunction = () => {
   return [
