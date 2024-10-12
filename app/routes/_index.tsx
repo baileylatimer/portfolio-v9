@@ -1,6 +1,5 @@
 import type { MetaFunction, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { fetchSanity } from "~/lib/sanity.client";
 import type { Project } from "~/types/sanity";
 
 export const meta: MetaFunction = () => {
@@ -10,25 +9,16 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async () => {
-  console.log('Environment variables:', {
-    SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
-    SANITY_DATASET: process.env.SANITY_DATASET,
-  });
-
+export const loader: LoaderFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const apiUrl = `${url.origin}/api/sanity`;
+  
   try {
-    const query = `*[_type == "project"]{
-      _id,
-      title,
-      "slug": slug.current,
-      excerpt,
-      client,
-      projectDate,
-      technologies,
-      "mainImageUrl": mainImage.asset->url
-    }`;
-    
-    const projects = await fetchSanity<Project[]>(query);
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const projects = await response.json();
     return { projects, error: null };
   } catch (error: unknown) {
     console.error('Error fetching projects:', error);
