@@ -1,4 +1,4 @@
-import type { MetaFunction } from "@remix-run/node";
+import type { MetaFunction, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getSanityClient } from "~/lib/sanity.client";
 import { Project } from "~/types/sanity";
@@ -10,7 +10,7 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader = async () => {
+export const loader: LoaderFunction = async () => {
   console.log('Environment variables:', {
     SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
     SANITY_DATASET: process.env.SANITY_DATASET,
@@ -31,9 +31,9 @@ export const loader = async () => {
     
     const projects = await client.fetch(query);
     return { projects, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching projects:', error);
-    return { projects: [], error: 'Failed to fetch projects' };
+    return { projects: [], error: (error as Error).message || 'Failed to fetch projects' };
   }
 };
 
