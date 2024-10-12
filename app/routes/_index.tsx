@@ -52,28 +52,29 @@ export default function Index() {
   }
 
   return (
-    <div>
-      <h1>My Projects</h1>
+    <div className="container mx-auto px-4">
+      <h1 className="text-4xl font-bold my-8">My Projects</h1>
       {projects.length === 0 ? (
         <p>No projects found.</p>
       ) : (
-        <ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {projects.map((project: Project) => (
-            <li key={project._id}>
-              <h2>{project.title}</h2>
-              {project.slug && <p>Slug: {project.slug}</p>}
-              {project.excerpt && <p>{project.excerpt}</p>}
-              {project.client && <p>Client: {project.client}</p>}
-              {project.projectDate && <p>Date: {project.projectDate}</p>}
-              {project.technologies && (
-                <p>Technologies: {project.technologies.join(', ')}</p>
+            <div key={project._id} className="border rounded-lg overflow-hidden shadow-lg">
+              {project.mainImageUrl && (
+                <img src={project.mainImageUrl} alt={project.title} className="w-full h-48 object-cover" />
               )}
-              {project.mainImage && (
-                <img src={project.mainImage.asset.url} alt={project.title} style={{maxWidth: '300px'}} />
-              )}
-            </li>
+              <div className="p-6">
+                <h2 className="text-2xl font-bold mb-2">{project.title}</h2>
+                {project.excerpt && <p className="text-gray-700 mb-4">{project.excerpt}</p>}
+                {project.client && <p><strong>Client:</strong> {project.client}</p>}
+                {project.projectDate && <p><strong>Date:</strong> {new Date(project.projectDate).toLocaleDateString()}</p>}
+                {project.technologies && (
+                  <p><strong>Technologies:</strong> {project.technologies.join(', ')}</p>
+                )}
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

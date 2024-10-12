@@ -6,9 +6,5 @@ export interface Project {
   client?: string;
   projectDate?: string;
   technologies?: string[];
-  mainImage?: {
-    asset: {
-      url: string;
-    };
-  };
+  mainImageUrl?: string;
 }
