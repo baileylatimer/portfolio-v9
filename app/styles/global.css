@@ -3,6 +3,7 @@
 :root {
   --color-bg: #fff;
   --color-white: #fff;
+  --color-contrast-higher: #1A1917;
 }
 
 @font-face {
@@ -19,6 +20,14 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Loco';
+  src: url('/fonts/PPLocomotiveNew-Light.woff2') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+
 body {
   font-family: 'Neue Montreal', sans-serif;
   line-height: 108%;
@@ -26,6 +35,24 @@ body {
 
 .font-accent {
   font-family: 'Missouri', serif;
+}
+
+.font-secondary {
+  font-family: 'Loco', serif;
+  font-size: 36px;
+  line-height: 110%;
+}
+
+
+@media screen and (min-width:1024px) {
+  .font-secondary {
+    font-size: 65px;
+    line-height: 76px;
+  }
+}
+
+.eyebrow {
+  font-size: 22px;
 }
 
 .nav-text {

@@ -34,7 +34,7 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
       
       {/* Target SVG */}
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 scale-50 md:scale-100">
-        <SvgTarget />
+        <SvgTarget color="var(--color-bg)"/>
       </div>
       
       {/* Grid SVG */}
