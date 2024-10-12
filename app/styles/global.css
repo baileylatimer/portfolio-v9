@@ -1,0 +1,41 @@
+/* Custom global styles */
+
+:root {
+  --color-bg: #fff;
+  --color-white: #fff;
+}
+
+@font-face {
+  font-family: 'Missouri';
+  src: url('/fonts/OTMissouri-16mm.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Neue Montreal';
+  src: url('/fonts/OTNeueMontreal-SemiBoldSemiSqueezed.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  font-family: 'Neue Montreal', sans-serif;
+  line-height: 108%;
+}
+
+.font-accent {
+  font-family: 'Missouri', serif;
+}
+
+.nav-text {
+  font-size: 16vw;
+  line-height: 85%;
+}
+
+nav {
+  color: var(--color-white);
+  mix-blend-mode: difference;
+}
+
+/* Add any other custom styles here */
