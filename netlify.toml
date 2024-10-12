@@ -1,11 +1,10 @@
 [build]
   command = "npm run build"
-  publish = "public"
-  functions = ".netlify/functions-internal"
+  publish = "build/client"
 
 [dev]
-  command = "remix watch"
-  port = 3000
+  command = "npm run dev"
+  framework = "vite"
 
 [[redirects]]
   from = "/*"
@@ -15,7 +14,4 @@
 [[headers]]
   for = "/build/*"
   [headers.values]
-    "Cache-Control" = "public, max-age=31536000, immutable"
-
-[functions]
-  included_files = ["server.js"]
+    "Cache-Control" = "public, max-age=31560000, immutable"
