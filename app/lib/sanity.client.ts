@@ -1,4 +1,4 @@
-import { createClient } from '@sanity/client';
+import { createClient, SanityClient } from '@sanity/client';
 
 declare global {
   interface Window {
@@ -28,11 +28,33 @@ if (!projectId || !dataset) {
   throw new Error('Sanity project ID or dataset is missing. Check your environment variables.');
 }
 
-export const sanityClient = createClient({
-  projectId,
-  dataset,
-  useCdn: process.env.NODE_ENV === 'production',
-  apiVersion: '2023-05-03', // use current date (YYYY-MM-DD) to target the latest API version
-});
+let sanityClient: SanityClient;
 
-console.log('Sanity client created successfully');
+try {
+  sanityClient = createClient({
+    projectId,
+    dataset,
+    useCdn: process.env.NODE_ENV === 'production',
+    apiVersion: '2023-05-03', // use current date (YYYY-MM-DD) to target the latest API version
+  });
+  console.log('Sanity client created successfully');
+} catch (error) {
+  console.error('Error creating Sanity client:', error);
+  throw error;
+}
+
+export { sanityClient };
+
+// Wrapper function to handle potential undefined client
+export async function fetchSanity<T>(query: string): Promise<T> {
+  if (!sanityClient) {
+    console.error('Sanity client is not initialized');
+    throw new Error('Sanity client is not initialized');
+  }
+  try {
+    return await sanityClient.fetch<T>(query);
+  } catch (error) {
+    console.error('Error fetching from Sanity:', error);
+    throw error;
+  }
+}
