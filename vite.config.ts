@@ -8,10 +8,18 @@ dotenv.config();
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const sanityProjectId = env.SANITY_PROJECT_ID || process.env.SANITY_PROJECT_ID;
+  const sanityDataset = env.SANITY_DATASET || process.env.SANITY_DATASET;
+
   console.log('Loaded environment variables:', {
-    SANITY_PROJECT_ID: env.SANITY_PROJECT_ID,
-    SANITY_DATASET: env.SANITY_DATASET,
+    SANITY_PROJECT_ID: sanityProjectId,
+    SANITY_DATASET: sanityDataset,
   });
+
+  if (!sanityProjectId || !sanityDataset) {
+    console.warn('WARNING: Sanity environment variables are not set. This may cause issues with your build.');
+  }
+
   return {
     plugins: [
       remix({
@@ -21,8 +29,8 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths()
     ],
     define: {
-      'process.env.SANITY_PROJECT_ID': JSON.stringify(env.SANITY_PROJECT_ID),
-      'process.env.SANITY_DATASET': JSON.stringify(env.SANITY_DATASET),
+      'process.env.SANITY_PROJECT_ID': JSON.stringify(sanityProjectId),
+      'process.env.SANITY_DATASET': JSON.stringify(sanityDataset),
     },
   };
 });

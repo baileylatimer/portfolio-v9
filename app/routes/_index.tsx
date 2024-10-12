@@ -1,16 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { createClient } from '@sanity/client';
+import { getSanityClient } from "~/lib/sanity.client";
 import { Project } from "~/types/sanity";
-
-function getSanityClient() {
-  return createClient({
-    projectId: process.env.SANITY_PROJECT_ID,
-    dataset: process.env.SANITY_DATASET,
-    useCdn: process.env.NODE_ENV === 'production',
-    apiVersion: '2023-05-03',
-  });
-}
 
 export const loader = async () => {
   console.log('Loader function started');
