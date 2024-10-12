@@ -11,19 +11,24 @@ export const meta: MetaFunction = () => {
 };
 
 export const loader = async () => {
-  const client = getSanityClient();
-  const query = `*[_type == "project"]{
-    _id,
-    title,
-    "slug": slug.current,
-    excerpt,
-    client,
-    projectDate,
-    technologies,
-    "mainImageUrl": mainImage.asset->url
-  }`;
-  
+  console.log('Environment variables:', {
+    SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
+    SANITY_DATASET: process.env.SANITY_DATASET,
+  });
+
   try {
+    const client = getSanityClient();
+    const query = `*[_type == "project"]{
+      _id,
+      title,
+      "slug": slug.current,
+      excerpt,
+      client,
+      projectDate,
+      technologies,
+      "mainImageUrl": mainImage.asset->url
+    }`;
+    
     const projects = await client.fetch(query);
     return { projects, error: null };
   } catch (error) {
