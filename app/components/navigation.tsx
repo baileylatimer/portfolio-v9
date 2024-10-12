@@ -28,7 +28,7 @@ export default function Navigation() {
       <div className=" mx-auto">
         <div className="flex flex-col">
           <div className="font-accent nav-text">LATIMER</div>
-          <div className="flex justify-between w-full">
+          <div className="flex justify-between w-full mt-4 lg:mt-0">
             <div className="flex flex-col">
               <div>DIGITAL COWBOY</div>
               <div>LOS ANGELES, CA {time}</div>

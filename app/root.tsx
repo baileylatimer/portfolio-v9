@@ -20,7 +20,7 @@ export const links: LinksFunction = () => [
 ];
 
 interface BulletHole {
-  id: string;
+  id: number;
   x: number;
   y: number;
 }
@@ -70,7 +70,7 @@ function AppContent() {
 
   return (
     <body
-      className="h-full"
+      className="min-h-screen relative"
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
@@ -79,11 +79,27 @@ function AppContent() {
       role="button"
       tabIndex={0}
       aria-label="Click or press Enter to shoot"
+      style={{
+        backgroundImage: `url('/images/bg-texture.jpg')`,
+        backgroundRepeat: 'repeat',
+      }}
     >
-      <Outlet />
-      {bulletHoles?.map((hole: BulletHole) => (
-        <BulletHole key={hole.id} x={hole.x} y={hole.y} />
-      ))}
+      <div 
+        className="absolute inset-0 pointer-events-none" 
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px),
+            repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px)
+          `,
+          zIndex: -1,
+        }} 
+      />
+      <div className="relative z-10">
+        <Outlet />
+        {bulletHoles?.map((hole: BulletHole) => (
+          <BulletHole key={hole.id} x={hole.x} y={hole.y} />
+        ))}
+      </div>
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>
