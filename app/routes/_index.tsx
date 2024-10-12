@@ -1,13 +1,17 @@
-import { json } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getSanityClient } from "~/lib/sanity.client";
 import { Project } from "~/types/sanity";
 
+export const meta: MetaFunction = () => {
+  return [
+    { title: "New Remix App" },
+    { name: "description", content: "Welcome to Remix!" },
+  ];
+};
+
 export const loader = async () => {
-  console.log('Loader function started');
   const client = getSanityClient();
-  console.log('Sanity client created:', client);
-  
   const query = `*[_type == "project"]{
     _id,
     title,
@@ -20,67 +24,54 @@ export const loader = async () => {
   }`;
   
   try {
-    console.log('Fetching projects from Sanity');
     const projects = await client.fetch(query);
-    console.log('Fetched projects:', JSON.stringify(projects, null, 2));
-    return json({ 
-      projects, 
-      error: null,
-      sanityProjectId: process.env.SANITY_PROJECT_ID,
-      sanityDataset: process.env.SANITY_DATASET
-    });
+    return { projects, error: null };
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return json({ 
-      projects: [], 
-      error: 'Failed to fetch projects',
-      sanityProjectId: process.env.SANITY_PROJECT_ID,
-      sanityDataset: process.env.SANITY_DATASET
-    });
+    return { projects: [], error: 'Failed to fetch projects' };
   }
 };
 
 export default function Index() {
-  const { projects, error, sanityProjectId, sanityDataset } = useLoaderData<typeof loader>();
-
-  if (error) {
-    return (
-      <div>
-        <h1>Error</h1>
-        <p>{error}</p>
-        <p>Sanity Project ID: {sanityProjectId}</p>
-        <p>Sanity Dataset: {sanityDataset}</p>
-      </div>
-    );
-  }
+  const { projects, error } = useLoaderData<typeof loader>();
 
   return (
-    <div className="container mx-auto px-4">
-      <h1 className="text-4xl font-bold my-8">My Projects</h1>
-      <p>Sanity Project ID: {sanityProjectId}</p>
-      <p>Sanity Dataset: {sanityDataset}</p>
-      {projects.length === 0 ? (
-        <p>No projects found.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project: Project) => (
-            <div key={project._id} className="border rounded-lg overflow-hidden shadow-lg">
-              {project.mainImageUrl && (
-                <img src={project.mainImageUrl} alt={project.title} className="w-full h-48 object-cover" />
-              )}
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-2">{project.title}</h2>
-                {project.excerpt && <p className="text-gray-700 mb-4">{project.excerpt}</p>}
-                {project.client && <p><strong>Client:</strong> {project.client}</p>}
-                {project.projectDate && <p><strong>Date:</strong> {new Date(project.projectDate).toLocaleDateString()}</p>}
-                {project.technologies && (
-                  <p><strong>Technologies:</strong> {project.technologies.join(', ')}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
+      <h1>Welcome to Remix with Sanity Integration</h1>
+      {error && <p>Error: {error}</p>}
+      <ul>
+        {projects.map((project: Project) => (
+          <li key={project._id}>
+            <h2>{project.title}</h2>
+            <p>{project.excerpt}</p>
+          </li>
+        ))}
+      </ul>
+      <ul>
+        <li>
+          <a
+            target="_blank"
+            href="https://remix.run/tutorials/blog"
+            rel="noreferrer"
+          >
+            15m Quickstart Blog Tutorial
+          </a>
+        </li>
+        <li>
+          <a
+            target="_blank"
+            href="https://remix.run/tutorials/jokes"
+            rel="noreferrer"
+          >
+            Deep Dive Jokes App Tutorial
+          </a>
+        </li>
+        <li>
+          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
+            Remix Docs
+          </a>
+        </li>
+      </ul>
     </div>
   );
 }
