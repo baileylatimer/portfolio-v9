@@ -39,7 +39,7 @@ function createSanityClient(): SanityClient {
 let sanityClient: SanityClient | null = null;
 
 // Wrapper function to handle potential undefined client
-async function fetchSanity<T>(query: string): Promise<T> {
+export async function fetchSanity<T>(query: string): Promise<T> {
   if (!sanityClient) {
     try {
       sanityClient = createSanityClient();
@@ -57,5 +57,3 @@ async function fetchSanity<T>(query: string): Promise<T> {
     throw error;
   }
 }
-
-export default fetchSanity;
