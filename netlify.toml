@@ -1,15 +1,18 @@
 [build]
-command = "npm run build"
-publish = "build/client"
+  command = "npm run build"
+  publish = "public"
+  functions = ".netlify/functions-internal"
 
 [dev]
-command = "npm run dev"
-framework = "vite"
+  command = "remix watch"
+  port = 3000
 
-# Set immutable caching for static files, because they have fingerprinted filenames
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
 
 [[headers]]
-for = "/build/*"
-
-[headers.values]
-"Cache-Control" = "public, max-age=31560000, immutable"
+  for = "/build/*"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000, immutable"
