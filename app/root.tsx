@@ -9,6 +9,7 @@ import {
 import type { LinksFunction } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import BulletHole from '~/components/BulletHole';
+import Footer from '~/components/footer';
 import { useContext, useRef, useCallback, useState } from 'react';
 
 import tailwindStyles from "./styles/tailwind.css?url";
@@ -70,7 +71,7 @@ function AppContent() {
 
   return (
     <body
-      className="min-h-screen relative"
+      className="min-h-screen relative flex flex-col"
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
@@ -94,12 +95,13 @@ function AppContent() {
           zIndex: -1,
         }} 
       />
-      <div className="relative z-10">
+      <div className="relative z-10 flex-grow">
         <Outlet />
         {bulletHoles?.map((hole: BulletHole) => (
           <BulletHole key={hole.id} x={hole.x} y={hole.y} />
         ))}
       </div>
+      <Footer />
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>
