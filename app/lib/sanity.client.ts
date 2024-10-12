@@ -11,8 +11,17 @@ declare global {
 
 const isBrowser = typeof window !== 'undefined';
 
+console.log('Environment:', {
+  isBrowser,
+  NODE_ENV: process.env.NODE_ENV,
+  SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
+  SANITY_DATASET: process.env.SANITY_DATASET,
+});
+
 const projectId = isBrowser ? window.ENV?.SANITY_PROJECT_ID : process.env.SANITY_PROJECT_ID;
 const dataset = isBrowser ? window.ENV?.SANITY_DATASET : process.env.SANITY_DATASET;
+
+console.log('Sanity client initialization:', { projectId, dataset });
 
 if (!projectId || !dataset) {
   console.error('Sanity project ID or dataset is missing. Check your environment variables.');
