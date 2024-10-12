@@ -20,7 +20,7 @@ npm i -g netlify-cli@latest
 2. Sign up and log in to Netlify:
 
 ```sh
-netlify login
+netlify login 
 ```
 
 3. Create a new site:
