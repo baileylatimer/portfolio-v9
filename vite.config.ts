@@ -11,4 +11,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@sanity/client'],
   },
+  build: {
+    cssMinify: true,
+  },
 });
