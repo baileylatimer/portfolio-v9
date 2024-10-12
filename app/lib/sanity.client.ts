@@ -17,3 +17,6 @@ export const fetchSanity = async <T>(query: string): Promise<T> => {
 };
 
 export { sanityClient };
+
+// Add this line at the end of the file
+export default { fetchSanity, sanityClient };
