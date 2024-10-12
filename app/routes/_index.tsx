@@ -5,8 +5,8 @@ import type { Project } from "~/types/sanity";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "New Remix App with Sanity" },
+    { name: "description", content: "Welcome to Remix with Sanity integration!" },
   ];
 };
 
