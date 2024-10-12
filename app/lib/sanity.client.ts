@@ -43,10 +43,8 @@ try {
   throw error;
 }
 
-export { sanityClient };
-
 // Wrapper function to handle potential undefined client
-export async function fetchSanity<T>(query: string): Promise<T> {
+async function fetchSanity<T>(query: string): Promise<T> {
   if (!sanityClient) {
     console.error('Sanity client is not initialized');
     throw new Error('Sanity client is not initialized');
@@ -58,3 +56,5 @@ export async function fetchSanity<T>(query: string): Promise<T> {
     throw error;
   }
 }
+
+export default fetchSanity;
