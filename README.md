@@ -32,7 +32,7 @@ netlify init
 ## Development
 
 Ensure all packages are installed by running:
-
+ 
 ```sh
 npm install
 ```
