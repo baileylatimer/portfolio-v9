@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => {
   const sanityProjectId = env.SANITY_PROJECT_ID || process.env.SANITY_PROJECT_ID;
   const sanityDataset = env.SANITY_DATASET || process.env.SANITY_DATASET;
 
-  console.log('Loaded environment variables:', {
+  console.log('Build-time environment variables:', {
+    NODE_ENV: process.env.NODE_ENV,
     SANITY_PROJECT_ID: sanityProjectId,
     SANITY_DATASET: sanityDataset,
   });

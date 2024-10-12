@@ -23,21 +23,33 @@ export const loader = async () => {
     console.log('Fetching projects from Sanity');
     const projects = await client.fetch(query);
     console.log('Fetched projects:', JSON.stringify(projects, null, 2));
-    return json({ projects, error: null });
+    return json({ 
+      projects, 
+      error: null,
+      sanityProjectId: process.env.SANITY_PROJECT_ID,
+      sanityDataset: process.env.SANITY_DATASET
+    });
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return json({ projects: [], error: 'Failed to fetch projects' });
+    return json({ 
+      projects: [], 
+      error: 'Failed to fetch projects',
+      sanityProjectId: process.env.SANITY_PROJECT_ID,
+      sanityDataset: process.env.SANITY_DATASET
+    });
   }
 };
 
 export default function Index() {
-  const { projects, error } = useLoaderData<typeof loader>();
+  const { projects, error, sanityProjectId, sanityDataset } = useLoaderData<typeof loader>();
 
   if (error) {
     return (
       <div>
         <h1>Error</h1>
         <p>{error}</p>
+        <p>Sanity Project ID: {sanityProjectId}</p>
+        <p>Sanity Dataset: {sanityDataset}</p>
       </div>
     );
   }
@@ -45,6 +57,8 @@ export default function Index() {
   return (
     <div className="container mx-auto px-4">
       <h1 className="text-4xl font-bold my-8">My Projects</h1>
+      <p>Sanity Project ID: {sanityProjectId}</p>
+      <p>Sanity Dataset: {sanityDataset}</p>
       {projects.length === 0 ? (
         <p>No projects found.</p>
       ) : (
