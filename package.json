@@ -8,8 +8,7 @@
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "netlify serve",
-    "typecheck": "tsc",
-    "postinstall": "remix vite:setup"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@netlify/functions": "^2.6.0",
