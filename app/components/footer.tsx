@@ -41,10 +41,11 @@ const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div className='flex justify-between w-full mix-blend-difference'> </div>
+          <div className='flex justify-between w-full mix-blend-difference'> 
           <span>©{currentYear}</span>
           <div className='flex gap-4'>
             <a href="https://www.instagram.com/latimer2k/">Instagram,</a>
+          </div>
           </div>
         </div>
         <p className="font-accent footer-text">LATIMER</p>
