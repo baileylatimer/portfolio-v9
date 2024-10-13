@@ -4,7 +4,7 @@ import SvgTarget from '~/components/svg-target';
 import SvgGrid from '~/components/svg-grid';
 import CustomButton from '~/components/custom-button';
 
-const HERO_IMAGE_PATH = '/images/horse-hero--min.jpg';
+const HERO_IMAGE_PATH = '/images/hero-bg--min.jpg';
 
 interface HeroProps {
   bottomElementsScale?: number;

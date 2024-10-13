@@ -44,6 +44,14 @@ body {
   background-color: var(--color-contrast-higher);
 }
 
+.color-bg {
+  color: var(--color-bg)
+}
+
+.border-white {
+  border-color: var(--color-bg);
+}
+
 .font-accent {
   font-family: 'Missouri', serif;
 }
@@ -92,7 +100,7 @@ body {
 }
 
 nav {
-  color: var(--color-white);
+  color: var(--color-bg);
   mix-blend-mode: difference;
   position: fixed;
   top: 0;

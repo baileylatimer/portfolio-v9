@@ -52,9 +52,9 @@ export default function Navigation() {
               start: 'top 10%',
               end: 'bottom 10%',
               onEnter: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
-              onLeave: () => gsap.to(navRef.current, { color: 'white', duration: 0.3 }),
+              onLeave: () => gsap.to(navRef.current, { color: 'var(--color-bg)', duration: 0.3 }),
               onEnterBack: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
-              onLeaveBack: () => gsap.to(navRef.current, { color: 'white', duration: 0.3 }),
+              onLeaveBack: () => gsap.to(navRef.current, { color: 'var(--color-bg)', duration: 0.3 }),
             });
           });
 
