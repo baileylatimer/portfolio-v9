@@ -22,7 +22,7 @@
 
 @font-face {
   font-family: 'Loco';
-  src: url('/fonts/PPLocomotiveNew-Light.woff2') format('opentype');
+  src: url('/fonts/PPLocomotiveNew-Light.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
 }
@@ -49,24 +49,11 @@ body {
 }
 
 .font-default {
-  font-family: 'Neue Montreal';
+  font-family: 'Neue Montreal', sans-serif;
   text-transform: uppercase;
   font-size: 18px;
 }
 
-@media screen and (min-width:1024px) {
-  .font-default {
-    font-size: 24px;
-  }
-}
-
-
-@media screen and (min-width:1024px) {
-  .font-secondary {
-    font-size: 65px;
-    line-height: 76px;
-  }
-}
 
 .eyebrow {
   font-size: 14px;
@@ -74,11 +61,29 @@ body {
   text-transform: uppercase;
 }
 
-@media screen and (min-width:1024px) {
-.eyebrow {
-  font-size: 22px;
+@media screen and (min-width: 1024px) {
+  .font-default {
+    font-size: 24px;
+  }
+  
+
+  .font-secondary {
+    font-size: 65px;
+    line-height: 76px;
+  }
+
+
+  .eyebrow {
+    font-size: 22px;
+  }
+
+  .footer-row {
+    height: 70px;
+  }
 }
-}
+
+
+
 
 .nav-text, .footer-text {
   font-size: 16vw;
@@ -90,28 +95,41 @@ nav {
   mix-blend-mode: difference;
 }
 
-/* Add any other custom styles here */
-
 footer {
-  color: var(--color-bg)
+  color: var(--color-bg); 
 }
-
+ 
 .difference {
-  mix-blend-mode: difference;
+  mix-blend-mode: difference; 
 }
 
-.footer-text { position: absolute; bottom: -4vw; mix-blend-mode: difference; left: 50%; transform: translateX(-50%); -webkit-transform: translateX(-50%); -moz-transform: translateX(-50%); -ms-transform: translateX(-50%); -o-transform: translateX(-50%);
+.mobile-eyebrow {
+  font-size: 24px; 
+  line-height: 30px;
+}
+
+.footer-text {
+  position: absolute;
+  bottom: -4vw;
+  mix-blend-mode: difference;
+  left: 50%;
+  transform: translateX(-50%);
+  -webkit-transform: translateX(-50%);
+  -moz-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  -o-transform: translateX(-50%);
 }
 
 .footer-row {
   height: 45px;
 }
-@media screen and (min-width:1024px) {
-.footer-row {
-  height: 70px;
-}
+
+@media screen and (min-width: 1024px) {
+  .footer-row {
+    height: 70px;
+  }
 }
 
 .mln-10 {
-  margin-left: -.5em
+  margin-left: -0.5em;
 }

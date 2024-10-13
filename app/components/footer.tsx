@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
         <div className="container mx-auto px-4 footer-content pb-24 lg:pb-36 xl:pb-64">
           <div className='flex flex-col lg:flex-row justify-center items-center lg:justify-between w-full pb-16'>
           <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-4 lg:mb-0 lg:block hidden'>Take your site to the next level</h4>
-          <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-8 lg:mb-0 lg:hidden block'>Take your site to <br /> the next level</h4>
+          <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-8 lg:mb-0 lg:hidden block mobile-eyebrow'>Take your site to <br /> the next level</h4>
           <CustomButton>LET&apos;S TALK</CustomButton>
           </div>
   

@@ -1,6 +1,5 @@
 import {
   Links,
-  LiveReload,
   Meta,
   Outlet,
   Scripts,
@@ -110,7 +109,6 @@ function AppContent() {
       </audio>
       <ScrollRestoration />
       <Scripts />
-      <LiveReload />
     </body>
   );
 }
