@@ -3,6 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import Navigation from "~/components/navigation";
 import Hero from '~/components/hero';
 import MissionSection from '~/components/mission-section';
+import ServicesSection from '~/components/services-section';
 
 export const meta: MetaFunction = () => {
   return [
@@ -20,11 +21,11 @@ export const loader: LoaderFunction = async ({ request }) => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const projects = await response.json();
-    return { projects, error: null };
+    const data = await response.json();
+    return { projects: data.projects, services: data.services, error: null };
   } catch (error: unknown) {
-    console.error('Error fetching projects:', error);
-    return { projects: [], error: (error as Error).message || 'Failed to fetch projects' };
+    console.error('Error fetching data:', error);
+    return { projects: [], services: [], error: (error as Error).message || 'Failed to fetch data' };
   }
 };
 
@@ -34,14 +35,25 @@ interface Project {
   description: string;
 }
 
+interface Service {
+  _id: string;
+  title: string;
+  content: string;
+}
+
 export default function Index() {
-  const { projects, error } = useLoaderData<typeof loader>();
+  const { projects, services, error } = useLoaderData<{
+    projects: Project[];
+    services: Service[];
+    error: string | null;
+  }>();
 
   return (
     <div className="min-h-screen">
       <Navigation />
       <Hero />
       <MissionSection />
+      <ServicesSection services={services} />
       <main className="container mx-auto px-4 py-8">
         <h2 className="text-4xl font-bold mb-8">Projects</h2>
         {error && <p className="text-red-500">{error}</p>}

@@ -10,7 +10,7 @@ const sanityClient = createClient({
 
 export async function loader() {
   try {
-    const query = `*[_type == "project"]{
+    const projectsQuery = `*[_type == "project"]{
       _id,
       title,
       "slug": slug.current,
@@ -20,11 +20,21 @@ export async function loader() {
       technologies,
       "mainImageUrl": mainImage.asset->url
     }`;
+
+    const servicesQuery = `*[_type == "service"] | order(order asc) {
+      _id,
+      title,
+      content
+    }`;
     
-    const projects = await sanityClient.fetch(query);
-    return json(projects);
+    const [projects, services] = await Promise.all([
+      sanityClient.fetch(projectsQuery),
+      sanityClient.fetch(servicesQuery)
+    ]);
+
+    return json({ projects, services });
   } catch (error) {
-    console.error('Error fetching projects:', error);
-    return json({ error: 'Failed to fetch projects' }, { status: 500 });
+    console.error('Error fetching data:', error);
+    return json({ error: 'Failed to fetch data' }, { status: 500 });
   }
 }

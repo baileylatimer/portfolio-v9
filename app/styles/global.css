@@ -37,6 +37,10 @@ body {
   line-height: 108%;
 }
 
+.bg-contrast-higher {
+  background-color: var(--color-contrast-higher);
+}
+
 .font-accent {
   font-family: 'Missouri', serif;
 }
