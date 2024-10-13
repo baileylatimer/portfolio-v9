@@ -11,9 +11,9 @@ const Footer: React.FC = () => {
   return (
     <footer className="relative bg-cover bg-bottom pt-36 " style={{backgroundImage: "url('/images/footer-bg.png')"}}>
       <div className='overflow-hidden relative'>
-        <div className="container mx-auto px-4 footer-content pb-36">
-          <div className='flex justify-between w-full pb-12'>
-          <h4 className='eyebrow mix-blend-difference'>Take your site to the next level</h4>
+        <div className="container mx-auto px-4 footer-content pb-24 lg:pb-36">
+          <div className='flex flex-col lg:flex-row justify-center items-center lg:justify-between w-full pb-12'>
+          <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-4 lg:mb-0'>Take your site to the next level</h4>
           <CustomButton>LET&apos;S TALK</CustomButton>
           </div>
   
@@ -27,26 +27,30 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="mobile md:hidden font-secondary">
-            <div className="flex justify-start items-center  mix-blend-difference">
-            <SvgStar /> Hollywood <SvgCoordinates />
+            <div className="flex justify-start items-center  mix-blend-difference footer-row ">
+            
+            <span className="inline-block align-middle scale-50 md:scale-100 mln-10"><SvgStar /></span> Hollywood <span className='inline-block align-middle scale-75 md:scale-100 ml-1'><SvgCoordinates /></span>
             </div>
-            <div className="flex justify-start items-center  mix-blend-difference">
-              Los Angeles <SvgCaFlag />
+            <div className="flex justify-start items-center  mix-blend-difference footer-row ">
+              Los Angeles <span className='ml-4'><SvgCaFlag width={100} height={100} /></span>
             </div>
-            <div className="flex justify-between items-center mt-2 mb-4 whitespace-nowrap  mix-blend-difference">
-              Creative Studio <span className='font-default'>by</span>
+            <div className="flex items-center mt-2 mb-4 whitespace-nowrap  mix-blend-difference footer-row ">
+              Creative Studio <span className='font-default mx-4'>by</span> Bailey <span className='inline-block align-middle scale-75 md:scale-100 ml-2'> <SvgPeaceSign /></span>
             </div>
-            <div className="flex justify-start items-center  mix-blend-difference">
-              Bailey Latimer <SvgPeaceSign /> bailey <SvgEmailArrow />latimer.me
+            <div className="flex justify-start items-center  mix-blend-difference footer-row ">
+               bailey <SvgEmailArrow />latimer.me
             </div>
           </div>
-
+{/* 
           <div className='flex justify-between w-full mix-blend-difference'> 
           <span>©{currentYear}</span>
-          <div className='flex gap-4'>
-            <a href="https://www.instagram.com/latimer2k/">Instagram,</a>
+          <div className='flex gap-4 uppercase'>
+            <a href="https://www.instagram.com/latimer2k/" target="_blank" rel="noopener noreferrer">Instagram,</a>
+            <a href="https://dribbble.com/latimer" target="_blank" rel="noopener noreferrer">Dribbble,</a>
+            <a href="https://twitter.com/latimer2k" target="_blank" rel="noopener noreferrer">X,</a>
+            <a href="https://www.linkedin.com/in/baileylatimer/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
           </div>
-          </div>
+          </div> */}
         </div>
         <p className="font-accent footer-text">LATIMER</p>
       </div>

@@ -29,7 +29,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick }) => {
           </filter>
         </defs>
       </svg>
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 whitespace-nowrap">{children}</span>
     </button>
   );
 };
