@@ -27,6 +27,10 @@
   font-style: normal;
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 body {
   font-family: 'Neue Montreal', sans-serif;
@@ -41,6 +45,13 @@ body {
   font-family: 'Loco', serif;
   font-size: 36px;
   line-height: 110%;
+  letter-spacing: -.05em;
+}
+
+.font-default {
+  font-family: 'Neue Montreal';
+  text-transform: uppercase;
+  font-size: 24px;
 }
 
 
@@ -55,7 +66,7 @@ body {
   font-size: 22px;
 }
 
-.nav-text {
+.nav-text, .footer-text {
   font-size: 16vw;
   line-height: 85%;
 }
@@ -66,3 +77,18 @@ nav {
 }
 
 /* Add any other custom styles here */
+
+footer {
+  color: var(--color-bg)
+}
+
+.footer-content {
+  mix-blend-mode: difference;
+}
+
+.footer-text { position: absolute; bottom: -4vw; mix-blend-mode: difference; left: 50%; transform: translateX(-50%); -webkit-transform: translateX(-50%); -moz-transform: translateX(-50%); -ms-transform: translateX(-50%); -o-transform: translateX(-50%);
+}
+
+.footer-row {
+  height: 70px;
+}
