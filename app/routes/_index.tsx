@@ -4,6 +4,7 @@ import Navigation from "~/components/navigation";
 import Hero from '~/components/hero';
 import MissionSection from '~/components/mission-section';
 import ServicesSection from '~/components/services-section';
+import PartnersSection from '~/components/partners-section';
 
 export const meta: MetaFunction = () => {
   return [
@@ -22,10 +23,10 @@ export const loader: LoaderFunction = async ({ request }) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    return { projects: data.projects, services: data.services, error: null };
+    return { projects: data.projects, services: data.services, partners: data.partners, error: null };
   } catch (error: unknown) {
     console.error('Error fetching data:', error);
-    return { projects: [], services: [], error: (error as Error).message || 'Failed to fetch data' };
+    return { projects: [], services: [], partners: [], error: (error as Error).message || 'Failed to fetch data' };
   }
 };
 
@@ -41,10 +42,22 @@ interface Service {
   content: string;
 }
 
+interface Partner {
+  _id: string;
+  name: string;
+  logo: {
+    asset: {
+      _id: string;
+      url: string;
+    };
+  };
+}
+
 export default function Index() {
-  const { projects, services, error } = useLoaderData<{
+  const { projects, services, partners, error } = useLoaderData<{
     projects: Project[];
     services: Service[];
+    partners: Partner[];
     error: string | null;
   }>();
 
@@ -54,6 +67,7 @@ export default function Index() {
       <Hero />
       <MissionSection />
       <ServicesSection services={services} />
+      <PartnersSection partners={partners} />
       <main className="container mx-auto px-4 py-8">
         <h2 className="text-4xl font-bold mb-8">Projects</h2>
         {error && <p className="text-red-500">{error}</p>}

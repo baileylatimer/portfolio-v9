@@ -26,13 +26,25 @@ export async function loader() {
       title,
       content
     }`;
+
+    const partnersQuery = `*[_type == "partner"] | order(order asc) {
+      _id,
+      name,
+      logo {
+        asset->{
+          _id,
+          url
+        }
+      }
+    }`;
     
-    const [projects, services] = await Promise.all([
+    const [projects, services, partners] = await Promise.all([
       sanityClient.fetch(projectsQuery),
-      sanityClient.fetch(servicesQuery)
+      sanityClient.fetch(servicesQuery),
+      sanityClient.fetch(partnersQuery)
     ]);
 
-    return json({ projects, services });
+    return json({ projects, services, partners });
   } catch (error) {
     console.error('Error fetching data:', error);
     return json({ error: 'Failed to fetch data' }, { status: 500 });
