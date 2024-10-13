@@ -64,6 +64,8 @@ body {
 
 .eyebrow {
   font-size: 22px;
+  font-family: 'Missouri', serif;
+  text-transform: uppercase;
 }
 
 .nav-text, .footer-text {
@@ -82,7 +84,7 @@ footer {
   color: var(--color-bg)
 }
 
-.footer-content {
+.difference {
   mix-blend-mode: difference;
 }
 
