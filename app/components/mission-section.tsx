@@ -15,7 +15,7 @@ const SmallGrid = () => (
 
 const MissionSection: React.FC = () => {
   return (
-    <section className="py-16 px-4 md:px-8 lg:px-16">
+    <section className="light-section py-16 px-4 md:px-8 lg:px-16">
       <div className="mx-auto">
         <h2 className="font-accent eyebrow mb-8">ABOUT</h2>
         <div className=" leading-tight relative">

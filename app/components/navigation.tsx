@@ -1,8 +1,10 @@
 import { Link } from "@remix-run/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Navigation() {
   const [time, setTime] = useState("00:00:00");
+  const navRef = useRef<HTMLElement>(null);
+  const [gsapLoaded, setGsapLoaded] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -20,12 +22,53 @@ export default function Navigation() {
     updateTime(); // Initial call
     const timer = setInterval(updateTime, 1000); // Update every second
 
-    return () => clearInterval(timer); // Cleanup on unmount
+    // Dynamically import GSAP and ScrollTrigger
+    import('gsap').then((gsapModule) => {
+      const gsap = gsapModule.default;
+      import('gsap/ScrollTrigger').then((ScrollTriggerModule) => {
+        const ScrollTrigger = ScrollTriggerModule.default;
+        gsap.registerPlugin(ScrollTrigger);
+        setGsapLoaded(true);
+      });
+    });
+
+    return () => {
+      clearInterval(timer);
+    }; // Cleanup on unmount
   }, []);
 
+  useEffect(() => {
+    if (gsapLoaded) {
+      import('gsap').then((gsapModule) => {
+        const gsap = gsapModule.default;
+        import('gsap/ScrollTrigger').then((ScrollTriggerModule) => {
+          const ScrollTrigger = ScrollTriggerModule.default;
+
+          const lightSections = gsap.utils.toArray('.light-section') as HTMLElement[];
+          
+          lightSections.forEach((section) => {
+            ScrollTrigger.create({
+              trigger: section,
+              start: 'top 10%',
+              end: 'bottom 10%',
+              onEnter: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
+              onLeave: () => gsap.to(navRef.current, { color: 'white', duration: 0.3 }),
+              onEnterBack: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
+              onLeaveBack: () => gsap.to(navRef.current, { color: 'white', duration: 0.3 }),
+            });
+          });
+
+          return () => {
+            ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+          };
+        });
+      });
+    }
+  }, [gsapLoaded]);
+
   return (
-    <nav className="w-full px-4 py-4 navigation fixed top-0 z-10">
-      <div className=" mx-auto">
+    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 z-50 transition-colors duration-300 mix-blend-difference">
+      <div className="mx-auto">
         <div className="flex flex-col">
           <div className="font-accent nav-text">LATIMER</div>
           <div className="flex justify-between w-full mt-4 lg:mt-0">

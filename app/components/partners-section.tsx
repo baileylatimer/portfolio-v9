@@ -26,7 +26,7 @@ const PartnersSection: React.FC<PartnersSectionProps> = ({ partners }) => {
   console.log('Partners data:', partners); // Debugging: Log partners data
 
   return (
-    <section className="py-16 ">
+    <section className="light-section py-16">
       <div className="container mx-auto px-4">
         <h2 className="eyebrow mb-8">OUR PARTNERS</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

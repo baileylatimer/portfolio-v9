@@ -1,4 +1,3 @@
-import React from 'react';
 import Stars from '~/components/svg-stars';
 import SvgCaFlag from '~/components/svg-ca-flag';
 import SvgTarget from '~/components/svg-target';
@@ -18,7 +17,7 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
   const desktopFlagHeight = 44 * bottomElementsScale;
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
+    <div className="hero-section relative h-screen w-full overflow-hidden">
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -44,8 +43,8 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
       
       {/* Content */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <CustomButton onClick={() => console.log("Let's talk clicked")}>
-          LET'S TALK
+        <CustomButton onClick={() => console.log("Let&apos;s talk clicked")}>
+          LET&apos;S TALK
         </CustomButton>
       </div>
       

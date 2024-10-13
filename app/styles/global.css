@@ -1,7 +1,7 @@
 /* Custom global styles */
 
 :root {
-  --color-bg: #fff;
+  --color-bg: #DCCFBE;
   --color-white: #fff;
   --color-contrast-higher: #1A1917;
 }
@@ -35,6 +35,9 @@ html {
 body {
   font-family: 'Neue Montreal', sans-serif;
   line-height: 108%;
+  background-color: var(--color-bg);
+  background-image: url('/images/bg-texture.jpg');
+  background-repeat: repeat;
 }
 
 .bg-contrast-higher {
@@ -58,7 +61,6 @@ body {
   font-size: 18px;
 }
 
-
 .eyebrow {
   font-size: 14px;
   font-family: 'Missouri', serif;
@@ -69,13 +71,11 @@ body {
   .font-default {
     font-size: 24px;
   }
-  
 
   .font-secondary {
     font-size: 65px;
     line-height: 76px;
   }
-
 
   .eyebrow {
     font-size: 22px;
@@ -86,9 +86,6 @@ body {
   }
 }
 
-
-
-
 .nav-text, .footer-text {
   font-size: 16vw;
   line-height: 85%;
@@ -96,6 +93,16 @@ body {
 
 nav {
   color: var(--color-white);
+  mix-blend-mode: difference;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+nav * {
   mix-blend-mode: difference;
 }
 
