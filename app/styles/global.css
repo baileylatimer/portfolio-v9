@@ -216,3 +216,29 @@ footer {
 .tape {
   top: -3em;
 }
+
+/* Plastic Wrap Effect */
+.plastic-wrap-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.plastic-wrap-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/images/plastic-texture.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.plastic-wrap-container img {
+  position: relative;
+  z-index: 0;
+}

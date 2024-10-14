@@ -42,12 +42,14 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
             to={`/work/${project.slug.current}`}
             className={`relative group ${mobileSpan} ${colSpan}`}
           >
-            <div className="aspect-w-16 aspect-h-9 mb-2">
-              <img
-                src={project.mainImage.asset.url}
-                alt={project.title}
-                className="object-cover w-full h-full"
-              />
+            <div className="aspect-w-16 aspect-h-9 mb-2 relative">
+              <div className="plastic-wrap-container w-full h-full">
+                <img
+                  src={project.mainImage.asset.url}
+                  alt={project.title}
+                  className="object-cover w-full h-full"
+                />
+              </div>
             </div>
             <h3 className="text-lg font-bold mb-1">{project.title}</h3>
             <div className="flex flex-wrap gap-2 mb-2">
