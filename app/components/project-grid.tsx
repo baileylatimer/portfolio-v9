@@ -11,6 +11,7 @@ interface Project {
     };
   };
   technologies: string[];
+  industry: string[];
   columns: number;
 }
 
@@ -19,18 +20,27 @@ interface ProjectGridProps {
 }
 
 const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
+  const getColSpan = (columns: number) => {
+    switch (columns) {
+      case 1: return 'md:col-span-4'; // 1/3 width
+      case 2: return 'md:col-span-6'; // 1/2 width
+      case 3: return 'md:col-span-8'; // 2/3 width
+      case 4: return 'md:col-span-12'; // full width
+      default: return 'md:col-span-4'; // default to 1/3 width
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {projects.map((project, index) => {
-        const colSpan = project.columns || 1;
-        const mobileRowPattern = ['col-span-1', 'col-span-1', 'col-span-1', 'col-span-2', 'col-span-1', 'col-span-2'];
-        const mobileSpan = mobileRowPattern[index % mobileRowPattern.length];
+    <div className="grid grid-cols-4 md:grid-cols-12 gap-4 light-section">
+      {projects.map((project) => {
+        const colSpan = getColSpan(project.columns || 1);
+        const mobileSpan = project.columns > 1 ? 'col-span-4' : 'col-span-2';
 
         return (
           <Link
             key={project._id}
             to={`/work/${project.slug.current}`}
-            className={`relative group ${mobileSpan} md:col-span-${colSpan}`}
+            className={`relative group ${mobileSpan} ${colSpan}`}
           >
             <div className="aspect-w-16 aspect-h-9 mb-2">
               <img
@@ -40,10 +50,17 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
               />
             </div>
             <h3 className="text-lg font-bold mb-1">{project.title}</h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-2">
               {project.technologies.map((tech, index) => (
-                <span key={index} className="text-sm bg-gray-200 px-2 py-1 rounded">
+                <span key={`tech-${index}`} className="text-sm bg-gray-200 px-2 py-1 rounded">
                   {tech}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {project.industry.map((ind, index) => (
+                <span key={`ind-${index}`} className="text-sm bg-blue-200 px-2 py-1 rounded">
+                  {ind}
                 </span>
               ))}
             </div>

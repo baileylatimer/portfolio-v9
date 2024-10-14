@@ -29,6 +29,7 @@ export const loader: LoaderFunction = async () => {
       client,
       projectDate,
       technologies,
+      industry,
       mainImage {
         asset-> {
           url
@@ -53,6 +54,7 @@ interface Project {
   client: string;
   projectDate: string;
   technologies: string[];
+  industry: string[];
   mainImage: {
     asset: {
       url: string;
