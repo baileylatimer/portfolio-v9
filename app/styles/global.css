@@ -306,3 +306,31 @@ footer {
     object-fit: cover;
   }
 }
+
+/* Plastic Card Effect */
+.plastic-card-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.plastic-card-effect::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.plastic-card-effect .lighting {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: none;
+}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from '@remix-run/react';
+import PlasticCardEffect from './PlasticCardEffect';
 
 interface Project {
   _id: string;
@@ -38,33 +39,34 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
         const isFullWidth = project.columns === 4;
 
         return (
-          <Link
-            key={project._id}
-            to={`/work/${project.slug.current}`}
-            className={`relative group project-card ${mobileSpan} ${colSpan} ${isFullWidth ? 'full-width' : 'fixed-height'}`}
-          >
-            <div className="aspect-w-16 aspect-h-9 relative">
-              <div className="plastic-wrap-container w-full h-full">
-                <img
-                  src={project.mainImage.asset.url}
-                  alt={project.title}
-                  className="object-cover w-full h-full project-card-img"
-                />
-                <div className="absolute bottom-0 left-0 right-0 h-[100px] bg-gradient-to-t from-black/50 to-transparent z-10">
-                  <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
-                    <h3 className="color-bg uppercase mb-0">{project.title}</h3>
-                    <div className="flex flex-wrap gap-2 justify-end">
-                      {project.industry.map((ind, index) => (
-                        <span key={`ind-${index}`} className="color-bg uppercase px-2 py-1 rounded pill">
-                          {ind}
-                        </span>
-                      ))}
+          <PlasticCardEffect key={project._id} className={`${mobileSpan} ${colSpan}`}>
+            <Link
+              to={`/work/${project.slug.current}`}
+              className={`relative group project-card ${isFullWidth ? 'full-width' : 'fixed-height'}`}
+            >
+              <div className="aspect-w-16 aspect-h-9 relative">
+                <div className="plastic-wrap-container w-full h-full">
+                  <img
+                    src={project.mainImage.asset.url}
+                    alt={project.title}
+                    className="object-cover w-full h-full project-card-img"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 h-[100px] bg-gradient-to-t from-black/50 to-transparent z-10">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
+                      <h3 className="color-bg uppercase mb-0">{project.title}</h3>
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        {project.industry.map((ind, index) => (
+                          <span key={`ind-${index}`} className="color-bg uppercase px-2 py-1 rounded pill">
+                            {ind}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </PlasticCardEffect>
         );
       })}
     </div>
