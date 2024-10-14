@@ -37,14 +37,26 @@ export async function loader() {
         }
       }
     }`;
+
+    const imageWithTextQuery = `*[_type == "imageWithText"][0] {
+      title,
+      content,
+      image {
+        asset-> {
+          url
+        }
+      },
+      imageExcerpt
+    }`;
     
-    const [projects, services, partners] = await Promise.all([
+    const [projects, services, partners, imageWithText] = await Promise.all([
       sanityClient.fetch(projectsQuery),
       sanityClient.fetch(servicesQuery),
-      sanityClient.fetch(partnersQuery)
+      sanityClient.fetch(partnersQuery),
+      sanityClient.fetch(imageWithTextQuery)
     ]);
 
-    return json({ projects, services, partners });
+    return json({ projects, services, partners, imageWithText });
   } catch (error) {
     console.error('Error fetching data:', error);
     return json({ error: 'Failed to fetch data' }, { status: 500 });

@@ -14,7 +14,7 @@ interface ImageWithTextProps {
 
 const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, imageExcerpt }) => {
   return (
-    <section className="py-12 px-4 md:px-0">
+    <section className="py-12 px-4 md:px-0 light-section">
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
@@ -24,7 +24,7 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, im
                 value={content}
                 components={{
                   block: {
-                    normal: ({children}) => <p className="font-default">{children}</p>,
+                    normal: ({children}) => <p className="font-secondary">{children}</p>,
                     secondary: ({children}) => <p className="font-secondary">{children}</p>,
                   },
                 }}
@@ -33,7 +33,7 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, im
           </div>
           <div className="md:w-1/2 relative">
             <img src={image.asset.url} alt={title} className="w-full h-auto" />
-            <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white p-2">
+            <div className="absolute bottom-4 right-4 color-bg uppercase p-2">
               {imageExcerpt}
             </div>
           </div>
