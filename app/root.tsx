@@ -32,6 +32,7 @@ function AppContent() {
   const burstAudioRef = useRef<HTMLAudioElement>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const mouseDownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastClickTime = useRef(0);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsMouseDown(true);
@@ -52,7 +53,9 @@ function AppContent() {
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
-    if (!isMouseDown) {
+    const now = Date.now();
+    if (!isMouseDown && now - lastClickTime.current > 100) { // 100ms debounce
+      lastClickTime.current = now;
       addBulletHole?.(e.clientX, e.clientY);
       if (singleShotAudioRef.current) {
         singleShotAudioRef.current.currentTime = 0;
