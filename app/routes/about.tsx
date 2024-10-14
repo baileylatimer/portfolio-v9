@@ -37,7 +37,11 @@ export default function About() {
 
   return (
     <div className="about-page">
-      <PageHero imageSrc="/images/hero-rip.png" altText="Hero Rip" />
+      <PageHero 
+        desktopImageSrc="/images/hero-rip.png"
+        mobileImageSrc="/images/hero-rip--mobile.png"
+        altText="Hero Rip"
+      />
       {imageWithText && (
         <ImageWithText
           title={imageWithText.title}

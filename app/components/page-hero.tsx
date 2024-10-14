@@ -1,14 +1,19 @@
 import React from 'react';
 
 interface PageHeroProps {
-  imageSrc: string;
+  desktopImageSrc: string;
+  mobileImageSrc: string;
   altText: string;
 }
 
-const PageHero: React.FC<PageHeroProps> = ({ imageSrc, altText }) => {
+const PageHero: React.FC<PageHeroProps> = ({ desktopImageSrc, mobileImageSrc, altText }) => {
   return (
-    <div className="w-full">
-      <img src={imageSrc} alt={altText} className="w-full h-auto" />
+    <div className="w-full relative">
+      <picture>
+        <source media="(min-width: 768px)" srcSet={desktopImageSrc} />
+        <source media="(max-width: 767px)" srcSet={mobileImageSrc} />
+        <img src={desktopImageSrc} alt={altText} className="w-full h-auto" />
+      </picture>
     </div>
   );
 };
