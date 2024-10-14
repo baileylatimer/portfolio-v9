@@ -9,6 +9,7 @@ import type { LinksFunction } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
+import Navigation from '~/components/navigation';
 import { useContext, useRef, useCallback, useState } from 'react';
 
 import tailwindStyles from "./styles/tailwind.css?url";
@@ -71,14 +72,6 @@ function AppContent() {
   return (
     <body
       className="min-h-screen relative flex flex-col"
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label="Click or press Enter to shoot"
       style={{
         backgroundImage: `url('/images/bg-texture.jpg')`,
         backgroundRepeat: 'repeat',
@@ -94,7 +87,18 @@ function AppContent() {
           zIndex: -1,
         }} 
       />
-      <div className="relative z-10 flex-grow">
+      <div 
+        className="relative z-10 flex-grow"
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+        aria-label="Click or press Enter to shoot"
+      >
+        <Navigation />
         <Outlet />
         {bulletHoles?.map((hole: BulletHole) => (
           <BulletHole key={hole.id} x={hole.x} y={hole.y} />

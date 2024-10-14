@@ -67,10 +67,10 @@ export default function Navigation() {
   }, [gsapLoaded]);
 
   return (
-    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 z-50 transition-colors duration-300 mix-blend-difference">
+    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0  transition-colors duration-300 ">
       <div className="mx-auto">
         <div className="flex flex-col">
-          <div className="font-accent nav-text">LATIMER</div>
+          <Link to="/" className="font-accent nav-text">LATIMER</Link>
           <div className="flex justify-between w-full mt-4 lg:mt-0">
             <div className="flex flex-col">
               <div>DIGITAL COWBOY</div>

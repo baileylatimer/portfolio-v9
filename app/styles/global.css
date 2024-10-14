@@ -101,13 +101,14 @@ body {
 
 nav {
   color: var(--color-bg);
-  mix-blend-mode: difference;
-  position: fixed;
+  /* mix-blend-mode: difference; */
+  /* position: fixed;
   top: 0;
   left: 0;
   right: 0;
+
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5); */
   z-index: 9999;
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 nav * {
