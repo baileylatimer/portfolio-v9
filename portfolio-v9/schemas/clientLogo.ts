@@ -23,6 +23,12 @@ export default {
       type: 'number',
       description: 'Order in which the logo should appear (lower numbers appear first)',
     },
+    {
+      name: 'updatedAt',
+      title: 'Updated At',
+      type: 'datetime',
+      readOnly: true,
+    },
   ],
   orderings: [
     {
