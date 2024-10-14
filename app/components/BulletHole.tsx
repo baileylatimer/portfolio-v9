@@ -71,10 +71,10 @@ const BulletHole: React.FC<BulletHoleProps> = ({ x, y }) => {
       {showSmoke && !smokeRendered.current && (
         <div style={{ 
           position: 'absolute',
-          width: '100%',
-          height: '100%',
-          top: '-100%', // Move the smoke effect up by 100% of its height
-          left: 0,
+          width: '200px',
+          height: '200px',
+          top: '-250%', // Move up by 150% of the bullet hole height
+          left: '-50%', // Center horizontally
         }}>
           <SmokeEffect duration={3000} />
           {smokeRendered.current = true}
