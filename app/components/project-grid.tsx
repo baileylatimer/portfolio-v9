@@ -35,12 +35,13 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
       {projects.map((project) => {
         const colSpan = getColSpan(project.columns || 1);
         const mobileSpan = project.columns > 1 ? 'col-span-4' : 'col-span-2';
+        const isFullWidth = project.columns === 4;
 
         return (
           <Link
             key={project._id}
             to={`/work/${project.slug.current}`}
-            className={`relative group project-card ${mobileSpan} ${colSpan}`}
+            className={`relative group project-card ${mobileSpan} ${colSpan} ${isFullWidth ? 'full-width' : 'fixed-height'}`}
           >
             <div className="aspect-w-16 aspect-h-9 relative">
               <div className="plastic-wrap-container w-full h-full">

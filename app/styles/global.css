@@ -290,3 +290,19 @@ footer {
   border-style: dashed;
   border-width: 1px;
 }
+
+/* Fixed height for non-full-width project cards */
+@media screen and (min-width: 768px) {
+  .project-card.fixed-height .aspect-w-16.aspect-h-9 {
+    height: 400px; /* Adjust this value as needed */
+  }
+
+  .project-card.fixed-height .plastic-wrap-container,
+  .project-card.fixed-height .project-card-img {
+    height: 100%;
+  }
+
+  .project-card.fixed-height .project-card-img {
+    object-fit: cover;
+  }
+}
