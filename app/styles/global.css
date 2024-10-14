@@ -211,3 +211,8 @@ footer {
 .smoke-particle:nth-child(5n) {
   animation-duration: 3.2s;
 }
+
+
+.tape {
+  top: -20px;
+}
