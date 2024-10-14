@@ -3,5 +3,6 @@ import post from './post'
 import project from './project'
 import service from './service'
 import imageWithText from './imageWithText'
+import clientLogo from './clientLogo'
 
-export const schemaTypes = [partner, post, project, service, imageWithText]
+export const schemaTypes = [partner, post, project, service, imageWithText, clientLogo]

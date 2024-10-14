@@ -2,6 +2,7 @@ import { useLoaderData } from "@remix-run/react";
 import type { LoaderFunction } from "@remix-run/node";
 import PageHero from '~/components/page-hero';
 import ImageWithText from '~/components/image-with-text';
+import ClientLogoSection from '~/components/client-logo-section';
 import { PortableTextBlock } from '@portabletext/react';
 
 interface ImageWithTextData {
@@ -15,6 +16,17 @@ interface ImageWithTextData {
   imageExcerpt: string;
 }
 
+interface ClientLogo {
+  _id: string;
+  name: string;
+  logo: {
+    asset: {
+      url: string;
+    };
+  };
+  order: number;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const apiUrl = `${url.origin}/api/sanity`;
@@ -25,15 +37,18 @@ export const loader: LoaderFunction = async ({ request }) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    return { imageWithText: data.imageWithText };
+    return { imageWithText: data.imageWithText, clientLogos: data.clientLogos };
   } catch (error) {
     console.error('Error fetching data:', error);
-    return { imageWithText: null };
+    return { imageWithText: null, clientLogos: [] };
   }
 };
 
 export default function About() {
-  const { imageWithText } = useLoaderData<{ imageWithText: ImageWithTextData | null }>();
+  const { imageWithText, clientLogos } = useLoaderData<{ 
+    imageWithText: ImageWithTextData | null,
+    clientLogos: ClientLogo[]
+  }>();
 
   return (
     <div className="about-page">
@@ -50,6 +65,7 @@ export default function About() {
           imageExcerpt={imageWithText.imageExcerpt}
         />
       )}
+      <ClientLogoSection logos={clientLogos} />
       {/* Add other sections here */}
     </div>
   );

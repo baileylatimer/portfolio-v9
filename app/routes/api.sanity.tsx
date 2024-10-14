@@ -48,15 +48,27 @@ export async function loader() {
       },
       imageExcerpt
     }`;
+
+    const clientLogosQuery = `*[_type == "clientLogo"] | order(order asc) {
+      _id,
+      name,
+      logo {
+        asset-> {
+          url
+        }
+      },
+      order
+    }`;
     
-    const [projects, services, partners, imageWithText] = await Promise.all([
+    const [projects, services, partners, imageWithText, clientLogos] = await Promise.all([
       sanityClient.fetch(projectsQuery),
       sanityClient.fetch(servicesQuery),
       sanityClient.fetch(partnersQuery),
-      sanityClient.fetch(imageWithTextQuery)
+      sanityClient.fetch(imageWithTextQuery),
+      sanityClient.fetch(clientLogosQuery)
     ]);
 
-    return json({ projects, services, partners, imageWithText });
+    return json({ projects, services, partners, imageWithText, clientLogos });
   } catch (error) {
     console.error('Error fetching data:', error);
     return json({ error: 'Failed to fetch data' }, { status: 500 });
