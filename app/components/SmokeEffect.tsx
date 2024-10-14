@@ -45,12 +45,12 @@ class Smoke {
       (texture: THREE.Texture) => {
         console.log('Smoke texture loaded successfully');
         const smokeMaterial = new THREE.MeshLambertMaterial({
-          color: 0xffffff,
+          color: 0xffffff,  // Changed to white
           map: texture,
           transparent: true,
-          opacity: 0.55
+          opacity: 0.9  // Increased opacity for better visibility
         });
-        const smokeGeometry = new THREE.PlaneGeometry(20, 20);
+        const smokeGeometry = new THREE.PlaneGeometry(50, 50);
 
         for (let i = 0; i < 50; i++) {
           const particle = new THREE.Mesh(smokeGeometry, smokeMaterial.clone());
