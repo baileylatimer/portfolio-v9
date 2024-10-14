@@ -44,12 +44,38 @@ export default defineType({
       of: [{type: 'string'}],
     }),
     defineField({
+      name: 'industry',
+      title: 'Industry',
+      type: 'string',
+    }),
+    defineField({
       name: 'mainImage',
       title: 'Main image',
       type: 'image',
       options: {
         hotspot: true,
       },
+    }),
+    defineField({
+      name: 'order',
+      title: 'Order',
+      type: 'number',
+    }),
+    defineField({
+      name: 'columns',
+      title: 'Columns',
+      type: 'number',
+      validation: (Rule) => Rule.min(1).max(3),
+    }),
+    defineField({
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'text',
     }),
     defineField({
       name: 'body',
