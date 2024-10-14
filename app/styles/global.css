@@ -101,13 +101,6 @@ body {
 
 nav {
   color: var(--color-bg);
-  /* mix-blend-mode: difference; */
-  /* position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5); */
   z-index: 9999;
 }
 
@@ -212,15 +205,30 @@ footer {
   animation-duration: 3.2s;
 }
 
-
 .tape {
   top: -3em;
+}
+
+/* PROJECT CARDS */
+.project-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.project-card-img {
+  transition: transform 0.3s ease;
+}
+
+.project-card:hover .project-card-img {
+  transform: scale(1.05);
 }
 
 /* Plastic Wrap Effect */
 .plastic-wrap-container {
   position: relative;
   overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 1px 0px 3px 0px rgba(0, 0, 0, 0.45);
 }
 
 .plastic-wrap-container::before {
@@ -235,10 +243,50 @@ footer {
   background-position: center;
   opacity: 0.5;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 .plastic-wrap-container img {
   position: relative;
-  z-index: 0;
+  z-index: 1;
+}
+
+.plastic-wrap-container .gradient-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.00) 0%, rgba(0, 0, 0, 0.50) 100%);
+  z-index: 2;
+}
+
+.plastic-wrap-container .project-details {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.plastic-wrap-container .project-title {
+  color: white;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.plastic-wrap-container .project-industry {
+  color: white;
+  font-size: 0.875rem;
+}
+
+.pill {
+  border-color: var(--color-bg);
+  border-style: dashed;
+  border-width: 1px;
 }
