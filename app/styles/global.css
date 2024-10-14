@@ -327,10 +327,17 @@ footer {
 
 .plastic-card-effect .lighting {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  pointer-events: none;
+}
+
+.sepia-100 {
+  filter: sepia(1) brightness(0.8) contrast(1.2);
+}
+
+.sepia-0 {
+  filter: sepia(0);
+}
+
+/* Ensure smooth transitions for filter changes */
+.transition-filter {
+  transition: filter 0.3s ease-out;
 }
