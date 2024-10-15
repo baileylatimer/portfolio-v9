@@ -9,16 +9,23 @@ const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg max-w-2xl w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Secret Section</h2>
-        <p className="mb-4">This is the secret content that only appears when triggered.</p>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-auto secret-section"
+      style={{ backgroundColor: 'var(--color-contrast-higher)' }}
+    >
+      <div className="relative w-full h-full p-8 flex flex-col items-center justify-center">
         <button
           onClick={onClose}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+          className="absolute top-4 right-4 text-4xl font-bold hover:opacity-80 transition-opacity"
+          style={{ color: '#18F710' }}
+          aria-label="Close"
         >
-          Close
+          ×
         </button>
+        <h2 className="mb-8 font-thermal font-bold" style={{ color: '#18F710' }}>You found the secret page</h2>
+        <p className="mb-8 text-xl text-center font-thermal" style={{ color: '#18F710' }}>
+        I bet you cheated to get here, huh? anyways, here’s some people and tools that made building this site possible.
+        </p>
       </div>
     </div>
   );

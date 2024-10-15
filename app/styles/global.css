@@ -27,6 +27,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Thermal';
+  src: url('/fonts/ASThermalXXWideRegular.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Thermal';
+  src: url('/fonts/ASThermalRegular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -67,6 +81,19 @@ body {
   font-family: 'Neue Montreal', sans-serif;
   text-transform: uppercase;
   font-size: 18px;
+}
+
+.font-thermal {
+  font-family: 'Thermal', sans-serif;
+  text-transform: uppercase;
+}
+
+.font-wide {
+  font-family: 'Thermal Wide', sans-serif;
+}
+
+h2.font-thermal {
+  font-size: 60px;
 }
 
 .eyebrow {
