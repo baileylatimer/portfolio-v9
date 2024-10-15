@@ -1,9 +1,11 @@
 import type { MetaFunction, LoaderFunction } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, Outlet } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import PageHero from "~/components/page-hero";
 import ProjectGrid from "~/components/project-grid";
 import { createClient } from '@sanity/client';
+
+console.log("work.tsx is being processed");
 
 export const meta: MetaFunction = () => {
   return [
@@ -60,7 +62,7 @@ interface Project {
       url: string;
     };
   };
-  columns: number;
+  columns?: number;
 }
 
 export default function Work() {
@@ -75,6 +77,7 @@ export default function Work() {
       />
       <div className="container mx-auto px-4 py-12">
         <ProjectGrid projects={projects} />
+        <Outlet />
       </div>
     </div>
   );

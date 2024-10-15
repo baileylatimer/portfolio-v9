@@ -13,7 +13,7 @@ interface Project {
   };
   technologies: string[];
   industry: string[];
-  columns: number;
+  columns?: number;
 }
 
 interface ProjectGridProps {
@@ -21,7 +21,7 @@ interface ProjectGridProps {
 }
 
 const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
-  const getColSpan = (columns: number) => {
+  const getColSpan = (columns: number | undefined) => {
     switch (columns) {
       case 1: return 'md:col-span-4'; // 1/3 width
       case 2: return 'md:col-span-6'; // 1/2 width
@@ -34,8 +34,8 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
   return (
     <div className="grid grid-cols-4 md:grid-cols-12 gap-4 light-section">
       {projects.map((project) => {
-        const colSpan = getColSpan(project.columns || 1);
-        const mobileSpan = project.columns > 1 ? 'col-span-4' : 'col-span-2';
+        const colSpan = getColSpan(project.columns);
+        const mobileSpan = project.columns && project.columns > 1 ? 'col-span-4' : 'col-span-2';
         const isFullWidth = project.columns === 4;
 
         return (

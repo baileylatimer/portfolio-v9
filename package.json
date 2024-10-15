@@ -2,12 +2,14 @@
   "name": "my-remix-app",
   "private": true,
   "sideEffects": false,
+  "type": "module",
   "scripts": {
-    "build": "remix vite:build",
+    "build": "node scripts/generateProjectPages.js && SANITY_PROJECT_ID=hv36fjce SANITY_DATASET=production remix vite:build",
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
-    "start": "remix-serve ./build/server/index.js",
-    "typecheck": "tsc"
+    "start": "SANITY_PROJECT_ID=hv36fjce SANITY_DATASET=production remix-serve ./build/server/index.js",
+    "typecheck": "tsc",
+    "generate-project-pages": "node scripts/generateProjectPages.js"
   },
   "dependencies": {
     "@gsap/react": "^2.1.1",
