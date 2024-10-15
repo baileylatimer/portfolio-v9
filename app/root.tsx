@@ -10,7 +10,7 @@ import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleCont
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
-import { useContext, useRef, useCallback, useState } from 'react';
+import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 
 import tailwindStyles from "./styles/tailwind.css?url";
 import globalStyles from "./styles/global.css?url";
@@ -34,7 +34,8 @@ function AppContent() {
   const mouseDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastClickTime = useRef(0);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
     setIsMouseDown(true);
     mouseDownTimerRef.current = setTimeout(() => {
       const x = e.clientX + window.scrollX;
@@ -54,7 +55,8 @@ function AppContent() {
     }
   }, []);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  const handleClick = useCallback((e: MouseEvent) => {
+    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
     const now = Date.now();
     if (!isMouseDown && now - lastClickTime.current > 100) { // 100ms debounce
       lastClickTime.current = now;
@@ -70,20 +72,19 @@ function AppContent() {
     }
   }, [isMouseDown, addBulletHole]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      // For keyboard events, we'll use the center of the viewport
-      const x = window.innerWidth / 2 + window.scrollX;
-      const y = window.innerHeight / 2 + window.scrollY;
-      addBulletHole?.(x, y);
-      if (singleShotAudioRef.current) {
-        singleShotAudioRef.current.currentTime = 0;
-        singleShotAudioRef.current.play()
-          .then(() => console.log("Single shot audio played successfully"))
-          .catch(error => console.error("Single shot audio playback failed:", error));
-      }
-    }
-  }, [addBulletHole]);
+  useEffect(() => {
+    document.body.addEventListener('click', handleClick);
+    document.body.addEventListener('mousedown', handleMouseDown);
+    document.body.addEventListener('mouseup', handleMouseUp);
+    document.body.addEventListener('mouseleave', handleMouseUp);
+
+    return () => {
+      document.body.removeEventListener('click', handleClick);
+      document.body.removeEventListener('mousedown', handleMouseDown);
+      document.body.removeEventListener('mouseup', handleMouseUp);
+      document.body.removeEventListener('mouseleave', handleMouseUp);
+    };
+  }, [handleClick, handleMouseDown, handleMouseUp]);
 
   return (
     <body
@@ -102,17 +103,6 @@ function AppContent() {
           `,
           zIndex: -1,
         }} 
-      />
-      <div 
-        className="absolute inset-0 z-50"
-        onClick={handleClick}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onKeyDown={handleKeyDown}
-        tabIndex={0}
-        role="button"
-        aria-label="Click or press Enter to shoot"
       />
       <div className="relative z-10 flex-grow">
         <Navigation />
