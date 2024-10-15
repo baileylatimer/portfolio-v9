@@ -345,8 +345,18 @@ footer {
 /* PROJECT PAGE */
 .project-hero-container {
   position: relative;
-  height: calc(100vh - 15vh);
+  height: 100vh;
   overflow: hidden;
+  margin-top: -24vh;
+  overflow: hidden;
+}
+
+@media screen and (min-width: 1024px) {
+  .project-hero-container {
+   height: 100vh;
+    margin-top: -30vh;
+    max-height: 75vh;
+  }
 }
 
 .project-hero {
@@ -366,11 +376,12 @@ footer {
 }
 
 .project-title {
-  font-size: 64px;
+  font-size: 32px;
+  line-height: 100%;
 }
 
 @media screen and (min-width: 1024px) {
   .project-title {
-    font-size: 160px;
+    font-size: 64px;
   }
 }
