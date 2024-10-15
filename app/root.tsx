@@ -104,7 +104,7 @@ function AppContent() {
         }} 
       />
       <div 
-        className="relative z-10 flex-grow"
+        className="absolute inset-0 z-50"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -113,14 +113,15 @@ function AppContent() {
         tabIndex={0}
         role="button"
         aria-label="Click or press Enter to shoot"
-      >
+      />
+      <div className="relative z-10 flex-grow">
         <Navigation />
         <Outlet />
-        {bulletHoles?.map((hole: BulletHole) => (
-          <BulletHole key={hole.id} x={hole.x} y={hole.y} />
-        ))}
       </div>
       <Footer />
+      {bulletHoles?.map((hole: BulletHole) => (
+        <BulletHole key={hole.id} x={hole.x} y={hole.y} />
+      ))}
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>
