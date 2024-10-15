@@ -32,14 +32,13 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
   };
 
   return (
-    <div className="grid grid-cols-4 md:grid-cols-12 gap-4 light-section">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 light-section">
       {projects.map((project) => {
         const colSpan = getColSpan(project.columns);
-        const mobileSpan = project.columns && project.columns > 1 ? 'col-span-4' : 'col-span-2';
         const isFullWidth = project.columns === 4;
 
         return (
-          <PlasticCardEffect key={project._id} className={`${mobileSpan} ${colSpan}`}>
+          <PlasticCardEffect key={project._id} className={`col-span-1 ${colSpan}`}>
             <Link
               to={`/work/${project.slug.current}`}
               className={`relative group project-card ${isFullWidth ? 'full-width' : 'fixed-height'}`}
