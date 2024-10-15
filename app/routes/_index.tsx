@@ -68,7 +68,7 @@ export default function Index() {
       <MissionSection />
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />
-      <main className="container mx-auto px-4 py-8">
+      {/* <main className="container mx-auto px-4 py-8">
         <h2 className="text-4xl font-bold mb-8">Projects</h2>
         {error && <p className="text-red-500">{error}</p>}
         {projects.length === 0 ? (
@@ -85,7 +85,7 @@ export default function Index() {
             ))}
           </div>
         )}
-      </main>
+      </main> */}
     </div>
   );
 }

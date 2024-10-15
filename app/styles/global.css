@@ -351,7 +351,7 @@ footer {
 /* PROJECT PAGE */
 .project-hero-container {
   position: relative;
-  height: 100vh;
+  height: 90vh;
   overflow: hidden;
   margin-top: -24vh;
   overflow: hidden;
@@ -365,6 +365,11 @@ footer {
   }
 }
 
+@media screen and (max-width: 1024px) {
+.hero-section {
+height: 90vh !important;
+}
+}
 .project-hero {
   position: absolute;
   top: 0;
