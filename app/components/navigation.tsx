@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 export default function Navigation() {
   const [time, setTime] = useState("00:00:00.000");
   const navRef = useRef<HTMLElement>(null);
+  const navBgRef = useRef<HTMLDivElement>(null);
   const navTextRef = useRef<HTMLAnchorElement>(null);
   const navInfoRef = useRef<HTMLDivElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
@@ -41,7 +42,7 @@ export default function Navigation() {
   }, []);
 
   useEffect(() => {
-    if (gsapLoaded && navTextRef.current && navInfoRef.current) {
+    if (gsapLoaded && navTextRef.current && navInfoRef.current && navRef.current && navBgRef.current) {
       import('gsap').then((gsapModule) => {
         const gsap = gsapModule.default;
         import('gsap/ScrollTrigger').then((ScrollTriggerModule) => {
@@ -54,15 +55,51 @@ export default function Navigation() {
               trigger: section,
               start: 'top 10%',
               end: 'bottom 10%',
-              onEnter: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
-              onLeave: () => gsap.to(navRef.current, { color: 'var(--color-bg)', duration: 0.3 }),
-              onEnterBack: () => gsap.to(navRef.current, { color: 'var(--color-contrast-higher)', duration: 0.3 }),
-              onLeaveBack: () => gsap.to(navRef.current, { color: 'var(--color-bg)', duration: 0.3 }),
+              onEnter: () => {
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-contrast-higher)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 1,
+                  duration: 0.3
+                });
+              },
+              onLeave: () => {
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-bg)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 0,
+                  duration: 0.3
+                });
+              },
+              onEnterBack: () => {
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-contrast-higher)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 1,
+                  duration: 0.3
+                });
+              },
+              onLeaveBack: () => {
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-bg)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 0,
+                  duration: 0.3
+                });
+              },
             });
           });
 
           // Smooth animation for nav-text and nav-info
-          const navTextHeight = navTextRef.current.offsetHeight;
+          const navTextHeight = navTextRef.current?.offsetHeight || 0;
           let lastScrollTop = 0;
           let navTextVisible = true;
           
@@ -74,16 +111,18 @@ export default function Navigation() {
               const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
               const scrollDirection = scrollTop > lastScrollTop ? 1 : -1;
               
-              if (scrollDirection === 1 && navTextVisible) {
-                // Scrolling down and nav-text is visible
-                gsap.to(navTextRef.current, { yPercent: -100, duration: 0.3 });
-                gsap.to(navInfoRef.current, { y: -navTextHeight, duration: 0.3 });
-                navTextVisible = false;
-              } else if (scrollDirection === -1 && !navTextVisible) {
-                // Scrolling up and nav-text is hidden
-                gsap.to(navTextRef.current, { yPercent: 0, duration: 0.3 });
-                gsap.to(navInfoRef.current, { y: 0, duration: 0.3 });
-                navTextVisible = true;
+              if (navTextRef.current && navInfoRef.current) {
+                if (scrollDirection === 1 && navTextVisible) {
+                  // Scrolling down and nav-text is visible
+                  gsap.to(navTextRef.current, { yPercent: -100, duration: 0.3 });
+                  gsap.to(navInfoRef.current, { y: -navTextHeight, duration: 0.3 });
+                  navTextVisible = false;
+                } else if (scrollDirection === -1 && !navTextVisible) {
+                  // Scrolling up and nav-text is hidden
+                  gsap.to(navTextRef.current, { yPercent: 0, duration: 0.3 });
+                  gsap.to(navInfoRef.current, { y: 0, duration: 0.3 });
+                  navTextVisible = true;
+                }
               }
               
               lastScrollTop = scrollTop;
@@ -100,7 +139,14 @@ export default function Navigation() {
 
   return (
     <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 left-0 right-0 transition-colors duration-300 z-50">
-      <div className="mx-auto">
+      <div 
+        ref={navBgRef} 
+        className="absolute top-0 left-0 right-0 bottom-0 z-[-1] opacity-0"
+        style={{
+          background: 'linear-gradient(180deg, #DCCFBE 0%, rgba(220, 207, 190, 0.47) 68%, rgba(220, 207, 190, 0.00) 100%)'
+        }}
+      ></div>
+      <div className="mx-auto relative z-10">
         <div className="flex flex-col">
           <Link ref={navTextRef} to="/" className="font-accent nav-text">LATIMER</Link>
           <div ref={navInfoRef} className="nav-info flex justify-between w-full mt-4 lg:mt-0">

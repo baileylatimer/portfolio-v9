@@ -145,7 +145,7 @@ nav {
 }
 
 nav * {
-  mix-blend-mode: difference;
+  /* mix-blend-mode: difference; */
 }
 
 .nav-text {
