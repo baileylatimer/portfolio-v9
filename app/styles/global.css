@@ -95,8 +95,14 @@ body {
 }
 
 .nav-text, .footer-text {
+  font-size: 15vw;
+  line-height: 85%;
+}
+@media screen and (min-width: 1024px) {
+.nav-text, .footer-text {
   font-size: 16vw;
   line-height: 85%;
+}
 }
 
 nav {
