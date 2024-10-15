@@ -43,9 +43,9 @@ const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
         <div key={member._id} className="flex flex-col items-center">
           {member.image ? (
             <img
-              src={urlFor(member.image).width(300).height(300).url()}
+              src={urlFor(member.image).width(600).height(600).url()}
               alt={member.name}
-              className="w-full h-auto rounded-full mb-4"
+              className="w-full h-auto mb-4"
               onError={(e) => {
                 console.error("Error loading image for", member.name);
                 e.currentTarget.src = 'https://via.placeholder.com/300';
@@ -56,16 +56,16 @@ const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
               <span style={{ color: '#18F710' }}>No image available</span>
             </div>
           )}
-          <h3 className="text-2xl font-bold mb-2" style={{ color: '#18F710' }}>{member.name}</h3>
-          <p className="text-center mb-4" style={{ color: '#18F710' }}>{member.bio}</p>
+          <h3 className="text-2xl font-bold mb-2 font-thermal" style={{ color: '#18F710' }}>{member.name}</h3>
+          <p className="text-center mb-4 font-thermal" style={{ color: '#18F710' }}>{member.bio}</p>
           <div className="flex space-x-4">
             {member.websiteUrl && (
-              <a href={member.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-lg hover:opacity-80" style={{ color: '#18F710' }}>
+              <a href={member.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-lg hover:opacity-80 font-thermal" style={{ color: '#18F710' }}>
                 Website
               </a>
             )}
             {member.instagramUrl && (
-              <a href={member.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-lg hover:opacity-80" style={{ color: '#18F710' }}>
+              <a href={member.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-lg hover:opacity-80 font-thermal" style={{ color: '#18F710' }}>
                 Instagram
               </a>
             )}
