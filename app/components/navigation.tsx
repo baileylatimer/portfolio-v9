@@ -115,8 +115,23 @@ export default function Navigation() {
                 if (scrollDirection === 1 && navTextVisible) {
                   // Scrolling down and nav-text is visible
                   gsap.to(navTextRef.current, { yPercent: -100, duration: 0.3 });
-                  gsap.to(navInfoRef.current, { y: -navTextHeight, duration: 0.3 });
-                  gsap.to(navBgRef.current, { height: `calc(100% - ${navTextHeight/2}px)`, y: -navTextHeight/2, duration: 0.3 });
+                  
+                  const navInfoRect = navInfoRef.current.getBoundingClientRect();
+                  const desiredTop = window.innerWidth >= 1024 ? 40 : 30;
+                  const moveDistance = navInfoRect.top - desiredTop;
+
+                  gsap.to(navInfoRef.current, { 
+                    y: -moveDistance,
+                    duration: 0.3
+                  });
+
+                  if (window.innerWidth >= 1024) {
+                    // Desktop behavior
+                    gsap.to(navBgRef.current, { height: `calc(100% - ${navTextHeight/4}px)`, y: -navTextHeight/4, duration: 0.3 });
+                  } else {
+                    // Mobile behavior
+                    gsap.to(navBgRef.current, { height: `calc(100% - ${navTextHeight/2}px)`, y: -navTextHeight/2, duration: 0.3 });
+                  }
                   navTextVisible = false;
                 } else if (scrollDirection === -1 && !navTextVisible) {
                   // Scrolling up and nav-text is hidden
