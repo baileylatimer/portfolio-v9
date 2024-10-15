@@ -1,5 +1,5 @@
 import type { MetaFunction, LoaderFunction } from "@remix-run/node";
-import { useLoaderData, Outlet } from "@remix-run/react";
+import { useLoaderData, Outlet, useLocation } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import PageHero from "~/components/page-hero";
 import ProjectGrid from "~/components/project-grid";
@@ -67,18 +67,26 @@ interface Project {
 
 export default function Work() {
   const { projects } = useLoaderData<{ projects: Project[] }>();
+  const location = useLocation();
+
+  const isMainWorkPage = location.pathname === "/work";
 
   return (
     <div className="work-page">
-      <PageHero
-        desktopImageSrc="/images/hero-rip.png"
-        mobileImageSrc="/images/hero-rip--mobile.png"
-        altText="Our Work Hero Image"
-      />
-      <div className="container mx-auto px-4 py-12">
-        <ProjectGrid projects={projects} />
+      {isMainWorkPage ? (
+        <>
+          <PageHero
+            desktopImageSrc="/images/hero-rip.png"
+            mobileImageSrc="/images/hero-rip--mobile.png"
+            altText="Our Work Hero Image"
+          />
+          <div className="container mx-auto px-4 py-12">
+            <ProjectGrid projects={projects} />
+          </div>
+        </>
+      ) : (
         <Outlet />
-      </div>
+      )}
     </div>
   );
 }
