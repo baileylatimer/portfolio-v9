@@ -8,7 +8,7 @@ interface PageHeroProps {
 
 const PageHero: React.FC<PageHeroProps> = ({ desktopImageSrc, mobileImageSrc, altText }) => {
   return (
-    <div className="w-full relative">
+    <div className="w-full relative z-10">
       <picture>
         <source media="(min-width: 768px)" srcSet={desktopImageSrc} />
         <source media="(max-width: 767px)" srcSet={mobileImageSrc} />

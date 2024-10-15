@@ -1,9 +1,9 @@
 import { LoaderFunction, json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import PageHero from "~/components/page-hero";
-import RichTextContent from "~/components/RichTextContent";
 import { createClient } from '@sanity/client';
 import { PortableTextProps } from '@portabletext/react';
+import RichTextContent from "~/components/RichTextContent";
+import PageHero from "~/components/page-hero";
 
 console.log("work.$slug.tsx file is being processed");
 
@@ -75,44 +75,57 @@ export default function Project() {
   console.log("Rendering project:", project);
 
   return (
-    <div className="project-page">
+    <div className="project-page relative">
       <PageHero
         desktopImageSrc="/images/hero-rip.png"
         mobileImageSrc="/images/hero-rip--mobile.png"
-        altText={`${project.title} Hero Image`}
+        altText="Our Work Hero Image"
       />
-      <div className="container mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold mb-4">{project.title}</h1>
-        <p className="text-xl mb-4">{project.excerpt}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <img src={project.mainImage.asset.url} alt={project.title} className="w-full h-auto" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Project Details</h2>
-            <p><strong>Client:</strong> {project.client}</p>
-            <p><strong>Date:</strong> {project.projectDate}</p>
-            <h3 className="text-xl font-bold mt-4 mb-2">Technologies Used</h3>
-            <ul className="list-disc list-inside">
-              {project.technologies.map((tech, index) => (
-                <li key={index}>{tech}</li>
-              ))}
-            </ul>
-            <h3 className="text-xl font-bold mt-4 mb-2">Industry</h3>
-            <ul className="list-disc list-inside">
-              {project.industry.map((ind, index) => (
-                <li key={index}>{ind}</li>
-              ))}
-            </ul>
+      <div className="project-hero-container">
+        <div className="project-hero">
+          <img 
+            src={project.mainImage.asset.url} 
+            alt={project.title} 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-0 left-0 p-8">
+            <h1 className="uppercase project-title color-bg">{project.title}</h1>
           </div>
         </div>
-        <div className="mt-8">
+      </div>
+      <div className="container mx-auto px-4 py-12 flex">
+        <div className="w-2/3 pr-8">
           <h2 className="text-2xl font-bold mb-4">Project Description</h2>
-          <p>{project.description}</p>
+          <p>{project.description || project.excerpt}</p>
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Project Details</h2>
+            <RichTextContent content={project.body} />
+          </div>
         </div>
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Project Details</h2>
-          <RichTextContent content={project.body} />
+        <div className="w-1/3">
+          <div className="bg-gray-100 p-6 rounded-lg">
+            <h3 className="text-xl font-bold mb-4">Project Info</h3>
+            <div className="mb-4">
+              <h4 className="font-bold">Technologies</h4>
+              <ul className="list-disc list-inside">
+                {project.technologies.map((tech, index) => (
+                  <li key={index}>{tech}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="mb-4">
+              <h4 className="font-bold">Industry</h4>
+              <ul className="list-disc list-inside">
+                {project.industry.map((ind, index) => (
+                  <li key={index}>{ind}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold">Date</h4>
+              <p>{project.projectDate}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

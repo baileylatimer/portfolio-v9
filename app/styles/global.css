@@ -341,3 +341,36 @@ footer {
 .transition-filter {
   transition: filter 0.3s ease-out;
 }
+
+/* PROJECT PAGE */
+.project-hero-container {
+  position: relative;
+  height: calc(100vh - 15vh);
+  overflow: hidden;
+}
+
+.project-hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.project-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.project-title {
+  font-size: 64px;
+}
+
+@media screen and (min-width: 1024px) {
+  .project-title {
+    font-size: 160px;
+  }
+}
