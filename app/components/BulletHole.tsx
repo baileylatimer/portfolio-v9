@@ -73,7 +73,7 @@ const BulletHole: React.FC<BulletHoleProps> = ({ x, y }) => {
           position: 'absolute',
           width: '200px',
           height: '200px',
-          top: '-40%', // Move up by 150% of the bullet hole height
+          top: '-50%', // Move up by 150% of the bullet hole height
           left: '-50%', // Center horizontally
         }}>
           <SmokeEffect duration={3000} /> 
