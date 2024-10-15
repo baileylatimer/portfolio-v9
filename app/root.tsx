@@ -37,7 +37,9 @@ function AppContent() {
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsMouseDown(true);
     mouseDownTimerRef.current = setTimeout(() => {
-      addBurstHoles?.(e.clientX, e.clientY);
+      const x = e.clientX + window.scrollX;
+      const y = e.clientY + window.scrollY;
+      addBurstHoles?.(x, y);
       if (burstAudioRef.current) {
         burstAudioRef.current.currentTime = 0;
         burstAudioRef.current.play().catch(error => console.error("Burst audio playback failed:", error));
@@ -56,7 +58,9 @@ function AppContent() {
     const now = Date.now();
     if (!isMouseDown && now - lastClickTime.current > 100) { // 100ms debounce
       lastClickTime.current = now;
-      addBulletHole?.(e.clientX, e.clientY);
+      const x = e.clientX + window.scrollX;
+      const y = e.clientY + window.scrollY;
+      addBulletHole?.(x, y);
       if (singleShotAudioRef.current) {
         singleShotAudioRef.current.currentTime = 0;
         singleShotAudioRef.current.play()
@@ -68,9 +72,18 @@ function AppContent() {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
-      handleClick(e as unknown as React.MouseEvent);
+      // For keyboard events, we'll use the center of the viewport
+      const x = window.innerWidth / 2 + window.scrollX;
+      const y = window.innerHeight / 2 + window.scrollY;
+      addBulletHole?.(x, y);
+      if (singleShotAudioRef.current) {
+        singleShotAudioRef.current.currentTime = 0;
+        singleShotAudioRef.current.play()
+          .then(() => console.log("Single shot audio played successfully"))
+          .catch(error => console.error("Single shot audio playback failed:", error));
+      }
     }
-  }, [handleClick]);
+  }, [addBulletHole]);
 
   return (
     <body
