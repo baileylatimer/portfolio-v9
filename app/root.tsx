@@ -30,21 +30,32 @@ interface BulletHole {
   y: number;
 }
 
+interface TeamMember {
+  _id: string;
+  name: string;
+  image: any;
+  bio: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  order: number;
+}
+
 export const loader: LoaderFunction = async () => {
-  const query = `*[_type == "teamMember"] {
+  const query = `*[_type == "teamMember"] | order(order asc) {
     _id,
     name,
     image,
     bio,
     websiteUrl,
-    instagramUrl
+    instagramUrl,
+    order
   }`;
   const teamMembers = await sanityClient.fetch(query);
   return json({ teamMembers });
 };
 
 function AppContent() {
-  const { teamMembers } = useLoaderData<{ teamMembers: any[] }>();
+  const { teamMembers } = useLoaderData<{ teamMembers: TeamMember[] }>();
   const { bulletHoles, addBulletHole, addBurstHoles } = useContext(BulletHoleContext) || {};
   const singleShotAudioRef = useRef<HTMLAudioElement>(null);
   const burstAudioRef = useRef<HTMLAudioElement>(null);

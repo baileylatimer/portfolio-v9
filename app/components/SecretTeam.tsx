@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import imageUrlBuilder from '@sanity/image-url';
 import { createClient } from '@sanity/client';
 
@@ -22,6 +22,7 @@ interface TeamMember {
   bio: string;
   websiteUrl?: string;
   instagramUrl?: string;
+  order: number;
 }
 
 interface SecretTeamProps {
@@ -29,32 +30,18 @@ interface SecretTeamProps {
 }
 
 const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
-  useEffect(() => {
-    console.log("SecretTeam received teamMembers:", teamMembers);
-  }, [teamMembers]);
-
-  if (teamMembers.length === 0) {
-    return <p style={{ color: '#18F710' }}>No team members found.</p>;
-  }
+  const sortedTeamMembers = [...teamMembers].sort((a, b) => a.order - b.order);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {teamMembers.map((member) => (
+      {sortedTeamMembers.map((member) => (
         <div key={member._id} className="flex flex-col items-center">
-          {member.image ? (
+          {member.image && (
             <img
-              src={urlFor(member.image).width(600).height(600).url()}
+              src={urlFor(member.image).width(800).height(800).url()}
               alt={member.name}
-              className="w-full h-auto mb-4"
-              onError={(e) => {
-                console.error("Error loading image for", member.name);
-                e.currentTarget.src = 'https://via.placeholder.com/300';
-              }}
+              className="w-full h-auto  mb-4"
             />
-          ) : (
-            <div className="w-full h-64 bg-gray-300 rounded-full mb-4 flex items-center justify-center">
-              <span style={{ color: '#18F710' }}>No image available</span>
-            </div>
           )}
           <h3 className="text-2xl font-bold mb-2 font-thermal" style={{ color: '#18F710' }}>{member.name}</h3>
           <p className="text-center mb-4 font-thermal" style={{ color: '#18F710' }}>{member.bio}</p>

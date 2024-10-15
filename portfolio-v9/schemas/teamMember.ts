@@ -34,5 +34,20 @@ export default {
       title: 'Instagram URL',
       type: 'url',
     },
+    {
+      name: 'order',
+      title: 'Order',
+      type: 'number',
+      validation: (Rule: any) => Rule.required(),
+    },
+  ],
+  orderings: [
+    {
+      title: 'Order',
+      name: 'order',
+      by: [
+        {field: 'order', direction: 'asc'}
+      ]
+    },
   ],
 };
