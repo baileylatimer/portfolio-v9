@@ -2,8 +2,10 @@ import { Link } from "@remix-run/react";
 import { useState, useEffect, useRef } from "react";
 
 export default function Navigation() {
-  const [time, setTime] = useState("00:00:00");
+  const [time, setTime] = useState("00:00:00.000");
   const navRef = useRef<HTMLElement>(null);
+  const navTextRef = useRef<HTMLAnchorElement>(null);
+  const navInfoRef = useRef<HTMLDivElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
 
   useEffect(() => {
@@ -14,13 +16,14 @@ export default function Navigation() {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
+        fractionalSecondDigits: 3,
         hour12: false,
       }).format(now);
       setTime(laTime);
     };
 
     updateTime(); // Initial call
-    const timer = setInterval(updateTime, 1000); // Update every second
+    const timer = setInterval(updateTime, 10); // Update every 10ms for smooth millisecond updates
 
     // Dynamically import GSAP and ScrollTrigger
     import('gsap').then((gsapModule) => {
@@ -38,7 +41,7 @@ export default function Navigation() {
   }, []);
 
   useEffect(() => {
-    if (gsapLoaded) {
+    if (gsapLoaded && navTextRef.current && navInfoRef.current) {
       import('gsap').then((gsapModule) => {
         const gsap = gsapModule.default;
         import('gsap/ScrollTrigger').then((ScrollTriggerModule) => {
@@ -58,6 +61,35 @@ export default function Navigation() {
             });
           });
 
+          // Smooth animation for nav-text and nav-info
+          const navTextHeight = navTextRef.current.offsetHeight;
+          let lastScrollTop = 0;
+          let navTextVisible = true;
+          
+          ScrollTrigger.create({
+            trigger: document.body,
+            start: 'top top',
+            end: 'bottom bottom',
+            onUpdate: () => {
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              const scrollDirection = scrollTop > lastScrollTop ? 1 : -1;
+              
+              if (scrollDirection === 1 && navTextVisible) {
+                // Scrolling down and nav-text is visible
+                gsap.to(navTextRef.current, { yPercent: -100, duration: 0.3 });
+                gsap.to(navInfoRef.current, { y: -navTextHeight, duration: 0.3 });
+                navTextVisible = false;
+              } else if (scrollDirection === -1 && !navTextVisible) {
+                // Scrolling up and nav-text is hidden
+                gsap.to(navTextRef.current, { yPercent: 0, duration: 0.3 });
+                gsap.to(navInfoRef.current, { y: 0, duration: 0.3 });
+                navTextVisible = true;
+              }
+              
+              lastScrollTop = scrollTop;
+            }
+          });
+
           return () => {
             ScrollTrigger.getAll().forEach(trigger => trigger.kill());
           };
@@ -67,11 +99,11 @@ export default function Navigation() {
   }, [gsapLoaded]);
 
   return (
-    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0  transition-colors duration-300 ">
+    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 left-0 right-0 transition-colors duration-300 z-50">
       <div className="mx-auto">
         <div className="flex flex-col">
-          <Link to="/" className="font-accent nav-text">LATIMER</Link>
-          <div className="flex justify-between w-full mt-4 lg:mt-0">
+          <Link ref={navTextRef} to="/" className="font-accent nav-text">LATIMER</Link>
+          <div ref={navInfoRef} className="nav-info flex justify-between w-full mt-4 lg:mt-0">
             <div className="flex flex-col">
               <div>DIGITAL COWBOY</div>
               <div>LOS ANGELES, CA {time}</div>

@@ -15,7 +15,7 @@ interface ImageWithTextProps {
 const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, imageExcerpt }) => {
   return (
     <section className="py-12 px-4 md:px-0 light-section">
-      <div className="container mx-auto">
+      <div className="container mx-auto light-section">
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
             <h2 className="text-4xl font-bold mb-4">{title}</h2>
@@ -31,8 +31,8 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, im
               />
             </div>
           </div>
-          <div className="md:w-1/2 relative">
-            <div className="relative">
+          <div className="md:w-1/2 relative light-section">
+            <div className="relative light-section">
               <img src={image.asset.url} alt={title} className="w-full h-auto" />
               <div className="tape absolute  left-0 transform -rotate-12 -translate-x-1/6 -translate-y-1/6">
                 <img src="/images/tape.png" alt="Tape" className="w-64 lg:w-96 h-auto" />

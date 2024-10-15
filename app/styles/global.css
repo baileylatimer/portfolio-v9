@@ -105,14 +105,87 @@ body {
 }
 }
 
+/* Custom global styles */
+
+:root {
+  --color-bg: #DCCFBE;
+  --color-white: #fff;
+  --color-contrast-higher: #1A1917;
+  --nav-height: auto; /* Change to auto to accommodate both nav-text and nav-info */
+}
+
+/* ... (keep all existing font-face declarations and other styles) ... */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Neue Montreal', sans-serif;
+  line-height: 108%;
+  background-color: var(--color-bg);
+  background-image: url('/images/bg-texture.jpg');
+  background-repeat: repeat;
+}
+
+
+
+/* Navigation styles */
 nav {
   color: var(--color-bg);
   z-index: 9999;
+  overflow: visible; /* Change to visible to show nav-info */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: transparent;
+  padding-bottom: 1rem; /* Add some padding at the bottom */
 }
 
 nav * {
   mix-blend-mode: difference;
 }
+
+.nav-text {
+  font-size: 15vw;
+  line-height: 85%;
+  transition: transform 0.3s ease;
+}
+
+.nav-info {
+  transition: transform 0.3s ease;
+  opacity: 1; /* Ensure nav-info is visible */
+}
+
+@media screen and (min-width: 1024px) {
+  .nav-text {
+    font-size: 16vw;
+    line-height: 85%;
+  }
+}
+
+/* Adjust main content to account for fixed nav */
+main {
+  padding-top: calc(15vw * 0.85 + 2rem); /* Approximate nav height based on nav-text size and some extra space */
+}
+
+@media screen and (min-width: 1024px) {
+  main {
+    padding-top: calc(16vw * 0.85 + 2rem); /* Adjust for larger screens */
+  }
+}
+
+/* ... (keep all other existing styles) ... */
+
+
+
+
+
+
+
+
 
 footer {
   color: var(--color-bg); 
