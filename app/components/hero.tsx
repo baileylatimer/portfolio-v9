@@ -1,8 +1,10 @@
+import React, { useCallback } from 'react';
 import Stars from '~/components/svg-stars';
 import SvgCaFlag from '~/components/svg-ca-flag';
 import SvgTarget from '~/components/svg-target';
 import SvgGrid from '~/components/svg-grid';
 import CustomButton from '~/components/custom-button';
+import { useOutletContext } from '@remix-run/react';
 
 const HERO_IMAGE_PATH = '/images/hero-bg--min.jpg';
 
@@ -10,11 +12,30 @@ interface HeroProps {
   bottomElementsScale?: number;
 }
 
+interface OutletContextType {
+  openSecretSection: () => void;
+}
+
 export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
   const desktopStarWidth = 340 * bottomElementsScale;
   const desktopStarHeight = 71 * bottomElementsScale;
   const desktopFlagWidth = 143 * bottomElementsScale;
   const desktopFlagHeight = 44 * bottomElementsScale;
+
+  const { openSecretSection } = useOutletContext<OutletContextType>();
+
+  console.log("Hero component rendered, openSecretSection:", openSecretSection);
+
+  const handleTargetClick = useCallback((e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log("Target in hero section clicked");
+    if (openSecretSection) {
+      openSecretSection();
+    } else {
+      console.error("openSecretSection is undefined");
+    }
+  }, [openSecretSection]);
 
   return (
     <div className="hero-section relative h-screen w-full overflow-hidden">
@@ -32,8 +53,8 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
       <div className="absolute bottom-0 left-0 right-0 h-[120px] bg-gradient-to-t from-black to-transparent" />
       
       {/* Target SVG */}
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 scale-50 md:scale-100">
-        <SvgTarget color="var(--color-bg)"/>
+      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 scale-50 md:scale-100 z-50">
+        <SvgTarget color="var(--color-bg)" onClick={handleTargetClick}/>
       </div>
       
       {/* Grid SVG */}

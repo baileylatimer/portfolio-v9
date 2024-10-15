@@ -1,5 +1,10 @@
 import React from 'react';
+import { useOutletContext } from '@remix-run/react';
 import SvgTarget from './svg-target';
+
+interface OutletContextType {
+  openSecretSection: () => void;
+}
 
 const SmallGrid = () => (
   <svg width="147" height="41" viewBox="0 0 147 41" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -14,6 +19,14 @@ const SmallGrid = () => (
 );
 
 const MissionSection: React.FC = () => {
+  const { openSecretSection } = useOutletContext<OutletContextType>();
+
+  const handleTargetClick = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    e.stopPropagation();
+    console.log("Target in mission section clicked");
+    openSecretSection();
+  };
+
   return (
     <section className="light-section py-16 px-4 md:px-8 lg:px-16">
       <div className="mx-auto">
@@ -25,7 +38,12 @@ const MissionSection: React.FC = () => {
           <p className='font-secondary'>
             Design and code are only tools of expression. What sets us and our work apart is people. We&apos;re a small group of creative thinkers who craft bespoke digital-first brand identities and experiences, tailor-made for you and your audience.
             <span className="inline-block align-middle ml-2 scale-75 md:scale-100">
-              <SvgTarget color="var(--color-contrast-higher)" width={60} height={60} />
+              <SvgTarget 
+                color="var(--color-contrast-higher)" 
+                width={60} 
+                height={60} 
+                onClick={handleTargetClick}
+              />
             </span>
           </p>
         </div>

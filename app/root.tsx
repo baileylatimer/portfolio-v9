@@ -10,6 +10,7 @@ import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleCont
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
+import SecretSection from '~/components/SecretSection';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 
 import tailwindStyles from "./styles/tailwind.css?url";
@@ -33,6 +34,7 @@ function AppContent() {
   const [isMouseDown, setIsMouseDown] = useState(false);
   const mouseDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastClickTime = useRef(0);
+  const [isSecretSectionOpen, setIsSecretSectionOpen] = useState(false);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
     if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
@@ -86,6 +88,11 @@ function AppContent() {
     };
   }, [handleClick, handleMouseDown, handleMouseUp]);
 
+  const openSecretSection = useCallback(() => {
+    console.log("Opening secret section");
+    setIsSecretSectionOpen(true);
+  }, []);
+
   return (
     <body
       className="min-h-screen relative flex flex-col"
@@ -106,12 +113,13 @@ function AppContent() {
       />
       <div className="relative z-10 flex-grow">
         <Navigation />
-        <Outlet />
+        <Outlet context={{ openSecretSection }} />
       </div>
       <Footer />
       {bulletHoles?.map((hole: BulletHole) => (
         <BulletHole key={hole.id} x={hole.x} y={hole.y} />
       ))}
+      <SecretSection isOpen={isSecretSectionOpen} onClose={() => setIsSecretSectionOpen(false)} />
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>
