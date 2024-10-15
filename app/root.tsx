@@ -4,14 +4,17 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "@remix-run/react";
-import type { LinksFunction } from "@remix-run/node";
+import type { LinksFunction, LoaderFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
 import SecretSection from '~/components/SecretSection';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
+import { sanityClient } from "~/lib/sanity.server";
 
 import tailwindStyles from "./styles/tailwind.css?url";
 import globalStyles from "./styles/global.css?url";
@@ -27,7 +30,21 @@ interface BulletHole {
   y: number;
 }
 
+export const loader: LoaderFunction = async () => {
+  const query = `*[_type == "teamMember"] {
+    _id,
+    name,
+    image,
+    bio,
+    websiteUrl,
+    instagramUrl
+  }`;
+  const teamMembers = await sanityClient.fetch(query);
+  return json({ teamMembers });
+};
+
 function AppContent() {
+  const { teamMembers } = useLoaderData<{ teamMembers: any[] }>();
   const { bulletHoles, addBulletHole, addBurstHoles } = useContext(BulletHoleContext) || {};
   const singleShotAudioRef = useRef<HTMLAudioElement>(null);
   const burstAudioRef = useRef<HTMLAudioElement>(null);
@@ -119,7 +136,7 @@ function AppContent() {
       {bulletHoles?.map((hole: BulletHole) => (
         <BulletHole key={hole.id} x={hole.x} y={hole.y} />
       ))}
-      <SecretSection isOpen={isSecretSectionOpen} onClose={() => setIsSecretSectionOpen(false)} />
+      <SecretSection isOpen={isSecretSectionOpen} onClose={() => setIsSecretSectionOpen(false)} teamMembers={teamMembers} />
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>
