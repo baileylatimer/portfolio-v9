@@ -109,6 +109,27 @@ body {
 }
 }
 
+
+.font-thermal.font-bold {
+  font-family: 'Thermal', sans-serif;
+  text-transform: uppercase;
+  line-height: 104%;
+  font-size: 36px;
+}
+
+
+h3.font-thermal {
+  font-size: 26px !important;
+  margin-bottom:.3em;
+  }
+
+@media screen and (min-width: 1024px) {
+h3.font-thermal {
+font-size: 40px !important;
+margin-bottom:.3em;
+}
+}
+
 .font-wide {
   font-family: 'Thermal Wide', sans-serif;
 }
