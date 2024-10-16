@@ -94,13 +94,26 @@ body {
   line-height: 104%;
 }
 
+
+  .font-thermal.font-bold {
+    font-family: 'Thermal', sans-serif;
+    text-transform: uppercase;
+    line-height: 104%;
+    font-size: 36px;
+  }
+  
+
+@media screen and (min-width: 1024px) {
+.font-thermal.font-bold {
+  font-size: 60px;
+}
+}
+
 .font-wide {
   font-family: 'Thermal Wide', sans-serif;
 }
 
-h2.font-thermal {
-  font-size: 60px;
-}
+
 
 .eyebrow {
   font-size: 14px;

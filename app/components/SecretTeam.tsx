@@ -52,7 +52,7 @@ const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
           </div>
           )}
           <h3 className="text-xl font-bold mb-2 font-thermal" style={{ color: '#18F710' }}>{member.name}</h3>
-          <p className="mb-4 font-thermal " style={{ color: '#18F710' }}>{member.bio}</p>
+          <p className="mb-4 font-thermal  " style={{ color: '#18F710' }}>{member.bio}</p>
           <div className="flex space-x-4">
             {member.websiteUrl && (
               <a href={member.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm hover:opacity-80 uppercase px-2 py-1 rounded font-thermal secret-pill" style={{ color: '#18F710' }}>

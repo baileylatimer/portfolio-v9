@@ -45,7 +45,7 @@ const SecretAbout: React.FC<SecretAboutProps> = ({ secretAboutData }) => {
             <h2 className='font-bold font-thermal'>Bailey Latimer</h2>
           </div>
         </div>
-        <div className="md:w-1/2">
+        <div className="md:w-1/2 mt-16 lg:mt-0">
           <div className="relative">
             <img
               src={urlFor(secretAboutData.image).width(600).height(600).url()}
