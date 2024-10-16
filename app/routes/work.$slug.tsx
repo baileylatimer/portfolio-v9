@@ -103,8 +103,18 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
       <path d="M1.5 195.042V30.9583C17.4238 30.1995 30.1995 17.4238 30.9583 1.5H303.307C304.066 17.4238 316.841 30.1995 332.765 30.9583V195.042C316.841 195.8 304.066 208.576 303.307 224.5H30.9583C30.1995 208.576 17.4238 195.8 1.5 195.042Z" stroke="#DCCFBE" strokeWidth="3"/>
     </svg>
     <div style={{
-      position: 'relative',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      boxShadow: '-10px -1px 0px 0px #DCCFBE inset',
+      clipPath: 'url(#projectInfoShape)',
       zIndex: 2,
+    }}></div>
+    <div style={{
+      position: 'relative',
+      zIndex: 3,
       padding: '2rem',
       color: 'white',
       textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
@@ -139,18 +149,14 @@ export default function Project() {
           </div>
           <div className="absolute bottom-8 right-8 w-1/3 h-auto" style={{ aspectRatio: '335 / 226' }}>
             <ProjectInfoShape>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                marginBottom: '1rem',
-              }}>Project Info</h3>
+
               <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontWeight: 'bold' }}>Technologies</h4>
-                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem' }}>
+                <p className="uppercase mb-4">Tools</p>
+                <div className='flex flex-col gap-4' style={{ listStyleType: 'none'  }}>
                   {project.technologies.map((tech, index) => (
-                    <li key={index}>{tech}</li>
+                    <div className="uppercase pill px-2 py-1 rounded w-max" key={index}>{tech}</div>
                   ))}
-                </ul>
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <h4 style={{ fontWeight: 'bold' }}>Industry</h4>
