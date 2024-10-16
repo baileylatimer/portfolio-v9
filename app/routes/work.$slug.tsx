@@ -149,25 +149,25 @@ export default function Project() {
           </div>
           <div className="absolute bottom-8 right-8 w-1/3 h-auto" style={{ aspectRatio: '335 / 226' }}>
             <ProjectInfoShape>
-
+            <div className="flex gap-4 justify-center">
               <div style={{ marginBottom: '1rem' }}>
-                <p className="uppercase mb-4">Tools</p>
-                <div className='flex flex-col gap-4' style={{ listStyleType: 'none'  }}>
+                <p className="uppercase mb-4 color-bg">Tools</p>
+                <div className='flex flex-col gap-2' style={{ listStyleType: 'none'  }}>
                   {project.technologies.map((tech, index) => (
-                    <div className="uppercase pill px-2 py-1 rounded w-max" key={index}>{tech}</div>
+                    <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{tech}</div>
                   ))}
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontWeight: 'bold' }}>Industry</h4>
-                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem' }}>
+                <p className='uppercase mb-4 color-bg' style={{  }}>Industry</p>
+                <div className='flex flex-col gap-2' style={{ listStyleType: 'none' }}>
                   {project.industry.map((ind, index) => (
-                    <li key={index}>{ind}</li>
+                    <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{ind}</div>
                   ))}
-                </ul>
+                </div>
               </div>
+            </div>
               <div>
-                <h4 style={{ fontWeight: 'bold' }}>Date</h4>
                 <p>{project.projectDate}</p>
               </div>
             </ProjectInfoShape>
