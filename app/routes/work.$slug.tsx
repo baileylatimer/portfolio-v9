@@ -75,14 +75,12 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
     height: '100%',
     overflow: 'hidden',
   }}>
-    <svg width="100%" height="100%" viewBox="0 0 335 226" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: 1,
-    }}>
-      <path d="M0 29.494C16.2891 29.494 29.494 16.2891 29.494 0H304.771C304.771 16.2891 317.976 29.494 334.265 29.494V196.506C317.976 196.506 304.771 209.711 304.771 226H29.494C29.494 209.711 16.2891 196.506 0 196.506V29.494Z" fill="#1A1917" fillOpacity="0.01"/>
-      <path d="M1.5 195.042V30.9583C17.4238 30.1995 30.1995 17.4238 30.9583 1.5H303.307C304.066 17.4238 316.841 30.1995 332.765 30.9583V195.042C316.841 195.8 304.066 208.576 303.307 224.5H30.9583C30.1995 208.576 17.4238 195.8 1.5 195.042Z" stroke="#DCCFBE" strokeWidth="3"/>
+    <svg width="0" height="0">
+      <defs>
+        <clipPath id="projectInfoShape" clipPathUnits="objectBoundingBox">
+          <path d="M0 0.13C0.049 0.13 0.088 0.072 0.088 0H0.91C0.91 0.072 0.949 0.13 0.998 0.13V0.87C0.949 0.87 0.91 0.928 0.91 1H0.088C0.088 0.928 0.049 0.87 0 0.87V0.13Z" />
+        </clipPath>
+      </defs>
     </svg>
     <div style={{
       position: 'absolute',
@@ -92,8 +90,18 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
       height: '100%',
       backdropFilter: 'blur(7px)',
       WebkitBackdropFilter: 'blur(7px)',
+      clipPath: 'url(#projectInfoShape)',
       zIndex: 0,
     }}></div>
+    <svg width="100%" height="100%" viewBox="0 0 335 226" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      zIndex: 1,
+    }}>
+      <path d="M0 29.494C16.2891 29.494 29.494 16.2891 29.494 0H304.771C304.771 16.2891 317.976 29.494 334.265 29.494V196.506C317.976 196.506 304.771 209.711 304.771 226H29.494C29.494 209.711 16.2891 196.506 0 196.506V29.494Z" fill="#1A1917" fillOpacity="0.01"/>
+      <path d="M1.5 195.042V30.9583C17.4238 30.1995 30.1995 17.4238 30.9583 1.5H303.307C304.066 17.4238 316.841 30.1995 332.765 30.9583V195.042C316.841 195.8 304.066 208.576 303.307 224.5H30.9583C30.1995 208.576 17.4238 195.8 1.5 195.042Z" stroke="#DCCFBE" strokeWidth="3"/>
+    </svg>
     <div style={{
       position: 'relative',
       zIndex: 2,
