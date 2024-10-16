@@ -33,15 +33,23 @@ const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
   const sortedTeamMembers = [...teamMembers].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 ">
       {sortedTeamMembers.map((member) => (
-        <div key={member._id} className="flex flex-col">
+        <div key={member._id} className="flex flex-col mt-24">
           {member.image && (
+            <div className='relative'>
             <img
               src={urlFor(member.image).width(600).height(600).url()}
               alt={member.name}
               className=" object-cover mb-4 secret-image"
             />
+            <div className="tape absolute  left-0 transform -rotate-12 -translate-x-1/6 -translate-y-1/6">
+             <img src="/images/tape.png" alt="Tape" className="w-64 lg:w-96 h-auto" />
+            </div>
+            <div className="tape absolute  right-0 transform rotate-6 translate-x-1/6 -translate-y-1/6">
+              <img src="/images/tape.png" alt="Tape" className=" w-48 lg:w-96 h-auto" />
+            </div>
+          </div>
           )}
           <h3 className="text-xl font-bold mb-2 font-thermal" style={{ color: '#18F710' }}>{member.name}</h3>
           <p className="mb-4 font-thermal " style={{ color: '#18F710' }}>{member.bio}</p>
