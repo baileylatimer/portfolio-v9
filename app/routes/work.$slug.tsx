@@ -73,10 +73,9 @@ export const loader: LoaderFunction = async ({ params }) => {
 };
 
 const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{
+  <div className="w-[300px] md:w-[370px]" style={{
     position: 'relative',
-    width: '100%',
-    height: '100%',
+    paddingTop: 'calc(226 / 335 * 100%)', // Maintain aspect ratio
     overflow: 'hidden',
   }}>
     <svg width="0" height="0">
@@ -97,7 +96,7 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
       clipPath: 'url(#projectInfoShape)',
       zIndex: 0,
     }}></div>
-    <svg width="100%" height="100%" viewBox="0 0 335 226" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
+    <svg width="100%" height="100%" viewBox="0 0 335 226" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
       position: 'absolute',
       top: 0,
       left: 0,
@@ -117,11 +116,18 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
       zIndex: 2,
     }}></div>
     <div style={{
-      position: 'relative',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
       zIndex: 3,
-      padding: '2rem',
+      padding: '8%',
       color: 'white',
       textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
     }}>
       {children}
     </div>
@@ -158,32 +164,32 @@ export default function Project() {
           <div className="absolute bottom-8 left-8">
             <h1 className="uppercase project-title color-bg">{project.title}</h1>
           </div>
-          <div className="absolute bottom-8 right-8 w-1/3 h-auto" style={{ aspectRatio: '335 / 226' }}>
+          <div className="absolute bottom-8 right-8">
             <ProjectInfoShape>
               <div className="flex gap-4 justify-center">
-                <div style={{ marginBottom: '1rem' }}>
-                  <p className="uppercase mb-4 color-bg">Tools</p>
-                  <div className='flex flex-col gap-2' style={{ listStyleType: 'none'  }}>
-                    {project.technologies.map((tech, index) => (
-                      <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{tech}</div>
+                <div>
+                  <p className="uppercase mb-2 color-bg text-xs md:text-sm">Tools</p>
+                  <div className='flex flex-col gap-1'>
+                    {project.technologies.map((tech: string, index: number) => (
+                      <div className="uppercase pill px-1 py-0.5 rounded w-max color-bg text-xs" key={index}>{tech}</div>
                     ))}
                   </div>
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <p className='uppercase mb-4 color-bg' style={{  }}>Industry</p>
-                  <div className='flex flex-col gap-2' style={{ listStyleType: 'none' }}>
-                    {project.industry.map((ind, index) => (
-                      <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{ind}</div>
+                <div>
+                  <p className='uppercase mb-2 color-bg text-xs md:text-sm'>Industry</p>
+                  <div className='flex flex-col gap-1'>
+                    {project.industry.map((ind: string, index: number) => (
+                      <div className="uppercase pill px-1 py-0.5 rounded w-max color-bg text-xs" key={index}>{ind}</div>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-4 px-6">
+              <div className="flex justify-between items-center mt-2">
                 <div>
-                  <p className="uppercase color-bg">{projectYear}</p>
+                  <p className="uppercase color-bg text-xs md:text-sm">{projectYear}</p>
                 </div>
                 {project.websiteUrl && (
-                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded color-bg">
+                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex gap-1 items-center justify-center uppercase px-1 py-0.5 rounded color-bg text-xs">
                     <SvgLink />Live Site
                   </a>
                 )}
