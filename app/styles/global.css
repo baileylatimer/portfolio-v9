@@ -397,6 +397,14 @@ footer {
   border-width: 1px;
 }
 
+.secret-pill {
+  border-color: #18F710;
+  border-style: dashed;
+  border-width: 1px;
+  line-height: 0;
+  padding: 1em 1em 1.5em 1em;
+}
+
 /* Fixed height for non-full-width project cards */
 @media screen and (min-width: 768px) {
   .project-card.fixed-height .aspect-w-16.aspect-h-9 {
