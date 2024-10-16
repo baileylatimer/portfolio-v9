@@ -40,8 +40,14 @@ interface TeamMember {
   order: number;
 }
 
+interface SecretAboutData {
+  title: string;
+  content: any[];
+  image: any;
+}
+
 export const loader: LoaderFunction = async () => {
-  const query = `*[_type == "teamMember"] | order(order asc) {
+  const teamMembersQuery = `*[_type == "teamMember"] | order(order asc) {
     _id,
     name,
     image,
@@ -50,12 +56,23 @@ export const loader: LoaderFunction = async () => {
     instagramUrl,
     order
   }`;
-  const teamMembers = await sanityClient.fetch(query);
-  return json({ teamMembers });
+  
+  const secretAboutQuery = `*[_type == "secretAbout"][0] {
+    title,
+    content,
+    image
+  }`;
+
+  const [teamMembers, secretAboutData] = await Promise.all([
+    sanityClient.fetch(teamMembersQuery),
+    sanityClient.fetch(secretAboutQuery),
+  ]);
+
+  return json({ teamMembers, secretAboutData });
 };
 
 function AppContent() {
-  const { teamMembers } = useLoaderData<{ teamMembers: TeamMember[] }>();
+  const { teamMembers, secretAboutData } = useLoaderData<{ teamMembers: TeamMember[], secretAboutData: SecretAboutData }>();
   const { bulletHoles, addBulletHole, addBurstHoles } = useContext(BulletHoleContext) || {};
   const singleShotAudioRef = useRef<HTMLAudioElement>(null);
   const burstAudioRef = useRef<HTMLAudioElement>(null);
@@ -147,7 +164,12 @@ function AppContent() {
       {bulletHoles?.map((hole: BulletHole) => (
         <BulletHole key={hole.id} x={hole.x} y={hole.y} />
       ))}
-      <SecretSection isOpen={isSecretSectionOpen} onClose={() => setIsSecretSectionOpen(false)} teamMembers={teamMembers} />
+      <SecretSection 
+        isOpen={isSecretSectionOpen} 
+        onClose={() => setIsSecretSectionOpen(false)} 
+        teamMembers={teamMembers}
+        secretAboutData={secretAboutData}
+      />
       <audio ref={singleShotAudioRef} src="/sounds/gunshot.wav" preload="auto">
         <track kind="captions" />
       </audio>

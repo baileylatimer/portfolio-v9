@@ -1,13 +1,15 @@
 import React from 'react';
 import SecretTeam from './SecretTeam';
+import SecretAbout from './SecretAbout';
 
 interface SecretSectionProps {
   isOpen: boolean;
   onClose: () => void;
   teamMembers: any[];
+  secretAboutData: any;
 }
 
-const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose, teamMembers }) => {
+const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose, teamMembers, secretAboutData }) => {
   if (!isOpen) return null;
 
   return (
@@ -25,12 +27,14 @@ const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose, teamMemb
           ×
         </button>
         <div className="overflow-y-auto flex-grow p-8">
-          <div className=" mx-auto">
+          <div className="mx-auto">
             <h2 className="text-4xl font-bold mb-8 font-thermal" style={{ color: '#18F710' }}>You found the secret page</h2>
             <p className="mb-8 text-xl font-thermal" style={{ color: '#18F710' }}>
-              I bet you cheated to get here, huh? Anyways, here's some people and tools that made building this site possible.
+              I bet you cheated to get here, huh? Anyways, here&apos;s some people and tools that made building this site possible.
             </p>
+
             <SecretTeam teamMembers={teamMembers} />
+            <SecretAbout secretAboutData={secretAboutData} />
           </div>
         </div>
       </div>

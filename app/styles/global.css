@@ -88,6 +88,12 @@ body {
   text-transform: uppercase;
 }
 
+.font-thermal.font-bold {
+  font-family: 'Thermal', sans-serif;
+  text-transform: uppercase;
+  line-height: 104%;
+}
+
 .font-wide {
   font-family: 'Thermal Wide', sans-serif;
 }
