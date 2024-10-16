@@ -105,5 +105,11 @@ export default defineType({
         },
       ],
     }),
+    defineField({
+      name: 'websiteUrl',
+      title: 'Website URL',
+      type: 'url',
+      description: 'The URL of the project website',
+    }),
   ],
 })

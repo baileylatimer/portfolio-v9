@@ -437,6 +437,11 @@ footer {
   border-width: 1px;
 }
 
+.pill-site {
+  border-color: var(--color-bg);
+  border-width: 3px;
+}
+
 .secret-pill {
   border-color: #18F710;
   border-style: dashed;

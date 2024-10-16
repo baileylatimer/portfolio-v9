@@ -4,6 +4,8 @@ import { createClient } from '@sanity/client';
 import { PortableTextProps } from '@portabletext/react';
 import RichTextContent from "~/components/RichTextContent";
 import PageHero from "~/components/page-hero";
+import SvgLink from "~/components/svg-link";
+import PropTypes from 'prop-types';
 
 console.log("work.$slug.tsx file is being processed");
 
@@ -30,6 +32,7 @@ interface Project {
   };
   description: string;
   body: PortableTextProps['value'];
+  websiteUrl?: string;
 }
 
 interface LoaderData {
@@ -54,7 +57,8 @@ export const loader: LoaderFunction = async ({ params }) => {
       }
     },
     description,
-    body
+    body,
+    websiteUrl
   }`;
   console.log("Fetching project with slug:", slug);
   const project = await sanityClient.fetch(query, { slug });
@@ -124,11 +128,18 @@ const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children })
   </div>
 );
 
+ProjectInfoShape.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
 export default function Project() {
   console.log("Project component rendering");
   const { project } = useLoaderData<LoaderData>();
 
   console.log("Rendering project:", project);
+
+  // Extract the year from the projectDate
+  const projectYear = new Date(project.projectDate).getFullYear();
 
   return (
     <div className="project-page relative">
@@ -149,26 +160,33 @@ export default function Project() {
           </div>
           <div className="absolute bottom-8 right-8 w-1/3 h-auto" style={{ aspectRatio: '335 / 226' }}>
             <ProjectInfoShape>
-            <div className="flex gap-4 justify-center">
-              <div style={{ marginBottom: '1rem' }}>
-                <p className="uppercase mb-4 color-bg">Tools</p>
-                <div className='flex flex-col gap-2' style={{ listStyleType: 'none'  }}>
-                  {project.technologies.map((tech, index) => (
-                    <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{tech}</div>
-                  ))}
+              <div className="flex gap-4 justify-center">
+                <div style={{ marginBottom: '1rem' }}>
+                  <p className="uppercase mb-4 color-bg">Tools</p>
+                  <div className='flex flex-col gap-2' style={{ listStyleType: 'none'  }}>
+                    {project.technologies.map((tech, index) => (
+                      <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{tech}</div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <p className='uppercase mb-4 color-bg' style={{  }}>Industry</p>
+                  <div className='flex flex-col gap-2' style={{ listStyleType: 'none' }}>
+                    {project.industry.map((ind, index) => (
+                      <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{ind}</div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <p className='uppercase mb-4 color-bg' style={{  }}>Industry</p>
-                <div className='flex flex-col gap-2' style={{ listStyleType: 'none' }}>
-                  {project.industry.map((ind, index) => (
-                    <div className="uppercase pill px-2 py-1 rounded w-max color-bg" key={index}>{ind}</div>
-                  ))}
+              <div className="flex justify-between items-center mt-4 px-6">
+                <div>
+                  <p className="uppercase color-bg">{projectYear}</p>
                 </div>
-              </div>
-            </div>
-              <div>
-                <p>{project.projectDate}</p>
+                {project.websiteUrl && (
+                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded color-bg">
+                    <SvgLink />Live Site
+                  </a>
+                )}
               </div>
             </ProjectInfoShape>
           </div>
