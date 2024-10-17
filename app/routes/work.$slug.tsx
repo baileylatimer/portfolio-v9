@@ -95,6 +95,7 @@ export default function Project() {
             alt={project.title} 
             className="w-full h-full object-cover"
           />
+          <div className="absolute bottom-0 left-0 right-0 h-[120px] md:h-[215px] bg-gradient-to-t from-[#100F0E] to-transparent"></div>
           <div className="absolute bottom-8 left-4 z-50 ">
             <h1 className="uppercase project-title color-bg z-50 relative">{project.title}</h1>
           </div>
@@ -130,7 +131,7 @@ export default function Project() {
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Tools</h4>
                       <div className="flex flex-wrap gap-2">
-                        {project.technologies.map((tech, index) => (
+                        {project.technologies.map((tech: string, index: number) => (
                           <span key={index} className="pill uppercase px-2 py-1 rounded">{tech}</span>
                         ))}
                       </div>
@@ -138,7 +139,7 @@ export default function Project() {
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Industry</h4>
                       <div className="flex flex-wrap gap-2">
-                        {project.industry.map((ind, index) => (
+                        {project.industry.map((ind: string, index: number) => (
                           <span key={index} className="pill uppercase px-2 py-1 rounded">{ind}</span>
                         ))}
                       </div>
