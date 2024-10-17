@@ -4,7 +4,7 @@ import { createClient } from '@sanity/client';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
@@ -84,10 +84,22 @@ export const loader: LoaderFunction = async ({ params }) => {
 export default function Project() {
   const { project } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   const projectYear = new Date(project.projectDate).getFullYear();
 
   const toggleProjectInfo = () => setShowProjectInfo(!showProjectInfo);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth > 1700);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   return (
     <div className="project-page relative">
@@ -121,7 +133,8 @@ export default function Project() {
       </div>
       {showProjectInfo && (
         <>
-          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16">
+          <div className={`fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 ${isLargeScreen ? '' : 'overflow-y-auto'} pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16`}
+               style={isLargeScreen ? { overflowY: 'hidden' } : {}}>
             <div className="container mx-auto px-4 py-12 relative">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="flex flex-col gap-8">
