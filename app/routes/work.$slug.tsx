@@ -1,10 +1,10 @@
 import { json, LoaderFunction } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, useNavigate } from "@remix-run/react";
 import { createClient } from '@sanity/client';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
@@ -52,11 +52,12 @@ interface Project {
 
 interface LoaderData {
   project: Project;
+  nextProject: Project;
 }
 
 export const loader: LoaderFunction = async ({ params }) => {
   const { slug } = params;
-  const query = `*[_type == "project" && slug.current == $slug][0]{
+  const projectsQuery = `*[_type == "project"] | order(order asc) {
     _id,
     title,
     slug,
@@ -90,13 +91,19 @@ export const loader: LoaderFunction = async ({ params }) => {
       columns
     }
   }`;
-  const project = await sanityClient.fetch(query, { slug });
+  
+  const projects = await sanityClient.fetch(projectsQuery);
+  const currentProjectIndex = projects.findIndex((p: Project) => p.slug.current === slug);
+  const nextProjectIndex = (currentProjectIndex + 1) % projects.length;
+
+  const project = projects[currentProjectIndex];
+  const nextProject = projects[nextProjectIndex];
 
   if (!project) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  return json({ project });
+  return json({ project, nextProject });
 };
 
 const getColSpan = (columns: number | undefined) => {
@@ -135,8 +142,50 @@ const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
   );
 };
 
+const NextProjectComponent: React.FC<{ nextProject: Project }> = ({ nextProject }) => {
+  const navigate = useNavigate();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          navigate(`/work/${nextProject.slug.current}`);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current);
+      }
+    };
+  }, [nextProject, navigate]);
+
+  return (
+    <div ref={ref} className="next-project-component h-screen relative">
+      <img 
+        src={nextProject.mainImage.asset.url} 
+        alt={nextProject.title} 
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-white text-2xl mb-2">NEXT PROJECT</h2>
+          <h3 className="text-white text-5xl font-bold">{nextProject.title}</h3>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Project() {
-  const { project } = useLoaderData<LoaderData>();
+  const { project, nextProject } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
 
@@ -265,6 +314,7 @@ export default function Project() {
           ))}
         </div>
       </div>
+      <NextProjectComponent nextProject={nextProject} />
     </div>
   );
 }
