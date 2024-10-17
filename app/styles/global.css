@@ -563,3 +563,12 @@ height: 90vh !important;
     font-size: 64px;
   }
 }
+
+@media screen and (max-width: 1024px) {
+.project-info-btn {
+  margin-right: -1em;
+}
+.project-title {
+  max-width: 200px;
+}
+}

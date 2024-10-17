@@ -3,6 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { createClient } from '@sanity/client';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
+import CustomButton from "~/components/custom-button";
 import { useState } from 'react';
 
 const sanityClient = createClient({
@@ -94,22 +95,19 @@ export default function Project() {
             alt={project.title} 
             className="w-full h-full object-cover"
           />
-          <div className="absolute bottom-8 left-8 z-50 ">
+          <div className="absolute bottom-8 left-4 z-50 ">
             <h1 className="uppercase project-title color-bg z-50 relative">{project.title}</h1>
           </div>
-          <div className="absolute bottom-8 right-8">
-            <button
-              onClick={toggleProjectInfo}
-              className="bg-white text-black px-4 py-2 rounded-full shadow-md"
-            >
+          <div className="project-info-btn absolute bottom-8 right-0 w-max">
+            <CustomButton onClick={toggleProjectInfo} className="uppercase color-bg" fill='off'>
               Project Info
-            </button>
+            </CustomButton>
           </div>
         </div>
       </div>
       {showProjectInfo && (
         <>
-          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 pb-16">
+          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16">
             <div className="container mx-auto px-4 py-12 relative">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="flex flex-col gap-8">
@@ -165,7 +163,7 @@ export default function Project() {
           </div>
           <button
             onClick={toggleProjectInfo}
-            className="fixed top-48 mt-10 right-4 color-bg hover:text-gray-300 focus:outline-none z-50"
+            className="fixed top-48 mt-10 lg:pt-48 lg:mt-36 2xl:mt-48 right-4 color-bg  focus:outline-none z-50"
             aria-label="Close"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
