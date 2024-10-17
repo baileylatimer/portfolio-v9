@@ -36,6 +36,7 @@ interface Project {
   client: string;
   projectDate: string;
   technologies: string[];
+  services: string[];
   industry: string[];
   mainImage: {
     asset: {
@@ -71,6 +72,7 @@ export const loader: LoaderFunction = async ({ params }) => {
     client,
     projectDate,
     technologies,
+    services,
     industry,
     mainImage {
       asset-> {
@@ -300,6 +302,16 @@ export default function Project() {
                         )}
                       </div>
                     )}
+
+                    <div>
+                      <h4 className="font-bold mb-2 uppercase">Services</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {project.services.map((service: string, index: number) => (
+                          <span key={index} className="pill uppercase px-2 py-1 rounded">{service}</span>
+                        ))}
+                      </div>
+                    </div>
+
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Tools</h4>
                       <div className="flex flex-wrap gap-2">
@@ -308,6 +320,7 @@ export default function Project() {
                         ))}
                       </div>
                     </div>
+
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Industry</h4>
                       <div className="flex flex-wrap gap-2">
