@@ -78,12 +78,14 @@ export default function Project() {
 
   return (
     <div className="project-page relative">
-      <PageHero
-        desktopImageSrc="/images/hero-rip.png"
-        mobileImageSrc="/images/hero-rip--mobile.png"
-        altText="Our Work Hero Image"
-      />
-      <div className="project-hero-container">
+      <div className="relative z-20">
+        <PageHero
+          desktopImageSrc="/images/hero-rip.png"
+          mobileImageSrc="/images/hero-rip--mobile.png"
+          altText="Our Work Hero Image"
+        />
+      </div>
+      <div className="project-hero-container relative">
         <div className="project-hero relative">
           <img 
             src={project.mainImage.asset.url} 
@@ -104,57 +106,62 @@ export default function Project() {
         </div>
       </div>
       {showProjectInfo && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-40 overflow-y-auto">
-          <div className="container mx-auto px-4 py-12">
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-96">
+          <div className="container mx-auto px-4 py-12 relative">
             <button
               onClick={toggleProjectInfo}
-              className="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none"
+              className="absolute top-4 right-4 color-bg hover:text-gray-300 focus:outline-none"
               aria-label="Close"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h2 className="text-4xl font-bold text-white mb-8">{project.title}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-white">
-              <div>
-                <h3 className="text-2xl font-bold mb-4">Challenge</h3>
-                <p>{project.challenge}</p>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold mb-4">Solution</h3>
-                <p>{project.solution}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="flex flex-col gap-8">
+              <h2 className="text-4xl font-bold color-bg">{project.title}</h2>
+              <div className=" flex flex-col gap-6 color-bg">
+              {project.websiteUrl && (
+                  <div>
+                    <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center color-bg hover:text-gray-300">
+                      <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site"><SvgLink />  View Live Site</span>
+                    </a>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-bold mb-2 uppercase">Tools</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {project.technologies.map((tech, index) => (
+                      <span key={index} className="pill uppercase px-2 py-1 rounded">{tech}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-bold mb-2 uppercase">Industry</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {project.industry.map((ind, index) => (
+                      <span key={index} className="pill uppercase px-2 py-1 rounded">{ind}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-secondary text-md">{projectYear}</p>
+                </div>
+
               </div>
             </div>
-            <div className="mt-8 flex flex-wrap gap-8 text-white">
+            <div className="flex flex-col gap-8 color-bg">
               <div>
-                <h4 className="font-bold mb-2">Tools</h4>
-                <div className="flex flex-wrap gap-2">
-                  {project.technologies.map((tech, index) => (
-                    <span key={index} className="bg-white bg-opacity-20 px-2 py-1 rounded">{tech}</span>
-                  ))}
-                </div>
+                <h3 className="uppercase mb-4">Challenge</h3>
+                <p className="font-secondary text-md">{project.challenge}</p>
               </div>
               <div>
-                <h4 className="font-bold mb-2">Industry</h4>
-                <div className="flex flex-wrap gap-2">
-                  {project.industry.map((ind, index) => (
-                    <span key={index} className="bg-white bg-opacity-20 px-2 py-1 rounded">{ind}</span>
-                  ))}
-                </div>
+                <h3 className="uppercase mb-4">Solution</h3>
+                <p className="font-secondary text-md">{project.solution}</p>
               </div>
-              <div>
-                <h4 className="font-bold mb-2">Year</h4>
-                <p>{projectYear}</p>
-              </div>
-              {project.websiteUrl && (
-                <div>
-                  <h4 className="font-bold mb-2">Website</h4>
-                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-white hover:text-gray-300">
-                    <SvgLink /> <span className="ml-2">View Live Site</span>
-                  </a>
-                </div>
-              )}
+            </div>
+
             </div>
           </div>
         </div>
