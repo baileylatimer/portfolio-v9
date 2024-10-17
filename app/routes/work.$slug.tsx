@@ -13,6 +13,15 @@ const sanityClient = createClient({
   apiVersion: '2023-05-03',
 });
 
+interface MediaBlock {
+  media: {
+    asset: {
+      url: string;
+    };
+  };
+  columns: number;
+}
+
 interface Project {
   _id: string;
   title: string;
@@ -38,6 +47,7 @@ interface Project {
   columns: number;
   featured: boolean;
   order: number;
+  mediaBlocks: MediaBlock[];
 }
 
 interface LoaderData {
@@ -70,7 +80,15 @@ export const loader: LoaderFunction = async ({ params }) => {
     launchingSoon,
     columns,
     featured,
-    order
+    order,
+    mediaBlocks[] {
+      media {
+        asset-> {
+          url
+        }
+      },
+      columns
+    }
   }`;
   const project = await sanityClient.fetch(query, { slug });
 
@@ -79,6 +97,32 @@ export const loader: LoaderFunction = async ({ params }) => {
   }
 
   return json({ project });
+};
+
+const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
+  const isVideo = block.media.asset.url.includes('.mp4') || block.media.asset.url.includes('.webm');
+  const colSpan = block.columns;
+
+  return (
+    <div className={`col-span-${colSpan}`}>
+      {isVideo ? (
+        <video
+          src={block.media.asset.url}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <img
+          src={block.media.asset.url}
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      )}
+    </div>
+  );
 };
 
 export default function Project() {
@@ -199,6 +243,13 @@ export default function Project() {
           </button>
         </>
       )}
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-12 gap-4">
+          {project.mediaBlocks?.map((block, index) => (
+            <MediaBlockComponent key={index} block={block} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -104,5 +104,40 @@ export default defineType({
       title: 'Order',
       type: 'number',
     }),
+    defineField({
+      name: 'mediaBlocks',
+      title: 'Media Blocks',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          name: 'mediaBlock',
+          fields: [
+            {
+              name: 'media',
+              title: 'Media',
+              type: 'file',
+              options: {
+                accept: 'image/*,video/*'
+              }
+            },
+            {
+              name: 'columns',
+              title: 'Columns',
+              type: 'number',
+              validation: (Rule) => Rule.min(1).max(4).integer(),
+              options: {
+                list: [
+                  {title: '1/3 width', value: 1},
+                  {title: '1/2 width', value: 2},
+                  {title: '2/3 width', value: 3},
+                  {title: 'Full width', value: 4},
+                ],
+              },
+            },
+          ]
+        }
+      ]
+    }),
   ],
 })
