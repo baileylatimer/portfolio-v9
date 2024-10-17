@@ -142,7 +142,10 @@ export default function Project() {
 
   const projectYear = new Date(project.projectDate).getFullYear();
 
-  const toggleProjectInfo = () => setShowProjectInfo(!showProjectInfo);
+  const toggleProjectInfo = () => {
+    setShowProjectInfo(!showProjectInfo);
+    document.body.style.overflow = !showProjectInfo ? 'hidden' : '';
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -152,7 +155,10 @@ export default function Project() {
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
 
-    return () => window.removeEventListener('resize', checkScreenSize);
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+      document.body.style.overflow = '';
+    };
   }, []);
 
   return (
@@ -187,8 +193,7 @@ export default function Project() {
       </div>
       {showProjectInfo && (
         <>
-          <div className={`fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 ${isLargeScreen ? '' : 'overflow-y-auto'} pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16`}
-               style={isLargeScreen ? { overflowY: 'hidden' } : {}}>
+          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16">
             <div className="container mx-auto px-4 py-12 relative">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="flex flex-col gap-8">
