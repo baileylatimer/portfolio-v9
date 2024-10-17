@@ -106,64 +106,63 @@ export default function Project() {
         </div>
       </div>
       {showProjectInfo && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-96">
-          <div className="container mx-auto px-4 py-12 ">
-            <button
-              onClick={toggleProjectInfo}
-              className="fixed top-96 mt-10 right-4 color-bg hover:text-gray-300 focus:outline-none"
-              aria-label="Close"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="grid grid-cols-1 md:grid-cols-2">
-              <div className="flex flex-col gap-8">
-      
-              <div className=" flex flex-col gap-6 color-bg">
-              {project.websiteUrl && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 pb-16">
+            <div className="container mx-auto px-4 py-12 relative">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="flex flex-col gap-8">
+                  <div className="flex flex-col gap-6 color-bg">
+                    {project.websiteUrl && (
+                      <div>
+                        <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center color-bg hover:text-gray-300">
+                          <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site"><SvgLink />  View Live Site</span>
+                        </a>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-bold mb-2 uppercase">Tools</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {project.technologies.map((tech, index) => (
+                          <span key={index} className="pill uppercase px-2 py-1 rounded">{tech}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-2 uppercase">Industry</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {project.industry.map((ind, index) => (
+                          <span key={index} className="pill uppercase px-2 py-1 rounded">{ind}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-secondary text-md mb-16">{projectYear}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-8 color-bg">
                   <div>
-                    <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center color-bg hover:text-gray-300">
-                      <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site"><SvgLink />  View Live Site</span>
-                    </a>
+                    <h3 className="uppercase mb-4">Challenge</h3>
+                    <p className="font-secondary text-md">{project.challenge}</p>
                   </div>
-                )}
-
-                <div>
-                  <h4 className="font-bold mb-2 uppercase">Tools</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.map((tech, index) => (
-                      <span key={index} className="pill uppercase px-2 py-1 rounded">{tech}</span>
-                    ))}
+                  <div>
+                    <h3 className="uppercase mb-4">Solution</h3>
+                    <p className="font-secondary text-md">{project.solution}</p>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-bold mb-2 uppercase">Industry</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {project.industry.map((ind, index) => (
-                      <span key={index} className="pill uppercase px-2 py-1 rounded">{ind}</span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="font-secondary text-md mb-16">{projectYear}</p>
-                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-8 color-bg">
-              <div>
-                <h3 className="uppercase mb-4">Challenge</h3>
-                <p className="font-secondary text-md">{project.challenge}</p>
-              </div>
-              <div>
-                <h3 className="uppercase mb-4">Solution</h3>
-                <p className="font-secondary text-md">{project.solution}</p>
-              </div>
-            </div>
-
             </div>
           </div>
-        </div>
+          <button
+            onClick={toggleProjectInfo}
+            className="fixed top-48 mt-10 right-4 color-bg hover:text-gray-300 focus:outline-none z-50"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </>
       )}
     </div>
   );
