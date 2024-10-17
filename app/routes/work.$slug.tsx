@@ -1,13 +1,9 @@
-import { LoaderFunction, json } from "@remix-run/node";
+import { json, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { createClient } from '@sanity/client';
-import { PortableTextProps } from '@portabletext/react';
-import RichTextContent from "~/components/RichTextContent";
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
-import PropTypes from 'prop-types';
-
-console.log("work.$slug.tsx file is being processed");
+import { useState } from 'react';
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
@@ -20,7 +16,6 @@ interface Project {
   _id: string;
   title: string;
   slug: { current: string };
-  excerpt: string;
   client: string;
   projectDate: string;
   technologies: string[];
@@ -30,9 +25,12 @@ interface Project {
       url: string;
     };
   };
-  description: string;
-  body: PortableTextProps['value'];
+  challenge: string;
+  solution: string;
   websiteUrl?: string;
+  columns: number;
+  featured: boolean;
+  order: number;
 }
 
 interface LoaderData {
@@ -40,13 +38,11 @@ interface LoaderData {
 }
 
 export const loader: LoaderFunction = async ({ params }) => {
-  console.log("Loader function called with params:", params);
   const { slug } = params;
   const query = `*[_type == "project" && slug.current == $slug][0]{
     _id,
     title,
     slug,
-    excerpt,
     client,
     projectDate,
     technologies,
@@ -56,96 +52,29 @@ export const loader: LoaderFunction = async ({ params }) => {
         url
       }
     },
-    description,
-    body,
-    websiteUrl
+    challenge,
+    solution,
+    websiteUrl,
+    columns,
+    featured,
+    order
   }`;
-  console.log("Fetching project with slug:", slug);
   const project = await sanityClient.fetch(query, { slug });
-  console.log("Fetched project:", project);
 
   if (!project) {
-    console.log("Project not found");
     throw new Response("Not Found", { status: 404 });
   }
 
   return json({ project });
 };
 
-const ProjectInfoShape: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="w-[300px] md:w-[370px]" style={{
-    position: 'relative',
-    paddingTop: 'calc(226 / 335 * 100%)', // Maintain aspect ratio
-    overflow: 'hidden',
-  }}>
-    <svg width="0" height="0">
-      <defs>
-        <clipPath id="projectInfoShape" clipPathUnits="objectBoundingBox">
-          <path d="M0 0.13C0.049 0.13 0.088 0.072 0.088 0H0.91C0.91 0.072 0.949 0.13 0.998 0.13V0.87C0.949 0.87 0.91 0.928 0.91 1H0.088C0.088 0.928 0.049 0.87 0 0.87V0.13Z" />
-        </clipPath>
-      </defs>
-    </svg>
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      backdropFilter: 'blur(7px)',
-      WebkitBackdropFilter: 'blur(7px)',
-      clipPath: 'url(#projectInfoShape)',
-      zIndex: 0,
-    }}></div>
-    <svg width="100%" height="100%" viewBox="0 0 335 226" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: 1,
-    }}>
-      <path d="M0 29.494C16.2891 29.494 29.494 16.2891 29.494 0H304.771C304.771 16.2891 317.976 29.494 334.265 29.494V196.506C317.976 196.506 304.771 209.711 304.771 226H29.494C29.494 209.711 16.2891 196.506 0 196.506V29.494Z" fill="#1A1917" fillOpacity="0.01"/>
-      <path d="M1.5 195.042V30.9583C17.4238 30.1995 30.1995 17.4238 30.9583 1.5H303.307C304.066 17.4238 316.841 30.1995 332.765 30.9583V195.042C316.841 195.8 304.066 208.576 303.307 224.5H30.9583C30.1995 208.576 17.4238 195.8 1.5 195.042Z" stroke="#DCCFBE" strokeWidth="3"/>
-    </svg>
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      boxShadow: '-10px -1px 0px 0px #DCCFBE inset',
-      clipPath: 'url(#projectInfoShape)',
-      zIndex: 2,
-    }}></div>
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      zIndex: 3,
-      padding: '8%',
-      color: 'white',
-      textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-    }}>
-      {children}
-    </div>
-  </div>
-);
-
-ProjectInfoShape.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
 export default function Project() {
-  console.log("Project component rendering");
   const { project } = useLoaderData<LoaderData>();
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
 
-  console.log("Rendering project:", project);
-
-  // Extract the year from the projectDate
   const projectYear = new Date(project.projectDate).getFullYear();
+
+  const toggleProjectInfo = () => setShowProjectInfo(!showProjectInfo);
 
   return (
     <div className="project-page relative">
@@ -155,7 +84,7 @@ export default function Project() {
         altText="Our Work Hero Image"
       />
       <div className="project-hero-container">
-        <div className="project-hero">
+        <div className="project-hero relative">
           <img 
             src={project.mainImage.asset.url} 
             alt={project.title} 
@@ -165,49 +94,71 @@ export default function Project() {
             <h1 className="uppercase project-title color-bg">{project.title}</h1>
           </div>
           <div className="absolute bottom-8 right-8">
-            <ProjectInfoShape>
-              <div className="flex gap-4 justify-center">
-                <div>
-                  <p className="uppercase mb-2 color-bg text-xs md:text-sm">Tools</p>
-                  <div className='flex flex-col gap-1'>
-                    {project.technologies.map((tech: string, index: number) => (
-                      <div className="uppercase pill px-1 py-0.5 rounded w-max color-bg text-xs" key={index}>{tech}</div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className='uppercase mb-2 color-bg text-xs md:text-sm'>Industry</p>
-                  <div className='flex flex-col gap-1'>
-                    {project.industry.map((ind: string, index: number) => (
-                      <div className="uppercase pill px-1 py-0.5 rounded w-max color-bg text-xs" key={index}>{ind}</div>
-                    ))}
-                  </div>
+            <button
+              onClick={toggleProjectInfo}
+              className="bg-white text-black px-4 py-2 rounded-full shadow-md"
+            >
+              Project Info
+            </button>
+          </div>
+        </div>
+      </div>
+      {showProjectInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-40 overflow-y-auto">
+          <div className="container mx-auto px-4 py-12">
+            <button
+              onClick={toggleProjectInfo}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-4xl font-bold text-white mb-8">{project.title}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-white">
+              <div>
+                <h3 className="text-2xl font-bold mb-4">Challenge</h3>
+                <p>{project.challenge}</p>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold mb-4">Solution</h3>
+                <p>{project.solution}</p>
+              </div>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-8 text-white">
+              <div>
+                <h4 className="font-bold mb-2">Tools</h4>
+                <div className="flex flex-wrap gap-2">
+                  {project.technologies.map((tech, index) => (
+                    <span key={index} className="bg-white bg-opacity-20 px-2 py-1 rounded">{tech}</span>
+                  ))}
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <div>
-                  <p className="uppercase color-bg text-xs md:text-sm">{projectYear}</p>
+              <div>
+                <h4 className="font-bold mb-2">Industry</h4>
+                <div className="flex flex-wrap gap-2">
+                  {project.industry.map((ind, index) => (
+                    <span key={index} className="bg-white bg-opacity-20 px-2 py-1 rounded">{ind}</span>
+                  ))}
                 </div>
-                {project.websiteUrl && (
-                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex gap-1 items-center justify-center uppercase px-1 py-0.5 rounded color-bg text-xs">
-                    <SvgLink />Live Site
+              </div>
+              <div>
+                <h4 className="font-bold mb-2">Year</h4>
+                <p>{projectYear}</p>
+              </div>
+              {project.websiteUrl && (
+                <div>
+                  <h4 className="font-bold mb-2">Website</h4>
+                  <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-white hover:text-gray-300">
+                    <SvgLink /> <span className="ml-2">View Live Site</span>
                   </a>
-                )}
-              </div>
-            </ProjectInfoShape>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="container mx-auto px-4 py-12 flex">
-        <div className="w-2/3 pr-8">
-          <h2 className="text-2xl font-bold mb-4">Project Description</h2>
-          <p>{project.description || project.excerpt}</p>
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">Project Details</h2>
-            <RichTextContent content={project.body} />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

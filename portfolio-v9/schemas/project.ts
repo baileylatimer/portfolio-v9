@@ -22,12 +22,6 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'excerpt',
-      title: 'Excerpt',
-      type: 'text',
-      rows: 4,
-    }),
-    defineField({
       name: 'client',
       title: 'Client',
       type: 'string',
@@ -58,9 +52,19 @@ export default defineType({
       },
     }),
     defineField({
-      name: 'order',
-      title: 'Order',
-      type: 'number',
+      name: 'challenge',
+      title: 'Challenge',
+      type: 'text',
+    }),
+    defineField({
+      name: 'solution',
+      title: 'Solution',
+      type: 'text',
+    }),
+    defineField({
+      name: 'websiteUrl',
+      title: 'Website URL',
+      type: 'url',
     }),
     defineField({
       name: 'columns',
@@ -82,34 +86,9 @@ export default defineType({
       type: 'boolean',
     }),
     defineField({
-      name: 'description',
-      title: 'Description',
-      type: 'text',
-    }),
-    defineField({
-      name: 'body',
-      title: 'Body',
-      type: 'array',
-      of: [
-        {type: 'block'},
-        {
-          type: 'image',
-          fields: [
-            {
-              type: 'text',
-              name: 'alt',
-              title: 'Alternative text',
-              description: 'Description of the image for accessibility.',
-            },
-          ],
-        },
-      ],
-    }),
-    defineField({
-      name: 'websiteUrl',
-      title: 'Website URL',
-      type: 'url',
-      description: 'The URL of the project website',
+      name: 'order',
+      title: 'Order',
+      type: 'number',
     }),
   ],
 })
