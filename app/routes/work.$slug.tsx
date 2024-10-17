@@ -4,7 +4,7 @@ import { createClient } from '@sanity/client';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
@@ -146,15 +146,22 @@ const NextProjectComponent: React.FC<{ nextProject: Project }> = ({ nextProject 
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
+  const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
           navigate(`/work/${nextProject.slug.current}`);
-        }
-      },
-      { threshold: 1.0 }
-    );
+        }, 500); // 500ms delay for smoother transition
+      }
+    });
+  }, [navigate, nextProject.slug.current]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleIntersection, {
+      root: null,
+      rootMargin: "0px",
+      threshold: 0.5 // Trigger when 50% of the component is visible
+    });
 
     if (ref.current) {
       observer.observe(ref.current);
@@ -165,7 +172,7 @@ const NextProjectComponent: React.FC<{ nextProject: Project }> = ({ nextProject 
         observer.unobserve(ref.current);
       }
     };
-  }, [nextProject, navigate]);
+  }, [handleIntersection]);
 
   return (
     <div ref={ref} className="next-project-component h-screen relative">
