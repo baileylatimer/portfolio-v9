@@ -73,7 +73,8 @@ export default defineType({
     defineField({
       name: 'solution',
       title: 'Solution',
-      type: 'text',
+      type: 'array',
+      of: [{type: 'block'}],
     }),
     defineField({
       name: 'websiteUrl',

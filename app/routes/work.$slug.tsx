@@ -1,10 +1,12 @@
 import { json, LoaderFunction } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import { createClient } from '@sanity/client';
+import { PortableText } from '@portabletext/react';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
 import { useState, useEffect, useRef, useCallback } from 'react';
+import PropTypes from 'prop-types';
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
@@ -21,6 +23,11 @@ interface MediaBlock {
   };
   columns: number;
 }
+
+type PortableTextBlock = {
+  _type: string;
+  [key: string]: unknown;
+};
 
 interface Project {
   _id: string;
@@ -41,7 +48,7 @@ interface Project {
     };
   };
   challenge: string;
-  solution: string;
+  solution: PortableTextBlock[];
   websiteUrl?: string;
   launchingSoon: boolean;
   columns: number;
@@ -142,7 +149,26 @@ const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
   );
 };
 
-const NextProjectComponent: React.FC<{ nextProject: Project }> = ({ nextProject }) => {
+MediaBlockComponent.propTypes = {
+  block: PropTypes.shape({
+    media: PropTypes.shape({
+      asset: PropTypes.shape({
+        url: PropTypes.string.isRequired,
+      }).isRequired,
+    }).isRequired,
+    columns: PropTypes.number.isRequired,
+  }).isRequired,
+};
+
+interface NextProjectComponentProps {
+  nextProject: {
+    slug: { current: string };
+    mainImage: { asset: { url: string } };
+    title: string;
+  };
+}
+
+const NextProjectComponent: React.FC<NextProjectComponentProps> = ({ nextProject }) => {
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -183,18 +209,31 @@ const NextProjectComponent: React.FC<{ nextProject: Project }> = ({ nextProject 
       />
       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-white text-2xl mb-2">NEXT PROJECT</h2>
-          <h3 className="text-white text-5xl font-bold">{nextProject.title}</h3>
+          <h2 className="uppercase color-bg mb-2">NEXT PROJECT</h2>
+          <h3 className="uppercase color-bg project-title">{nextProject.title}</h3>
         </div>
       </div>
     </div>
   );
 };
 
+NextProjectComponent.propTypes = {
+  nextProject: PropTypes.shape({
+    slug: PropTypes.shape({
+      current: PropTypes.string.isRequired,
+    }).isRequired,
+    mainImage: PropTypes.shape({
+      asset: PropTypes.shape({
+        url: PropTypes.string.isRequired,
+      }).isRequired,
+    }).isRequired,
+    title: PropTypes.string.isRequired,
+  }).isRequired,
+};
+
 export default function Project() {
   const { project, nextProject } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
-  const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   const projectYear = new Date(project.projectDate).getFullYear();
 
@@ -204,15 +243,7 @@ export default function Project() {
   };
 
   useEffect(() => {
-    const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth > 1700);
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-
     return () => {
-      window.removeEventListener('resize', checkScreenSize);
       document.body.style.overflow = '';
     };
   }, []);
@@ -297,7 +328,9 @@ export default function Project() {
                   </div>
                   <div>
                     <h3 className="uppercase mb-4">Solution</h3>
-                    <p className="font-secondary text-md">{project.solution}</p>
+                    <div className="font-secondary text-md">
+                      <PortableText value={project.solution} />
+                    </div>
                   </div>
                 </div>
               </div>
