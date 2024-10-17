@@ -28,6 +28,7 @@ interface Project {
   challenge: string;
   solution: string;
   websiteUrl?: string;
+  launchingSoon: boolean;
   columns: number;
   featured: boolean;
   order: number;
@@ -55,6 +56,7 @@ export const loader: LoaderFunction = async ({ params }) => {
     challenge,
     solution,
     websiteUrl,
+    launchingSoon,
     columns,
     featured,
     order
@@ -114,9 +116,17 @@ export default function Project() {
                   <div className="flex flex-col gap-6 color-bg">
                     {project.websiteUrl && (
                       <div>
-                        <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center color-bg hover:text-gray-300">
-                          <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site"><SvgLink />  View Live Site</span>
-                        </a>
+                        {project.launchingSoon ? (
+                          <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site w-max">
+                            <SvgLink /> Launching Soon
+                          </span>
+                        ) : (
+                          <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center color-bg hover:text-gray-300">
+                            <span className="flex gap-2 items-center justify-center uppercase px-2 py-1 rounded pill-site">
+                              <SvgLink /> View Live Site
+                            </span>
+                          </a>
+                        )}
                       </div>
                     )}
                     <div>

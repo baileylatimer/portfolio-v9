@@ -32,6 +32,12 @@ export default defineType({
       type: 'date',
     }),
     defineField({
+      name: 'launchingSoon',
+      title: 'Launching Soon',
+      type: 'boolean',
+      description: 'Check this if the project is launching soon',
+    }),
+    defineField({
       name: 'technologies',
       title: 'Technologies Used',
       type: 'array',
