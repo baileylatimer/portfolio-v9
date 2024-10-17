@@ -233,6 +233,17 @@ NextProjectComponent.propTypes = {
   }).isRequired,
 };
 
+const portableTextComponents = {
+  list: {
+    bullet: ({children}: {children: React.ReactNode}) => <ul className="list-disc pl-4 mb-4">{children}</ul>,
+    number: ({children}: {children: React.ReactNode}) => <ol className="list-decimal pl-4 mb-4">{children}</ol>,
+  },
+  listItem: ({children}: {children: React.ReactNode}) => <li className="mb-1">{children}</li>,
+  block: {
+    normal: ({children}: {children: React.ReactNode}) => <p className="mb-4">{children}</p>,
+  },
+};
+
 export default function Project() {
   const { project, nextProject } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
@@ -302,16 +313,6 @@ export default function Project() {
                         )}
                       </div>
                     )}
-
-                    <div>
-                      <h4 className="font-bold mb-2 uppercase">Services</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {project.services.map((service: string, index: number) => (
-                          <span key={index} className="pill uppercase px-2 py-1 rounded">{service}</span>
-                        ))}
-                      </div>
-                    </div>
-
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Tools</h4>
                       <div className="flex flex-wrap gap-2">
@@ -320,7 +321,14 @@ export default function Project() {
                         ))}
                       </div>
                     </div>
-
+                    <div>
+                      <h4 className="font-bold mb-2 uppercase">Services</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {project.services.map((service: string, index: number) => (
+                          <span key={index} className="pill uppercase px-2 py-1 rounded">{service}</span>
+                        ))}
+                      </div>
+                    </div>
                     <div>
                       <h4 className="font-bold mb-2 uppercase">Industry</h4>
                       <div className="flex flex-wrap gap-2">
@@ -342,7 +350,10 @@ export default function Project() {
                   <div>
                     <h3 className="uppercase mb-4">Solution</h3>
                     <div className="font-secondary text-md">
-                      <PortableText value={project.solution} />
+                      <PortableText 
+                        value={project.solution}
+                        components={portableTextComponents}
+                      />
                     </div>
                   </div>
                 </div>
