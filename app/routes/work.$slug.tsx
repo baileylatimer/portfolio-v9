@@ -99,12 +99,22 @@ export const loader: LoaderFunction = async ({ params }) => {
   return json({ project });
 };
 
+const getColSpan = (columns: number | undefined) => {
+  switch (columns) {
+    case 1: return 'md:col-span-4'; // 1/3 width
+    case 2: return 'md:col-span-6'; // 1/2 width
+    case 3: return 'md:col-span-8'; // 2/3 width
+    case 4: return 'md:col-span-12'; // full width
+    default: return 'md:col-span-4'; // default to 1/3 width
+  }
+};
+
 const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
   const isVideo = block.media.asset.url.includes('.mp4') || block.media.asset.url.includes('.webm');
-  const colSpan = block.columns;
+  const colSpan = getColSpan(block.columns);
 
   return (
-    <div className={`col-span-${colSpan}`}>
+    <div className={`col-span-12 ${colSpan}`}>
       {isVideo ? (
         <video
           src={block.media.asset.url}
@@ -243,7 +253,7 @@ export default function Project() {
           </button>
         </>
       )}
-      <div className="container mx-auto px-4 py-12">
+      <div className="mx-auto px-4 py-4">
         <div className="grid grid-cols-12 gap-4">
           {project.mediaBlocks?.map((block, index) => (
             <MediaBlockComponent key={index} block={block} />
