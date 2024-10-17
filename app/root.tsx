@@ -68,7 +68,7 @@ export const loader: LoaderFunction = async () => {
     sanityClient.fetch(secretAboutQuery),
   ]);
 
-  return json({ teamMembers, secretAboutData });
+  return json({ teamMembers, secretAboutData }); 
 };
 
 function AppContent() {
