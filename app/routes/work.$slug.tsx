@@ -92,8 +92,8 @@ export default function Project() {
             alt={project.title} 
             className="w-full h-full object-cover"
           />
-          <div className="absolute bottom-8 left-8">
-            <h1 className="uppercase project-title color-bg">{project.title}</h1>
+          <div className="absolute bottom-8 left-8 z-50 ">
+            <h1 className="uppercase project-title color-bg z-50 relative">{project.title}</h1>
           </div>
           <div className="absolute bottom-8 right-8">
             <button
@@ -119,7 +119,7 @@ export default function Project() {
             </button>
             <div className="grid grid-cols-1 md:grid-cols-2">
               <div className="flex flex-col gap-8">
-              <h2 className="text-4xl font-bold color-bg">{project.title}</h2>
+      
               <div className=" flex flex-col gap-6 color-bg">
               {project.websiteUrl && (
                   <div>
@@ -146,9 +146,9 @@ export default function Project() {
                   </div>
                 </div>
                 <div>
-                  <p className="font-secondary text-md">{projectYear}</p>
+                  <p className="font-secondary text-md mb-16">{projectYear}</p>
                 </div>
-
+                {/* <h2 className="uppercase project-title color-bg mt-36">{project.title}</h2> */}
               </div>
             </div>
             <div className="flex flex-col gap-8 color-bg">
