@@ -58,6 +58,14 @@ export default defineType({
       },
     }),
     defineField({
+      name: 'mobileImage',
+      title: 'Mobile image',
+      type: 'image',
+      options: {
+        hotspot: true,
+      },
+    }),
+    defineField({
       name: 'challenge',
       title: 'Challenge',
       type: 'text',

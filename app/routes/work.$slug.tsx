@@ -26,6 +26,11 @@ interface Project {
       url: string;
     };
   };
+  mobileImage: {
+    asset: {
+      url: string;
+    };
+  };
   challenge: string;
   solution: string;
   websiteUrl?: string;
@@ -50,6 +55,11 @@ export const loader: LoaderFunction = async ({ params }) => {
     technologies,
     industry,
     mainImage {
+      asset-> {
+        url
+      }
+    },
+    mobileImage {
       asset-> {
         url
       }
@@ -90,11 +100,14 @@ export default function Project() {
       </div>
       <div className="project-hero-container relative">
         <div className="project-hero relative">
-          <img 
-            src={project.mainImage.asset.url} 
-            alt={project.title} 
-            className="w-full h-full object-cover"
-          />
+          <picture>
+            <source media="(max-width: 767px)" srcSet={project.mobileImage?.asset.url} />
+            <img 
+              src={project.mainImage.asset.url} 
+              alt={project.title} 
+              className="w-full h-full object-cover"
+            />
+          </picture>
           <div className="absolute bottom-0 left-0 right-0 h-[120px] md:h-[215px] bg-gradient-to-t from-[#100F0E] to-transparent"></div>
           <div className="absolute bottom-8 left-4 z-50 ">
             <h1 className="uppercase project-title color-bg z-50 relative">{project.title}</h1>
