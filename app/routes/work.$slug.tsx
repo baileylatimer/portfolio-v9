@@ -107,10 +107,10 @@ export default function Project() {
       </div>
       {showProjectInfo && (
         <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-96">
-          <div className="container mx-auto px-4 py-12 relative">
+          <div className="container mx-auto px-4 py-12 ">
             <button
               onClick={toggleProjectInfo}
-              className="absolute top-4 right-4 color-bg hover:text-gray-300 focus:outline-none"
+              className="fixed top-96 mt-10 right-4 color-bg hover:text-gray-300 focus:outline-none"
               aria-label="Close"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,7 +148,6 @@ export default function Project() {
                 <div>
                   <p className="font-secondary text-md mb-16">{projectYear}</p>
                 </div>
-                {/* <h2 className="uppercase project-title color-bg mt-36">{project.title}</h2> */}
               </div>
             </div>
             <div className="flex flex-col gap-8 color-bg">
