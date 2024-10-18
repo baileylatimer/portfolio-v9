@@ -4,9 +4,10 @@ interface PixelizeImageProps {
   src: string;
   alt: string;
   className?: string;
+  disableEffect?: boolean;
 }
 
-const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) => {
+const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disableEffect = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -14,6 +15,8 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (disableEffect) return;
+
     let gsap: typeof import('gsap').default;
     let ScrollTrigger: typeof import('gsap/ScrollTrigger').default;
 
@@ -50,8 +53,8 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
 
         ScrollTrigger.create({
           trigger: containerRef.current,
-          start: isMobile ? 'top bottom-=5%' : 'top bottom-=20%', // Adjusted for mobile
-          end: isMobile ? 'bottom center+=30%' : 'top center+=20%', // Adjusted for mobile
+          start: isMobile ? 'top bottom-=5%' : 'top bottom-=20%',
+          end: isMobile ? 'bottom center+=10%' : 'top center+=20%',
           onUpdate: (self) => {
             depixelize(self.progress);
           },
@@ -74,14 +77,14 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
     };
 
     loadGSAP();
-  }, [isLoaded, src]);
+  }, [isLoaded, src, disableEffect]);
 
   useEffect(() => {
     const img = new Image();
     img.src = src;
     img.onload = () => {
       setIsLoaded(true);
-      if (canvasRef.current && imageRef.current) {
+      if (canvasRef.current && imageRef.current && !disableEffect) {
         canvasRef.current.width = img.width;
         canvasRef.current.height = img.height;
         const ctx = canvasRef.current.getContext('2d');
@@ -101,7 +104,17 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
     img.onerror = () => {
       setError('Failed to load image');
     };
-  }, [src]);
+  }, [src, disableEffect]);
+
+  if (disableEffect) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-full object-cover ${className}`}
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className={`relative overflow-hidden ${className}`}>

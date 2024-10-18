@@ -209,6 +209,7 @@ const NextProjectComponent: React.FC<NextProjectComponentProps> = ({ nextProject
         src={nextProject.mainImage.asset.url}
         alt={nextProject.title}
         className="w-full h-full object-cover"
+        disableEffect={true}
       />
       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div className="text-center">
@@ -277,6 +278,7 @@ export default function Project() {
             src={project.mainImage.asset.url}
             alt={project.title}
             className="w-full h-full object-cover"
+            disableEffect={true}
           />
           <div className="absolute bottom-0 left-0 right-0 h-[120px] md:h-[215px] bg-gradient-to-t from-[#100F0E] to-transparent"></div>
           <div className="absolute bottom-8 left-4 z-50 ">
