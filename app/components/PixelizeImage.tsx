@@ -50,8 +50,8 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
 
         ScrollTrigger.create({
           trigger: containerRef.current,
-          start: isMobile ? 'top bottom-=10%' : 'top bottom-=20%',
-          end: isMobile ? 'bottom center' : 'top center+=20%',
+          start: isMobile ? 'top bottom-=5%' : 'top bottom-=20%', // Adjusted for mobile
+          end: isMobile ? 'bottom center+=30%' : 'top center+=20%', // Adjusted for mobile
           onUpdate: (self) => {
             depixelize(self.progress);
           },
