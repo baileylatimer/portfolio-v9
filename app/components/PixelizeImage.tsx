@@ -46,10 +46,12 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className }) =>
           }
         };
 
+        const isMobile = window.innerWidth <= 768; // Adjust this breakpoint as needed
+
         ScrollTrigger.create({
           trigger: containerRef.current,
-          start: 'top bottom-=20%', // Start even earlier
-          end: 'top center+=20%', // End sooner
+          start: isMobile ? 'top bottom-=10%' : 'top bottom-=20%',
+          end: isMobile ? 'bottom center' : 'top center+=20%',
           onUpdate: (self) => {
             depixelize(self.progress);
           },
