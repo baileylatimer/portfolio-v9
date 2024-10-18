@@ -5,6 +5,7 @@ import { PortableText } from '@portabletext/react';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
+import PixelizeImage from "~/components/PixelizeImage";
 import { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 
@@ -141,7 +142,7 @@ const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
           className="w-full h-full object-cover"
         />
       ) : (
-        <img
+        <PixelizeImage
           src={block.media.asset.url}
           alt=""
           className="w-full h-full object-cover"
@@ -204,9 +205,9 @@ const NextProjectComponent: React.FC<NextProjectComponentProps> = ({ nextProject
 
   return (
     <div ref={ref} className="next-project-component h-screen relative">
-      <img 
-        src={nextProject.mainImage.asset.url} 
-        alt={nextProject.title} 
+      <PixelizeImage
+        src={nextProject.mainImage.asset.url}
+        alt={nextProject.title}
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -272,14 +273,11 @@ export default function Project() {
       </div>
       <div className="project-hero-container relative">
         <div className="project-hero relative">
-          <picture>
-            <source media="(max-width: 767px)" srcSet={project.mobileImage?.asset.url} />
-            <img 
-              src={project.mainImage.asset.url} 
-              alt={project.title} 
-              className="w-full h-full object-cover"
-            />
-          </picture>
+          <PixelizeImage
+            src={project.mainImage.asset.url}
+            alt={project.title}
+            className="w-full h-full object-cover"
+          />
           <div className="absolute bottom-0 left-0 right-0 h-[120px] md:h-[215px] bg-gradient-to-t from-[#100F0E] to-transparent"></div>
           <div className="absolute bottom-8 left-4 z-50 ">
             <h1 className="uppercase project-title color-bg z-50 relative">{project.title}</h1>
