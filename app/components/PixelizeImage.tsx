@@ -53,24 +53,24 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
 
         ScrollTrigger.create({
           trigger: containerRef.current,
-          start: isMobile ? 'top bottom-=10%' : 'top bottom-=20%',
-          end: isMobile ? 'center center' : 'top center+=20%',
+          start: isMobile ? 'top bottom-=15%' : 'top bottom-=20%',
+          end: isMobile ? 'top center' : 'top center+=20%',
           onUpdate: (self) => {
             depixelize(self.progress);
           },
           onEnter: () => {
-            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.1 : 0.2 });
+            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
           },
           onLeave: () => {
-            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.1 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 1, duration: isMobile ? 0.1 : 0.2 });
+            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+            gsap.to(imageRef.current, { opacity: 1, duration: iMobile ? 0.05 : 0.2 });
           },
           onEnterBack: () => {
-            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.1 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 0, duration: isMobile ? 0.1 : 0.2 });
+            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+            gsap.to(imageRef.current, { opacity: 0, duration: iMobile ? 0.05 : 0.2 });
           },
           onLeaveBack: () => {
-            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.1 : 0.2 });
+            gsap.to(canvasRef.current, { opacity: 0, duration: iMobile ? 0.05 : 0.2 });
           },
         });
       }
