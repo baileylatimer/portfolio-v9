@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from '@remix-run/react';
 import PlasticCardEffect from './PlasticCardEffect';
+import PixelizeImage from './PixelizeImage';
 
 interface Project {
   _id: string;
@@ -45,7 +46,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
             >
               <div className="aspect-w-16 aspect-h-9 relative">
                 <div className="plastic-wrap-container w-full h-full">
-                  <img
+                  <PixelizeImage
                     src={project.mainImage.asset.url}
                     alt={project.title}
                     className="object-cover w-full h-full project-card-img"
