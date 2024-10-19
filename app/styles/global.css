@@ -387,8 +387,12 @@ footer {
 .plastic-wrap-container {
   position: relative;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 5px;
   box-shadow: 1px 0px 3px 0px rgba(0, 0, 0, 0.45);
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -ms-border-radius: 5px;
+  -o-border-radius: 5px;
 }
 
 .plastic-wrap-container::before {

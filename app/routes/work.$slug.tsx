@@ -294,7 +294,7 @@ export default function Project() {
       {showProjectInfo && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-[27px] z-0 overflow-y-auto pt-48 lg:pt-96 lg:mt-20 2xl:mt-48 pb-16">
-            <div className="container mx-auto px-4 py-12 relative">
+            <div className="container mx-auto px-2 py-12 relative">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="flex flex-col gap-8">
                   <div className="flex flex-col gap-6 color-bg">
@@ -371,8 +371,8 @@ export default function Project() {
           </button>
         </>
       )}
-      <div className="mx-auto px-4 py-4">
-        <div className="grid grid-cols-12 gap-4">
+      <div className="mx-auto px-2 py-2">
+        <div className="grid grid-cols-12 gap-2">
           {project.mediaBlocks?.map((block, index) => (
             <MediaBlockComponent key={index} block={block} />
           ))}

@@ -63,14 +63,14 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           },
           onLeave: () => {
             gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 1, duration: iMobile ? 0.05 : 0.2 });
+            gsap.to(imageRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
           },
           onEnterBack: () => {
             gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 0, duration: iMobile ? 0.05 : 0.2 });
+            gsap.to(imageRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
           },
           onLeaveBack: () => {
-            gsap.to(canvasRef.current, { opacity: 0, duration: iMobile ? 0.05 : 0.2 });
+            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
           },
         });
       }

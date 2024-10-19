@@ -32,7 +32,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({ projects }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 light-section">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 light-section">
       {projects.map((project) => {
         const colSpan = getColSpan(project.columns);
         const isFullWidth = project.columns === 4;

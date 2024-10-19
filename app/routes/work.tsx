@@ -80,7 +80,7 @@ export default function Work() {
             mobileImageSrc="/images/hero-rip--mobile.png"
             altText="Our Work Hero Image"
           />
-          <div className="container mx-auto px-4 py-12">
+          <div className=" mx-auto px-2 pt-6 pb-12 lg:py-12">
             <ProjectGrid projects={projects} />
           </div>
         </>
