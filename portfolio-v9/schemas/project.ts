@@ -121,6 +121,12 @@ export default defineType({
           name: 'mediaBlock',
           fields: [
             {
+              name: 'name',
+              title: 'Name',
+              type: 'string',
+              description: 'Internal name for this media block (not displayed on the website)',
+            },
+            {
               name: 'media',
               title: 'Media',
               type: 'file',
