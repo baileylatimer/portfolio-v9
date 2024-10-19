@@ -5,9 +5,10 @@ interface PixelizeImageProps {
   alt: string;
   className?: string;
   disableEffect?: boolean;
+  inOverlay?: boolean;
 }
 
-const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disableEffect = false }) => {
+const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disableEffect = false, inOverlay = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -72,12 +73,13 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           onLeaveBack: () => {
             gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
           },
+          scroller: inOverlay ? ".overflow-y-auto" : undefined, // Use the overlay scroller only when in overlay
         });
       }
     };
 
     loadGSAP();
-  }, [isLoaded, src, disableEffect]);
+  }, [isLoaded, src, disableEffect, inOverlay]);
 
   useEffect(() => {
     const img = new Image();

@@ -1,12 +1,31 @@
 import React from 'react';
 import SecretTeam from './SecretTeam';
 import SecretAbout from './SecretAbout';
+import { SanityImageSource } from '@sanity/image-url/lib/types/types';
+import { PortableTextBlock } from '@portabletext/types';
+
+interface TeamMember {
+  _id: string;
+  name: string;
+  image: SanityImageSource;
+  bio: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  order: number;
+}
+
+interface SecretAboutData {
+  title: string;
+  content: PortableTextBlock[];
+  tools: string[];
+  image: SanityImageSource;
+}
 
 interface SecretSectionProps {
   isOpen: boolean;
   onClose: () => void;
-  teamMembers: any[];
-  secretAboutData: any;
+  teamMembers: TeamMember[];
+  secretAboutData: SecretAboutData;
 }
 
 const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose, teamMembers, secretAboutData }) => {
