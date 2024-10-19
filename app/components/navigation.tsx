@@ -17,7 +17,7 @@ export default function Navigation() {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        fractionalSecondDigits: 3,
+        fractionalSecondDigits: 2,
         hour12: false,
       }).format(now);
       setTime(laTime);
@@ -173,7 +173,6 @@ export default function Navigation() {
             </div>
             <div className="flex flex-col">
               <Link to="/work" className="block">WORK</Link>
-              <Link to="/process" className="block">PROCESS</Link>
               <Link to="/about" className="block">ABOUT</Link>
             </div>
           </div>
