@@ -1,0 +1,239 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "TurboSquid Stem Converter v1.0.0"
+  },
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 2644,
+      "type": "VEC3",
+      "max": [
+        6.116621494293213,
+        0.44966766238212585,
+        6.323788166046143
+      ],
+      "min": [
+        -6.116621494293213,
+        -0.2443780153989792,
+        -6.3338189125061035
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 2644,
+      "type": "VEC3",
+      "max": [
+        0.999869704246521,
+        1.0,
+        0.9994981288909912
+      ],
+      "min": [
+        -0.999869704246521,
+        -1.0,
+        -0.9999939799308777
+      ]
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 2644,
+      "type": "VEC2",
+      "max": [
+        0.9760287404060364,
+        0.9347645044326782
+      ],
+      "min": [
+        0.018048912286758423,
+        0.05047374963760376
+      ]
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 0,
+      "componentType": 5123,
+      "count": 12108,
+      "type": "SCALAR",
+      "max": [
+        2643.0
+      ],
+      "min": [
+        0.0
+      ]
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 108824,
+      "uri": "Steel_Horseshoe.bin"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 31728,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 31728,
+      "byteLength": 31728,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 63456,
+      "byteLength": 21152,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 84608,
+      "byteLength": 24216,
+      "target": 34963
+    }
+  ],
+  "materials": [
+    {
+      "name": "horseshoe_new",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        }
+      },
+      "alphaMode": "OPAQUE",
+      "occlusionTexture": {
+        "index": 1
+      },
+      "normalTexture": {
+        "index": 2
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Steel_Horseshoe",
+      "primitives": [
+        {
+          "mode": 4,
+          "material": 0,
+          "indices": 3,
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          }
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ]
+    },
+    {
+      "name": "Steel_Horseshoe_$_Translation",
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        6.3338189125061035,
+        0.10264481604099274,
+        1.0
+      ],
+      "children": [
+        2
+      ]
+    },
+    {
+      "name": "Steel_Horseshoe_$_PreRotation",
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -4.371138828673793e-08,
+        -1.0,
+        0.0,
+        0.0,
+        1.0,
+        -4.371138828673793e-08,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "children": [
+        3
+      ]
+    },
+    {
+      "name": "Steel_Horseshoe",
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/baseColor.jpg"
+    },
+    {
+      "uri": "textures/occlusionRoughnessMetallic.jpg"
+    },
+    {
+      "uri": "textures/normal.png"
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ]
+}
