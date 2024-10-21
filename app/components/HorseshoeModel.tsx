@@ -8,7 +8,10 @@ const HorseshoeModel: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<THREE.Object3D | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const handleScrollRef = useRef<() => void>(() => {});
+  const baseRotationSpeed = 0.0005; // Keep the slow base rotation speed
+  const rotationSpeedRef = useRef<number>(baseRotationSpeed);
+  const lastScrollYRef = useRef<number>(0);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -17,7 +20,7 @@ const HorseshoeModel: React.FC = () => {
 
     // Set up scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1A1917);  // Updated background color
+    scene.background = new THREE.Color(0x1A1917);
     const camera = new THREE.PerspectiveCamera(75, 390 / 547, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(390, 547);
@@ -35,15 +38,28 @@ const HorseshoeModel: React.FC = () => {
 
     console.log('Lighting set up complete');
 
-    // Set up scroll-based rotation
-    let lastScrollY = window.scrollY;
-    handleScrollRef.current = () => {
-      const scrollDirection = window.scrollY > lastScrollY ? 1 : -1;
-      if (modelRef.current) {
-        modelRef.current.rotation.y += 0.05 * scrollDirection;
+    // Set up scroll-based rotation acceleration
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollDelta = Math.abs(currentScrollY - lastScrollYRef.current);
+      
+      // Accelerate rotation based on scroll speed
+      rotationSpeedRef.current = baseRotationSpeed + scrollDelta * 0.0005;
+      
+      lastScrollYRef.current = currentScrollY;
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
-      lastScrollY = window.scrollY;
+
+      // Set new timeout to reset rotation speed
+      scrollTimeoutRef.current = setTimeout(() => {
+        rotationSpeedRef.current = baseRotationSpeed;
+      }, 200);
     };
+
+    window.addEventListener('scroll', handleScroll);
 
     // Load the model
     const loader = new GLTFLoader();
@@ -61,24 +77,26 @@ const HorseshoeModel: React.FC = () => {
         const size = box.getSize(new THREE.Vector3());
         
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 2.5 / maxDim;  // Increased scale to make the model larger
+        const scale = 2.5 / maxDim;
         modelRef.current.scale.multiplyScalar(scale);
         
-        modelRef.current.position.sub(center.multiplyScalar(scale));  // Center the model
-        modelRef.current.position.y += 0.2;  // Adjust vertical position slightly
+        modelRef.current.position.sub(center.multiplyScalar(scale));
+        modelRef.current.position.y += 0.2;
         
         // Position camera to view the entire model
-        const distance = 2.0;  // Adjusted camera distance for the larger model
+        const distance = 2.0;
         camera.position.set(distance, distance, distance);
         camera.lookAt(0, 0, 0);
 
         console.log('Model added to scene and scaled');
 
-        window.addEventListener('scroll', handleScrollRef.current);
-
         // Animation loop
         const animate = () => {
           requestAnimationFrame(animate);
+          if (modelRef.current) {
+            // Apply rotation based on current rotation speed
+            modelRef.current.rotation.y += rotationSpeedRef.current;
+          }
           renderer.render(scene, camera);
         };
         animate();
@@ -111,7 +129,10 @@ const HorseshoeModel: React.FC = () => {
         containerRef.current.removeChild(rendererRef.current.domElement);
       }
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleScrollRef.current);
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
