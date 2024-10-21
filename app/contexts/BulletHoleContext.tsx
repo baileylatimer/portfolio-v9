@@ -8,8 +8,8 @@ interface BulletHole {
 
 interface BulletHoleContextType {
   bulletHoles: BulletHole[];
-  addBulletHole: (x: number, y: number) => void;
-  addBurstHoles: (x: number, y: number) => void;
+  addBulletHole: (x: number, y: number, target: HTMLElement) => void;
+  addBurstHoles: (x: number, y: number, target: HTMLElement) => void;
 }
 
 export const BulletHoleContext = createContext<BulletHoleContextType | undefined>(undefined);
@@ -18,7 +18,16 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [bulletHoles, setBulletHoles] = useState<BulletHole[]>([]);
   const lastBulletHoleTime = useRef(0);
 
-  const addBulletHole = useCallback((x: number, y: number) => {
+  const shouldAddBulletHole = (target: HTMLElement) => {
+    return !target.closest('.no-bullet-holes');
+  };
+
+  const addBulletHole = useCallback((x: number, y: number, target: HTMLElement) => {
+    if (!shouldAddBulletHole(target)) {
+      console.log('Skipping bullet hole for no-bullet-holes element');
+      return;
+    }
+
     const now = Date.now();
     if (now - lastBulletHoleTime.current > 100) { // 100ms debounce
       lastBulletHoleTime.current = now;
@@ -34,7 +43,12 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  const addBurstHoles = useCallback((x: number, y: number) => {
+  const addBurstHoles = useCallback((x: number, y: number, target: HTMLElement) => {
+    if (!shouldAddBulletHole(target)) {
+      console.log('Skipping burst holes for no-bullet-holes element');
+      return;
+    }
+
     const burstInterval = 1100 / 5; // 1.1 seconds divided by 5 shots
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {

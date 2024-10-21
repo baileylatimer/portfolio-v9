@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import SvgStar from './svg-star';
 import styles from './HorseshoeModel.module.css';
 
@@ -8,28 +9,39 @@ const HorseshoeModel: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<THREE.Object3D | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const baseRotationSpeed = 0.0005; // Keep the slow base rotation speed
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const baseRotationSpeed = 0.0005;
   const rotationSpeedRef = useRef<number>(baseRotationSpeed);
   const lastScrollYRef = useRef<number>(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     console.log('Initializing 3D scene');
 
-    // Set up scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1A1917);
     const camera = new THREE.PerspectiveCamera(75, 390 / 547, 0.1, 1000);
+    cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(390, 547);
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.enableZoom = false;
+    controlsRef.current = controls;
+
+    controls.addEventListener('start', () => setIsUserInteracting(true));
+    controls.addEventListener('end', () => setIsUserInteracting(false));
+
     console.log('Scene set up complete');
 
-    // Set up lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -38,22 +50,18 @@ const HorseshoeModel: React.FC = () => {
 
     console.log('Lighting set up complete');
 
-    // Set up scroll-based rotation acceleration
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       const scrollDelta = Math.abs(currentScrollY - lastScrollYRef.current);
       
-      // Accelerate rotation based on scroll speed
       rotationSpeedRef.current = baseRotationSpeed + scrollDelta * 0.0005;
       
       lastScrollYRef.current = currentScrollY;
 
-      // Clear existing timeout
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
 
-      // Set new timeout to reset rotation speed
       scrollTimeoutRef.current = setTimeout(() => {
         rotationSpeedRef.current = baseRotationSpeed;
       }, 200);
@@ -61,7 +69,6 @@ const HorseshoeModel: React.FC = () => {
 
     window.addEventListener('scroll', handleScroll);
 
-    // Load the model
     const loader = new GLTFLoader();
     console.log('Attempting to load model from: /models/horseshoe/gltf/Steel_Horseshoe.gltf');
     loader.load(
@@ -71,7 +78,6 @@ const HorseshoeModel: React.FC = () => {
         modelRef.current = gltf.scene;
         scene.add(modelRef.current);
         
-        // Center and scale the model
         const box = new THREE.Box3().setFromObject(modelRef.current);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -83,20 +89,18 @@ const HorseshoeModel: React.FC = () => {
         modelRef.current.position.sub(center.multiplyScalar(scale));
         modelRef.current.position.y += 0.2;
         
-        // Position camera to view the entire model
         const distance = 2.0;
         camera.position.set(distance, distance, distance);
         camera.lookAt(0, 0, 0);
 
         console.log('Model added to scene and scaled');
 
-        // Animation loop
         const animate = () => {
           requestAnimationFrame(animate);
-          if (modelRef.current) {
-            // Apply rotation based on current rotation speed
+          if (modelRef.current && !isUserInteracting) {
             modelRef.current.rotation.y += rotationSpeedRef.current;
           }
+          controls.update();
           renderer.render(scene, camera);
         };
         animate();
@@ -111,18 +115,16 @@ const HorseshoeModel: React.FC = () => {
       }
     );
 
-    // Handle window resize
     const handleResize = () => {
-      if (!containerRef.current || !rendererRef.current) return;
+      if (!containerRef.current || !rendererRef.current || !cameraRef.current) return;
       const width = 390;
       const height = 547;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(width, height);
     };
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
     return () => {
       console.log('Cleaning up 3D scene');
       if (containerRef.current && rendererRef.current) {
@@ -133,12 +135,41 @@ const HorseshoeModel: React.FC = () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
+      controls.removeEventListener('start', () => setIsUserInteracting(true));
+      controls.removeEventListener('end', () => setIsUserInteracting(false));
+      controls.dispose();
     };
-  }, []);
+  }, [isUserInteracting]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!modelRef.current) return;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        modelRef.current.rotation.y += 0.1;
+        break;
+      case 'ArrowRight':
+        modelRef.current.rotation.y -= 0.1;
+        break;
+      case 'ArrowUp':
+        modelRef.current.rotation.x += 0.1;
+        break;
+      case 'ArrowDown':
+        modelRef.current.rotation.x -= 0.1;
+        break;
+    }
+  };
 
   return (
-    <div className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24`}>
-      <div ref={containerRef} className="flex-grow" />
+    <div 
+      className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24 no-bullet-holes`} 
+      ref={containerRef}
+    >
+      <button
+        className="w-full h-full focus:outline-none"
+        onKeyDown={handleKeyDown}
+        aria-label="Interactive 3D horseshoe model. Click and drag to rotate. Use arrow keys for precise rotation."
+      />
       <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
       <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
       <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>

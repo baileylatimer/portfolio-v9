@@ -15,6 +15,7 @@ import Navigation from '~/components/navigation';
 import SecretSection from '~/components/SecretSection';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 import { sanityClient } from "~/lib/sanity.server";
+import type { PortableTextBlock } from '@portabletext/types';
 
 import tailwindStyles from "./styles/tailwind.css?url";
 import globalStyles from "./styles/global.css?url";
@@ -30,10 +31,17 @@ interface BulletHole {
   y: number;
 }
 
+interface SanityImage {
+  asset: {
+    _ref: string;
+    _type: string;
+  };
+}
+
 interface TeamMember {
   _id: string;
   name: string;
-  image: any;
+  image: SanityImage;
   bio: string;
   websiteUrl?: string;
   instagramUrl?: string;
@@ -42,8 +50,9 @@ interface TeamMember {
 
 interface SecretAboutData {
   title: string;
-  content: any[];
-  image: any;
+  content: PortableTextBlock[];
+  image: SanityImage;
+  tools: string[];
 }
 
 export const loader: LoaderFunction = async () => {
@@ -60,12 +69,13 @@ export const loader: LoaderFunction = async () => {
   const secretAboutQuery = `*[_type == "secretAbout"][0] {
     title,
     content,
-    image
+    image,
+    tools
   }`;
 
   const [teamMembers, secretAboutData] = await Promise.all([
-    sanityClient.fetch(teamMembersQuery),
-    sanityClient.fetch(secretAboutQuery),
+    sanityClient.fetch<TeamMember[]>(teamMembersQuery),
+    sanityClient.fetch<SecretAboutData>(secretAboutQuery),
   ]);
 
   return json({ teamMembers, secretAboutData }); 
@@ -82,12 +92,12 @@ function AppContent() {
   const [isSecretSectionOpen, setIsSecretSectionOpen] = useState(false);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
-    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
+    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.no-bullet-holes'))) return;
     setIsMouseDown(true);
     mouseDownTimerRef.current = setTimeout(() => {
       const x = e.clientX + window.scrollX;
       const y = e.clientY + window.scrollY;
-      addBurstHoles?.(x, y);
+      addBurstHoles?.(x, y, e.target as HTMLElement);
       if (burstAudioRef.current) {
         burstAudioRef.current.currentTime = 0;
         burstAudioRef.current.play().catch(error => console.error("Burst audio playback failed:", error));
@@ -103,13 +113,13 @@ function AppContent() {
   }, []);
 
   const handleClick = useCallback((e: MouseEvent) => {
-    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
+    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.no-bullet-holes'))) return;
     const now = Date.now();
     if (!isMouseDown && now - lastClickTime.current > 100) { // 100ms debounce
       lastClickTime.current = now;
       const x = e.clientX + window.scrollX;
       const y = e.clientY + window.scrollY;
-      addBulletHole?.(x, y);
+      addBulletHole?.(x, y, e.target as HTMLElement);
       if (singleShotAudioRef.current) {
         singleShotAudioRef.current.currentTime = 0;
         singleShotAudioRef.current.play()
