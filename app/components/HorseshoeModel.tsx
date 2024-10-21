@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import SvgStar from './svg-star';
+import styles from './HorseshoeModel.module.css';
 
 const HorseshoeModel: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -15,20 +17,20 @@ const HorseshoeModel: React.FC = () => {
 
     // Set up scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f0f0);  // Light gray background
-    const camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
+    scene.background = new THREE.Color(0x1A1917);  // Updated background color
+    const camera = new THREE.PerspectiveCamera(75, 390 / 547, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setSize(390, 547);
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     console.log('Scene set up complete');
 
     // Set up lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 1, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
     console.log('Lighting set up complete');
@@ -59,13 +61,14 @@ const HorseshoeModel: React.FC = () => {
         const size = box.getSize(new THREE.Vector3());
         
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 2 / maxDim;  // Scale to fit within a 2 unit cube
+        const scale = 1.8 / maxDim;  // Increased scale to make the model larger
         modelRef.current.scale.multiplyScalar(scale);
         
         modelRef.current.position.sub(center.multiplyScalar(scale));  // Center the model
+        modelRef.current.position.y += 0.2;  // Adjust vertical position slightly
         
         // Position camera to view the entire model
-        const distance = 3;  // Adjust this value to change the camera distance
+        const distance = 2.3;  // Adjusted camera distance for the larger model
         camera.position.set(distance, distance, distance);
         camera.lookAt(0, 0, 0);
 
@@ -93,8 +96,8 @@ const HorseshoeModel: React.FC = () => {
     // Handle window resize
     const handleResize = () => {
       if (!containerRef.current || !rendererRef.current) return;
-      const width = containerRef.current.clientWidth;
-      const height = containerRef.current.clientHeight;
+      const width = 390;
+      const height = 547;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       rendererRef.current.setSize(width, height);
@@ -112,7 +115,18 @@ const HorseshoeModel: React.FC = () => {
     };
   }, []);
 
-  return <div ref={containerRef} style={{ width: '100%', height: '50vh', border: '1px solid #ccc' }} />;
+  return (
+    <div className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24`}>
+      <div ref={containerRef} className="flex-grow" />
+      <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
+      <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
+      <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>
+      <div className={`${styles.text} ${styles.textFour} font-default`}>BUILT IN HOLLYWOOD</div>
+      <div className={styles.star}>
+        <SvgStar />
+      </div>
+    </div>
+  );
 };
 
 export default HorseshoeModel;

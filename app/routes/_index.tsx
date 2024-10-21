@@ -55,28 +55,16 @@ export default function Index() {
   }>();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navigation />
+
       <Hero />
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-4">3D Horseshoe Model</h2>
+      <div className="flex-grow flex items-center justify-center mt-24">
         <HorseshoeModel />
-        <div className="mt-8">
-          <h3 className="text-xl font-bold mb-2">Scroll to rotate the model</h3>
-          <p>Scroll down to rotate right, scroll up to rotate left.</p>
-        </div>
       </div>
       <MissionSection />
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />
-      {/* Add some extra content for scrolling */}
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-4">Additional Content</h2>
-        <p>This is some additional content to allow for more scrolling. As you scroll up and down, you should see the horseshoe model rotating.</p>
-        {/* Repeat this paragraph a few times for more content */}
-        <p className="mt-4">Keep scrolling to see the full rotation of the model. The rotation is tied to your scroll position, so you can control it by scrolling up and down.</p>
-        <p className="mt-4">The 3D model showcases our attention to detail and our ability to create immersive digital experiences. It&apos;s just one example of how we bring creativity and technology together in our projects.</p>
-      </div>
     </div>
   );
 }
