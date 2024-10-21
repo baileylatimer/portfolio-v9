@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -11,11 +11,12 @@ const HorseshoeModel: React.FC = () => {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const baseRotationSpeed = 0.0005;
+  const baseRotationSpeed = 0.001;
   const rotationSpeedRef = useRef<number>(baseRotationSpeed);
   const lastScrollYRef = useRef<number>(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const isUserInteractingRef = useRef<boolean>(false);
+  const autoRotationAngleRef = useRef<number>(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -37,8 +38,13 @@ const HorseshoeModel: React.FC = () => {
     controls.enableZoom = false;
     controlsRef.current = controls;
 
-    controls.addEventListener('start', () => setIsUserInteracting(true));
-    controls.addEventListener('end', () => setIsUserInteracting(false));
+    controls.addEventListener('start', () => { isUserInteractingRef.current = true; });
+    controls.addEventListener('end', () => { 
+      isUserInteractingRef.current = false;
+      if (modelRef.current) {
+        autoRotationAngleRef.current = modelRef.current.rotation.y;
+      }
+    });
 
     console.log('Scene set up complete');
 
@@ -97,8 +103,9 @@ const HorseshoeModel: React.FC = () => {
 
         const animate = () => {
           requestAnimationFrame(animate);
-          if (modelRef.current && !isUserInteracting) {
-            modelRef.current.rotation.y += rotationSpeedRef.current;
+          if (modelRef.current && !isUserInteractingRef.current) {
+            autoRotationAngleRef.current += rotationSpeedRef.current;
+            modelRef.current.rotation.y = autoRotationAngleRef.current;
           }
           controls.update();
           renderer.render(scene, camera);
@@ -135,21 +142,21 @@ const HorseshoeModel: React.FC = () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      controls.removeEventListener('start', () => setIsUserInteracting(true));
-      controls.removeEventListener('end', () => setIsUserInteracting(false));
+      controls.removeEventListener('start', () => { isUserInteractingRef.current = true; });
+      controls.removeEventListener('end', () => { isUserInteractingRef.current = false; });
       controls.dispose();
     };
-  }, [isUserInteracting]);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!modelRef.current) return;
 
     switch (e.key) {
       case 'ArrowLeft':
-        modelRef.current.rotation.y += 0.1;
+        autoRotationAngleRef.current += 0.1;
         break;
       case 'ArrowRight':
-        modelRef.current.rotation.y -= 0.1;
+        autoRotationAngleRef.current -= 0.1;
         break;
       case 'ArrowUp':
         modelRef.current.rotation.x += 0.1;
