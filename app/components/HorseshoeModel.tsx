@@ -61,14 +61,14 @@ const HorseshoeModel: React.FC = () => {
         const size = box.getSize(new THREE.Vector3());
         
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 1.8 / maxDim;  // Increased scale to make the model larger
+        const scale = 2.5 / maxDim;  // Increased scale to make the model larger
         modelRef.current.scale.multiplyScalar(scale);
         
         modelRef.current.position.sub(center.multiplyScalar(scale));  // Center the model
         modelRef.current.position.y += 0.2;  // Adjust vertical position slightly
         
         // Position camera to view the entire model
-        const distance = 2.3;  // Adjusted camera distance for the larger model
+        const distance = 2.0;  // Adjusted camera distance for the larger model
         camera.position.set(distance, distance, distance);
         camera.lookAt(0, 0, 0);
 
