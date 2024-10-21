@@ -50,9 +50,14 @@ const HorseshoeModel: React.FC = () => {
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
+
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight1.position.set(1, 1, 1);
+    scene.add(directionalLight1);
+
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight2.position.set(-1, -1, -1);
+    scene.add(directionalLight2);
 
     console.log('Lighting set up complete');
 
@@ -84,6 +89,15 @@ const HorseshoeModel: React.FC = () => {
         modelRef.current = gltf.scene;
         scene.add(modelRef.current);
         
+        modelRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            // Use the original materials and textures
+            if (child.material) {
+              child.material.needsUpdate = true;
+            }
+          }
+        });
+
         const box = new THREE.Box3().setFromObject(modelRef.current);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
