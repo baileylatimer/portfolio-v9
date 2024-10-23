@@ -8,7 +8,6 @@
   margin: 0 auto;
 }
 
-
 .horseshoe-wrapper .text {
   position: absolute;
   text-transform: uppercase;
@@ -40,4 +39,55 @@
   position: absolute;
   bottom: 20px;
   right: 20px;
+}
+
+@media (max-width: 768px) {
+  .horseshoe-wrapper {
+    width: 191px;
+    height: 268px;
+    margin: 0 0 0 auto;
+  }
+
+  .textContainer {
+    position: absolute;
+    left: -180px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    height: 268px;
+  }
+
+  .horseshoe-wrapper .text {
+    position: relative;
+    font-size: 14px;
+    left: 0;
+    right: 0;
+    margin-bottom: .5rem;
+  }
+
+  .textOne {
+    top: 0;
+  }
+
+  .textTwo {
+    top: 0;
+  }
+
+  .textThree {
+    top: 0;
+  }
+
+  .textFour {
+    bottom: 0 !important;
+    margin-top: 183px;
+  }
+
+  .star {
+    bottom: 10px;
+    right: 311px;
+    transform: scale(0.6);
+  }
+    .star path, .star circle {
+    stroke: var(--color-contrast-higher);
+    }
 }

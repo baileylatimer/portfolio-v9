@@ -18,17 +18,26 @@ const HorseshoeModel: React.FC = () => {
   const isUserInteractingRef = useRef<boolean>(false);
   const autoRotationAngleRef = useRef<number>(0);
 
+  const getDimensions = () => {
+    const isMobile = window.innerWidth <= 768;
+    return {
+      width: isMobile ? 191 : 390,
+      height: isMobile ? 268 : 547
+    };
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
 
     console.log('Initializing 3D scene');
 
+    const dimensions = getDimensions();
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1A1917);
-    const camera = new THREE.PerspectiveCamera(75, 390 / 547, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, dimensions.width / dimensions.height, 0.1, 1000);
     cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(390, 547);
+    renderer.setSize(dimensions.width, dimensions.height);
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -91,7 +100,6 @@ const HorseshoeModel: React.FC = () => {
         
         modelRef.current.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            // Use the original materials and textures
             if (child.material) {
               child.material.needsUpdate = true;
             }
@@ -103,13 +111,14 @@ const HorseshoeModel: React.FC = () => {
         const size = box.getSize(new THREE.Vector3());
         
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 2.5 / maxDim;
+        const isMobile = window.innerWidth <= 768;
+        const scale = (isMobile ? 2.0 : 2.5) / maxDim; // Smaller scale for mobile
         modelRef.current.scale.multiplyScalar(scale);
         
         modelRef.current.position.sub(center.multiplyScalar(scale));
         modelRef.current.position.y += 0.2;
         
-        const distance = 2.0;
+        const distance = isMobile ? 1.5 : 2.0;
         camera.position.set(distance, distance, distance);
         camera.lookAt(0, 0, 0);
 
@@ -138,12 +147,19 @@ const HorseshoeModel: React.FC = () => {
 
     const handleResize = () => {
       if (!containerRef.current || !rendererRef.current || !cameraRef.current) return;
-      const width = 390;
-      const height = 547;
-      cameraRef.current.aspect = width / height;
+      const dimensions = getDimensions();
+      cameraRef.current.aspect = dimensions.width / dimensions.height;
       cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(width, height);
+      rendererRef.current.setSize(dimensions.width, dimensions.height);
+      
+      if (cameraRef.current && modelRef.current) {
+        const isMobile = window.innerWidth <= 768;
+        const distance = isMobile ? 1.5 : 2.0;
+        cameraRef.current.position.set(distance, distance, distance);
+        cameraRef.current.lookAt(0, 0, 0);
+      }
     };
+    
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -191,10 +207,12 @@ const HorseshoeModel: React.FC = () => {
         onKeyDown={handleKeyDown}
         aria-label="Interactive 3D horseshoe model. Click and drag to rotate. Use arrow keys for precise rotation."
       />
-      <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
-      <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
-      <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>
-      <div className={`${styles.text} ${styles.textFour} font-default`}>BUILT IN HOLLYWOOD</div>
+      <div className={styles.textContainer}>
+        <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
+        <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
+        <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>
+        <div className={`${styles.text} ${styles.textFour} font-default`}>BUILT IN HOLLYWOOD</div>
+      </div>
       <div className={styles.star}>
         <SvgStar />
       </div>

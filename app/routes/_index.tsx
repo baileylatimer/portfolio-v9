@@ -59,7 +59,7 @@ export default function Index() {
       <Navigation />
 
       <Hero />
-      <div className="flex-grow flex items-center justify-center mt-24">
+      <div className="flex-grow flex mt-24">
         <HorseshoeModel />
       </div>
       <MissionSection />
