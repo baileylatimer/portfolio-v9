@@ -24,10 +24,10 @@ const HorseshoeModel: React.FC = () => {
     console.log('Initializing 3D scene');
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1A1917);
+    scene.background = null; // Set background to null to make it transparent
     const camera = new THREE.PerspectiveCamera(75, 390 / 547, 0.1, 1000);
     cameraRef.current = camera;
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Enable alpha
     renderer.setSize(390, 547);
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -183,20 +183,32 @@ const HorseshoeModel: React.FC = () => {
 
   return (
     <div 
-      className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24 no-bullet-holes`} 
+      className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24 no-bullet-holes relative overflow-hidden`} 
       ref={containerRef}
     >
-      <button
-        className="w-full h-full focus:outline-none"
-        onKeyDown={handleKeyDown}
-        aria-label="Interactive 3D horseshoe model. Click and drag to rotate. Use arrow keys for precise rotation."
-      />
-      <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
-      <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
-      <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>
-      <div className={`${styles.text} ${styles.textFour} font-default`}>BUILT IN HOLLYWOOD</div>
-      <div className={styles.star}>
-        <SvgStar />
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+      >
+        <source src="/videos/tv-fire.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <div className="relative z-10 w-full h-full">
+        <button
+          className="w-full h-full focus:outline-none"
+          onKeyDown={handleKeyDown}
+          aria-label="Interactive 3D horseshoe model. Click and drag to rotate. Use arrow keys for precise rotation."
+        />
+        <div className={`${styles.text} ${styles.textOne} font-default`}>INTERNET TRAILBLAZERS</div>
+        <div className={`${styles.text} ${styles.textTwo} font-default`}>OBSESSED WITH</div>
+        <div className={`${styles.text} ${styles.textThree} font-default`}>YOUR BRANDS MISSION</div>
+        <div className={`${styles.text} ${styles.textFour} font-default`}>BUILT IN HOLLYWOOD</div>
+        <div className={styles.star}>
+          <SvgStar />
+        </div>
       </div>
     </div>
   );
