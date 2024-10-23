@@ -24,10 +24,19 @@ export const loader: LoaderFunction = async ({ request }) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    return { services: data.services, partners: data.partners };
+    return { 
+      services: data.services, 
+      partners: data.partners,
+      heroMedia: data.heroMedia || { mediaUrl: '/images/hero-bg--min.jpg' } // Fallback to static image
+    };
   } catch (error: unknown) {
     console.error('Error fetching data:', error);
-    return { services: [], partners: [], error: (error as Error).message || 'Failed to fetch data' };
+    return { 
+      services: [], 
+      partners: [], 
+      heroMedia: { mediaUrl: '/images/hero-bg--min.jpg' }, // Fallback to static image
+      error: (error as Error).message || 'Failed to fetch data' 
+    };
   }
 };
 
@@ -48,17 +57,22 @@ interface Partner {
   };
 }
 
+interface HeroMedia {
+  mediaUrl: string;
+}
+
 export default function Index() {
-  const { services, partners } = useLoaderData<{
+  const { services, partners, heroMedia } = useLoaderData<{
     services: Service[];
     partners: Partner[];
+    heroMedia: HeroMedia;
   }>();
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
 
-      <Hero />
+      <Hero mediaUrl={heroMedia.mediaUrl} />
       <div className="flex-grow flex mt-24">
         <HorseshoeModel />
       </div>
