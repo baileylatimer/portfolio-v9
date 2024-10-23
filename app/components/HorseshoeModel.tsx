@@ -199,7 +199,7 @@ const HorseshoeModel: React.FC = () => {
 
   return (
     <div 
-      className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24 no-bullet-holes`} 
+      className={`${styles.container} horseshoe-wrapper flex items-center justify-center mt-24 no-bullet-holes light-section`} 
       ref={containerRef}
     >
       <button

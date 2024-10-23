@@ -50,7 +50,7 @@
 
   .textContainer {
     position: absolute;
-    left: -180px;
+    left: -220px;
     top: 50%;
     transform: translateY(-50%);
     width: 200px;
@@ -84,7 +84,7 @@
 
   .star {
     bottom: 10px;
-    right: 311px;
+    right: 351px;
     transform: scale(0.6);
   }
     .star path, .star circle {
