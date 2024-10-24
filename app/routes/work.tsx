@@ -1,7 +1,7 @@
 import type { MetaFunction, LoaderFunction } from "@remix-run/node";
 import { useLoaderData, Outlet, useLocation } from "@remix-run/react";
 import { json } from "@remix-run/node";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import PageHero from "~/components/page-hero";
 import ProjectGrid from "~/components/project-grid";
 import FilterModal from "~/components/filter-modal";
@@ -88,6 +88,10 @@ export default function Work() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>(projects);
 
+  const totalFiltersSelected = useMemo(() => 
+    selectedIndustries.length + selectedServices.length
+  , [selectedIndustries, selectedServices]);
+
   const isMainWorkPage = location.pathname === "/work";
 
   const handleIndustryToggle = useCallback((industry: string) => {
@@ -155,7 +159,7 @@ export default function Work() {
                 className="filter-button no-bullet-holes"
                 aria-label="Open filter options"
               >
-                Filter ▼
+                Filter {totalFiltersSelected > 0 && `(${totalFiltersSelected})`} ▼
               </button>
             </div>
             <ProjectGrid projects={filteredProjects} />
