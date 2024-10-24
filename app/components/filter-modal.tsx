@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import CustomButton from './custom-button';
 
 interface FilterModalProps {
@@ -26,6 +26,26 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onApply,
   onClear,
 }) => {
+  useEffect(() => {
+    const handleScroll = (e: TouchEvent) => {
+      // Only prevent default if we're on mobile and the modal is open
+      if (window.innerWidth <= 768 && isOpen) {
+        e.preventDefault();
+      }
+    };
+
+    if (isOpen && window.innerWidth <= 768) {
+      document.body.style.overflow = 'hidden';
+      // Add touch event listener to prevent body scroll while allowing modal scroll
+      document.addEventListener('touchmove', handleScroll, { passive: false });
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('touchmove', handleScroll);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const FilterItem = ({ label, isSelected, onClick }: { label: string; isSelected: boolean; onClick: () => void }) => (
