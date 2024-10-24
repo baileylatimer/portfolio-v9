@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import CustomButton from './custom-button';
 
 interface FilterModalProps {
@@ -14,6 +14,11 @@ interface FilterModalProps {
   onClear: () => void;
 }
 
+// Type for GSAP Draggable instance
+interface DraggableInstance {
+  kill: () => void;
+}
+
 const FilterModal: React.FC<FilterModalProps> = ({
   isOpen,
   onClose,
@@ -26,9 +31,52 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onApply,
   onClear,
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const modalContentRef = useRef<HTMLDivElement>(null);
+  const [gsapLoaded, setGsapLoaded] = useState(false);
+  const draggableInstanceRef = useRef<DraggableInstance | null>(null);
+
+  useEffect(() => {
+    // Dynamically import GSAP and Draggable
+    Promise.all([
+      import('gsap'),
+      import('gsap/Draggable')
+    ]).then(([gsapModule, DraggableModule]) => {
+      const gsap = gsapModule.default;
+      const Draggable = DraggableModule.default;
+      gsap.registerPlugin(Draggable);
+      setGsapLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!gsapLoaded || !modalContentRef.current) return;
+
+    import('gsap/Draggable').then((DraggableModule) => {
+      const Draggable = DraggableModule.default;
+
+      // Only enable dragging on desktop
+      if (window.innerWidth > 768) {
+        draggableInstanceRef.current = Draggable.create(modalContentRef.current, {
+          type: "x,y",
+          bounds: window,
+          inertia: true,
+          dragResistance: 0.3,
+          trigger: ".filter-modal__header",
+          cursor: "grab",
+        })[0];
+      }
+
+      return () => {
+        if (draggableInstanceRef.current) {
+          draggableInstanceRef.current.kill();
+        }
+      };
+    });
+  }, [gsapLoaded, isOpen]);
+
   useEffect(() => {
     const handleScroll = (e: TouchEvent) => {
-      // Only prevent default if we're on mobile and the modal is open
       if (window.innerWidth <= 768 && isOpen) {
         e.preventDefault();
       }
@@ -36,7 +84,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
     if (isOpen && window.innerWidth <= 768) {
       document.body.style.overflow = 'hidden';
-      // Add touch event listener to prevent body scroll while allowing modal scroll
       document.addEventListener('touchmove', handleScroll, { passive: false });
     }
 
@@ -75,14 +122,18 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
   return (
     <div 
+      ref={modalRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 no-bullet-holes"
       role="dialog"
       aria-modal="true"
       aria-labelledby="filter-modal-title"
     >
-      <div className="rounded-lg w-full h-full md:w-[530px] md:h-[420px] relative text-[#DCCFBE]">
+      <div 
+        ref={modalContentRef}
+        className="rounded-lg w-full h-full md:w-[530px] md:h-[420px] relative text-[#DCCFBE]"
+      >
         {/* Header */}
-        <div className="filter-modal__header">
+        <div className="filter-modal__header cursor-grab active:cursor-grabbing">
           <button
             onClick={onClose}
             className="filter-modal__close-button"
