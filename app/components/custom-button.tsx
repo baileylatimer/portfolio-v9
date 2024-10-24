@@ -33,7 +33,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = '
           </filter>
         </defs>
       </svg>
-      <span className="relative  whitespace-nowrap">{children}</span>
+      <span className="relative  whitespace-nowrap uppercase">{children}</span>
     </button>
   );
 };

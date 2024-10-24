@@ -19,10 +19,12 @@ import type { PortableTextBlock } from '@portabletext/types';
 
 import tailwindStyles from "./styles/tailwind.css?url";
 import globalStyles from "./styles/global.css?url";
+import filterModalStyles from "./styles/filter-modal.css?url";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: tailwindStyles },
   { rel: "stylesheet", href: globalStyles },
+  { rel: "stylesheet", href: filterModalStyles },
   { rel: "icon", type: "image/gif", href: "/images/favicon.gif" },
 ];
 

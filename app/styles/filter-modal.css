@@ -1,0 +1,121 @@
+/* Filter Button */
+.filter-button {
+  font-family: var(--font-default);
+  color: var(--color-contrast-higher);
+  position: relative;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Modal Styles */
+.filter-modal__header {
+  background: rgba(28, 28, 28, 0.60);
+backdrop-filter: blur(6.554999828338623px);
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-modal__close-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #FF5F57;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.filter-modal__close-button:hover {
+  opacity: 0.8;
+}
+
+.filter-modal__content {
+  display: flex;
+  gap: 4rem;
+  height: calc(100% - 120px);
+  overflow-y: auto;
+}
+
+.filter-modal__filter-item {
+  color: var(--color-bg);
+  /* margin-bottom: 0.75rem; */
+  /* font-family: var(--font-default); */
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.filter-modal__filter-item:hover {
+  color: var(--color-bg);
+}
+
+.filter-modal__filter-item-brackets-inner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-family: monospace;
+  transition: transform 0.2s ease;
+}
+
+.filter-modal__filter-item-plus {
+  display: inline-block;
+  color: var(--color-bg);
+  font-weight: bold;
+}
+
+.filter-modal__footer {
+  background-color: var(--color-contrast-higher);
+  border-top: 1px solid #5E5E5E;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+}
+
+.industry-filters {
+  height: max-content;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .filter-modal__content {
+    flex-direction: column;
+    gap: 2rem;
+
+  }
+
+  .filter-modal {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .filter-modal__header,
+  .filter-modal__footer {
+    border-radius: 0;
+  }
+}
+
+.filter-header-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  -webkit-transform: translateX(-50%);
+  -moz-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  -o-transform: translateX(-50%);
+}

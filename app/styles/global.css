@@ -41,6 +41,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Supply';
+  src: url('/fonts/PPSupplyMono-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -146,6 +153,10 @@ margin-bottom:.3em;
 
 .font-wide {
   font-family: 'Thermal Wide', sans-serif;
+}
+
+.font-supply {
+  font-family: 'Supply';
 }
 
 
