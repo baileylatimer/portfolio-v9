@@ -30,7 +30,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
   const FilterItem = ({ label, isSelected, onClick }: { label: string; isSelected: boolean; onClick: () => void }) => (
     <button 
-      className="filter-modal__filter-item w-full text-left uppercase font-supply color-bg"
+      className={`filter-modal__filter-item w-full text-left uppercase font-supply color-bg ${!isSelected ? 'opacity-70' : ''}`}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -44,7 +44,9 @@ const FilterModal: React.FC<FilterModalProps> = ({
     >
       <span className="filter-modal__filter-item-brackets-inner anim-char" style={{ transitionDelay: '0.08s' }}>
         [
-        {isSelected && <span className="filter-modal__filter-item-plus">+</span>}
+        <span className="filter-modal__filter-item-plus" aria-hidden="true">
+          {isSelected ? '+' : '\u00A0'}
+        </span>
         ]
       </span>
       {' '}{label}
@@ -114,7 +116,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
         <div className="filter-modal__footer">
           <button
             onClick={onClear}
-            className="uppercase  hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-white px-2 py-1 filter-clear"
+            className="uppercase hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-white px-2 py-1 filter-clear"
           >
             Clear
           </button>

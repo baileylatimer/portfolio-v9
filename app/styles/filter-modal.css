@@ -14,7 +14,7 @@
 /* Modal Styles */
 .filter-modal__header {
   background: rgba(28, 28, 28, 0.60);
-backdrop-filter: blur(6.554999828338623px);
+  backdrop-filter: blur(6.554999828338623px);
   border-top-left-radius: 0.5rem;
   border-top-right-radius: 0.5rem;
   padding: 0.75rem 1rem;
@@ -47,8 +47,6 @@ backdrop-filter: blur(6.554999828338623px);
 
 .filter-modal__filter-item {
   color: var(--color-bg);
-  /* margin-bottom: 0.75rem; */
-  /* font-family: var(--font-default); */
   text-transform: uppercase;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -69,6 +67,8 @@ backdrop-filter: blur(6.554999828338623px);
   display: inline-block;
   color: var(--color-bg);
   font-weight: bold;
+  width: 1ch;
+  text-align: center;
 }
 
 .filter-modal__footer {
@@ -95,7 +95,6 @@ backdrop-filter: blur(6.554999828338623px);
   .filter-modal__content {
     flex-direction: column;
     gap: 2rem;
-
   }
 
   .filter-modal {
