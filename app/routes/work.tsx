@@ -153,7 +153,7 @@ export default function Work() {
             altText="Our Work Hero Image"
           />
           <div className="mx-auto px-2 pt-6 pb-12 lg:py-12">
-            <div className="container mx-auto flex justify-end mb-6">
+            <div className="px-d mx-auto flex justify-end mb-6">
               <button
                 onClick={() => setIsFilterModalOpen(true)}
                 className="filter-button no-bullet-holes"
