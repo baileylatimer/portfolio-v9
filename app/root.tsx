@@ -23,6 +23,7 @@ import globalStyles from "./styles/global.css?url";
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: tailwindStyles },
   { rel: "stylesheet", href: globalStyles },
+  { rel: "icon", type: "image/gif", href: "/images/favicon.gif" },
 ];
 
 interface BulletHole {

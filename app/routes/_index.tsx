@@ -9,8 +9,8 @@ import PartnersSection from '~/components/partners-section';
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Bailey Latimer - Portfolio" },
-    { name: "description", content: "Welcome to Bailey Latimer's portfolio, showcasing creative digital solutions." },
+    { title: "Latimer Design | Custom Shopify & Brand Design Studio LA" },
+    { name: "description", content: "Los Angeles-based digital studio crafting bold, custom Shopify experiences and brand identities. We transform innovative ideas into high-converting digital frontiers for ambitious brands." },
   ];
 };
 
