@@ -40,7 +40,7 @@
 
 .filter-modal__content {
   display: flex;
-  gap: 4rem;
+  /* gap: 4rem; */
   height: calc(100% - 120px);
   overflow-y: auto;
 }
