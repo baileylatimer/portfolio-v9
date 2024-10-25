@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Service {
   _id: string;
@@ -12,9 +12,54 @@ interface ServicesSectionProps {
 
 const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [gsapLoaded, setGsapLoaded] = useState(false);
+  const contentContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    import('gsap').then(() => {
+      setGsapLoaded(true);
+    });
+  }, []);
 
   const toggleAccordion = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
+  };
+
+  useEffect(() => {
+    if (!gsapLoaded || openIndex === null) return;
+
+    import('gsap').then((gsapModule) => {
+      const gsap = gsapModule.default;
+      
+      const currentContainer = contentContainerRefs.current[openIndex];
+      if (!currentContainer) return;
+
+      // Get all lines within the container
+      const lines = currentContainer.querySelectorAll('.content-line');
+      
+      // Reset all lines to initial state
+      gsap.set(lines, { 
+        opacity: 0,
+        y: 15
+      });
+
+      // Animate lines
+      gsap.to(lines, {
+        opacity: 1,
+        y: 0,
+        duration: 0.35,
+        stagger: 0.06,
+        ease: "power2.out"
+      });
+    });
+  }, [gsapLoaded, openIndex]);
+
+  const splitContentIntoLines = (content: string) => {
+    // First split into paragraphs
+    return content.split('\n').map(paragraph => {
+      // Then split each paragraph into sentences
+      return paragraph.split(/(?<=\.)/).filter(line => line.trim());
+    }).filter(paragraph => paragraph.length > 0);
   };
 
   return (
@@ -33,7 +78,23 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
               </button>
               {openIndex === index && (
                 <div className="pb-4">
-                  <p className=''>{service.content}</p>
+                  <div 
+                    ref={el => contentContainerRefs.current[index] = el}
+                    className="content-container"
+                  >
+                    {splitContentIntoLines(service.content).map((paragraph, pIndex) => (
+                      <div key={pIndex} className="mb-4 last:mb-0">
+                        {paragraph.map((line, lIndex) => (
+                          <div 
+                            key={`${pIndex}-${lIndex}`}
+                            className="content-line opacity-0 inline"
+                          >
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
