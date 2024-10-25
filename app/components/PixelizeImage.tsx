@@ -81,30 +81,41 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
 
         const isMobile = window.innerWidth <= 768;
 
-        // Store the ScrollTrigger instance
-        scrollTriggerRef.current = ScrollTrigger.create({
-          trigger: containerRef.current,
-          start: isMobile ? 'top bottom-=15%' : 'top bottom-=20%',
-          end: isMobile ? 'top center' : 'top center+=20%',
-          onUpdate: (self) => {
-            depixelize(self.progress);
-          },
-          onEnter: () => {
-            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
-          },
-          onLeave: () => {
-            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
-          },
-          onEnterBack: () => {
-            gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
-            gsap.to(imageRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
-          },
-          onLeaveBack: () => {
-            gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
-          },
-          scroller: inOverlay ? ".overflow-y-auto" : undefined,
-        });
+        // Check if element is already in view
+        const rect = containerRef.current.getBoundingClientRect();
+        const isInView = rect.top < window.innerHeight && rect.bottom > 0;
+
+        if (isInView) {
+          // If already in view, immediately show the unpixelated image
+          depixelize(1);
+          gsap.set(canvasRef.current, { opacity: 0 });
+          gsap.set(imageRef.current, { opacity: 1 });
+        } else {
+          // Store the ScrollTrigger instance
+          scrollTriggerRef.current = ScrollTrigger.create({
+            trigger: containerRef.current,
+            start: isMobile ? 'top bottom' : 'top bottom',
+            end: isMobile ? 'bottom top' : 'bottom top',
+            onUpdate: (self) => {
+              depixelize(self.progress);
+            },
+            onEnter: () => {
+              gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+            },
+            onLeave: () => {
+              gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(imageRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+            },
+            onEnterBack: () => {
+              gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(imageRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+            },
+            onLeaveBack: () => {
+              gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+            },
+            scroller: inOverlay ? ".overflow-y-auto" : undefined,
+          });
+        }
 
         // Force a refresh of ScrollTrigger
         ScrollTrigger.refresh();
