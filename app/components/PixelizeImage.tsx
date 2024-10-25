@@ -19,6 +19,7 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef<ScrollTriggerInstance | null>(null);
+  const initializedRef = useRef(false);
 
   const initializePixelatedState = (img: HTMLImageElement) => {
     if (canvasRef.current && !disableEffect) {
@@ -35,9 +36,25 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize);
         ctx.drawImage(canvasRef.current, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize, 0, 0, img.width, img.height);
+
+        // Always start with canvas visible and image hidden
+        canvasRef.current.style.opacity = '1';
+        if (imageRef.current) {
+          imageRef.current.style.opacity = '0';
+        }
+        initializedRef.current = true;
       }
     }
   };
+
+  // Immediate initialization effect
+  useEffect(() => {
+    if (!isLoaded || initializedRef.current) return;
+
+    if (imageRef.current) {
+      initializePixelatedState(imageRef.current);
+    }
+  }, [isLoaded]);
 
   useEffect(() => {
     if (disableEffect) return;
@@ -79,8 +96,6 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           }
         };
 
-        const isMobile = window.innerWidth <= 768;
-
         // Check if element is already in view
         const rect = containerRef.current.getBoundingClientRect();
         const isInView = rect.top < window.innerHeight && rect.bottom > 0;
@@ -91,27 +106,33 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           gsap.set(canvasRef.current, { opacity: 0 });
           gsap.set(imageRef.current, { opacity: 1 });
         } else {
+          // Ensure pixelated state is visible
+          if (!initializedRef.current && imageRef.current) {
+            initializePixelatedState(imageRef.current);
+          }
+
           // Store the ScrollTrigger instance
           scrollTriggerRef.current = ScrollTrigger.create({
             trigger: containerRef.current,
-            start: isMobile ? 'top bottom' : 'top bottom',
-            end: isMobile ? 'bottom top' : 'bottom top',
+            start: 'top bottom-=10%',
+            end: 'top center+=20%',
+            scrub: 0.5,
             onUpdate: (self) => {
               depixelize(self.progress);
             },
             onEnter: () => {
-              gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(canvasRef.current, { opacity: 1, duration: 0.1 });
             },
             onLeave: () => {
-              gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
-              gsap.to(imageRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(canvasRef.current, { opacity: 0, duration: 0.1 });
+              gsap.to(imageRef.current, { opacity: 1, duration: 0.1 });
             },
             onEnterBack: () => {
-              gsap.to(canvasRef.current, { opacity: 1, duration: isMobile ? 0.05 : 0.2 });
-              gsap.to(imageRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(canvasRef.current, { opacity: 1, duration: 0.1 });
+              gsap.to(imageRef.current, { opacity: 0, duration: 0.1 });
             },
             onLeaveBack: () => {
-              gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
+              gsap.to(canvasRef.current, { opacity: 0, duration: 0.1 });
             },
             scroller: inOverlay ? ".overflow-y-auto" : undefined,
           });
@@ -135,7 +156,6 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
     const img = new Image();
     img.src = src;
     img.onload = () => {
-      initializePixelatedState(img);
       setIsLoaded(true);
     };
     img.onerror = () => {
@@ -165,13 +185,18 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
       )}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full object-cover opacity-100"
+        className="absolute inset-0 w-full h-full object-cover"
       />
       <img
         ref={imageRef}
         src={src}
         alt={alt}
-        className="w-full h-full object-cover opacity-0"
+        className="w-full h-full object-cover"
+        onLoad={() => {
+          if (imageRef.current && !initializedRef.current) {
+            initializePixelatedState(imageRef.current);
+          }
+        }}
       />
     </div>
   );
