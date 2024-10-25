@@ -510,6 +510,12 @@ footer {
 .plastic-card-effect {
   position: relative;
   overflow: hidden;
+  background-color: var(--color-contrast-higher);
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -ms-border-radius: 5px;
+  -o-border-radius: 5px;
 }
 
 .plastic-card-effect::before {
