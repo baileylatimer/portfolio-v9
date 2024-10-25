@@ -8,12 +8,36 @@ interface PixelizeImageProps {
   inOverlay?: boolean;
 }
 
+interface ScrollTriggerInstance {
+  kill: () => void;
+}
+
 const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disableEffect = false, inOverlay = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollTriggerRef = useRef<ScrollTriggerInstance | null>(null);
+
+  const initializePixelatedState = (img: HTMLImageElement) => {
+    if (canvasRef.current && !disableEffect) {
+      canvasRef.current.width = img.width;
+      canvasRef.current.height = img.height;
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        const calculatePixelSize = (width: number, height: number) => {
+          const totalPixels = 18;
+          return Math.sqrt((width * height) / totalPixels);
+        };
+
+        const initialPixelSize = calculatePixelSize(img.width, img.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize);
+        ctx.drawImage(canvasRef.current, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize, 0, 0, img.width, img.height);
+      }
+    }
+  };
 
   useEffect(() => {
     if (disableEffect) return;
@@ -29,8 +53,13 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
       gsap.registerPlugin(ScrollTrigger);
 
       if (isLoaded && canvasRef.current && imageRef.current && containerRef.current) {
+        // Kill previous ScrollTrigger instance if it exists
+        if (scrollTriggerRef.current) {
+          scrollTriggerRef.current.kill();
+        }
+
         const calculatePixelSize = (width: number, height: number) => {
-          const totalPixels = 18; // Target number of pixels
+          const totalPixels = 18;
           return Math.sqrt((width * height) / totalPixels);
         };
 
@@ -50,9 +79,10 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           }
         };
 
-        const isMobile = window.innerWidth <= 768; // Adjust this breakpoint as needed
+        const isMobile = window.innerWidth <= 768;
 
-        ScrollTrigger.create({
+        // Store the ScrollTrigger instance
+        scrollTriggerRef.current = ScrollTrigger.create({
           trigger: containerRef.current,
           start: isMobile ? 'top bottom-=15%' : 'top bottom-=20%',
           end: isMobile ? 'top center' : 'top center+=20%',
@@ -73,35 +103,29 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
           onLeaveBack: () => {
             gsap.to(canvasRef.current, { opacity: 0, duration: isMobile ? 0.05 : 0.2 });
           },
-          scroller: inOverlay ? ".overflow-y-auto" : undefined, // Use the overlay scroller only when in overlay
+          scroller: inOverlay ? ".overflow-y-auto" : undefined,
         });
+
+        // Force a refresh of ScrollTrigger
+        ScrollTrigger.refresh();
       }
     };
 
     loadGSAP();
+
+    return () => {
+      if (scrollTriggerRef.current) {
+        scrollTriggerRef.current.kill();
+      }
+    };
   }, [isLoaded, src, disableEffect, inOverlay]);
 
   useEffect(() => {
     const img = new Image();
     img.src = src;
     img.onload = () => {
+      initializePixelatedState(img);
       setIsLoaded(true);
-      if (canvasRef.current && imageRef.current && !disableEffect) {
-        canvasRef.current.width = img.width;
-        canvasRef.current.height = img.height;
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) {
-          const calculatePixelSize = (width: number, height: number) => {
-            const totalPixels = 18; // Target number of pixels
-            return Math.sqrt((width * height) / totalPixels);
-          };
-
-          const initialPixelSize = calculatePixelSize(img.width, img.height);
-          ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(img, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize);
-          ctx.drawImage(canvasRef.current, 0, 0, img.width / initialPixelSize, img.height / initialPixelSize, 0, 0, img.width, img.height);
-        }
-      }
     };
     img.onerror = () => {
       setError('Failed to load image');
@@ -130,7 +154,7 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
       )}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover opacity-100"
       />
       <img
         ref={imageRef}
