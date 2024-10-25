@@ -9,13 +9,14 @@ import { useOutletContext } from '@remix-run/react';
 
 interface HeroProps {
   bottomElementsScale?: number;
+  mediaUrl: string;
 }
 
 interface OutletContextType {
   openSecretSection: () => void;
 }
 
-export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
+export default function Hero({ bottomElementsScale = 1, mediaUrl }: HeroProps) {
   const desktopStarWidth = 340 * bottomElementsScale;
   const desktopStarHeight = 71 * bottomElementsScale;
   const desktopFlagWidth = 143 * bottomElementsScale;
@@ -23,6 +24,7 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
   const navigate = useNavigate();
 
   const { openSecretSection } = useOutletContext<OutletContextType>();
+  const isVideo = mediaUrl?.endsWith('.mp4') || mediaUrl?.endsWith('.webm');
 
   console.log("Hero component rendered, openSecretSection:", openSecretSection);
 
@@ -39,11 +41,24 @@ export default function Hero({ bottomElementsScale = 1 }: HeroProps) {
 
   return (
     <div className="hero-section relative h-screen w-full overflow-hidden">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{backgroundImage: `url('/images/hero-bg--min.jpg')`}}
-      />
+      {/* Background Media */}
+      {isVideo ? (
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src={mediaUrl} type="video/mp4" />
+        </video>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{backgroundImage: `url('${mediaUrl}')`}}
+        />
+      )}
+      
       <div className="absolute inset-0 bg-black bg-opacity-20" style={{
         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.1) 39px, rgba(255,255,255,0.1) 40px),
                           repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.1) 39px, rgba(255,255,255,0.1) 40px)`
