@@ -5,6 +5,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useLocation,
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
@@ -93,6 +94,7 @@ function AppContent() {
   const mouseDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastClickTime = useRef(0);
   const [isSecretSectionOpen, setIsSecretSectionOpen] = useState(false);
+  const location = useLocation();
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
     if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.no-bullet-holes'))) return;
@@ -151,6 +153,8 @@ function AppContent() {
     setIsSecretSectionOpen(true);
   }, []);
 
+  const showFooter = location.pathname !== '/contact';
+
   return (
     <body
       className="min-h-screen relative flex flex-col"
@@ -173,7 +177,7 @@ function AppContent() {
         <Navigation />
         <Outlet context={{ openSecretSection }} />
       </div>
-      <Footer />
+      {showFooter && <Footer />}
       {bulletHoles?.map((hole: BulletHole) => (
         <BulletHole key={hole.id} x={hole.x} y={hole.y} />
       ))}

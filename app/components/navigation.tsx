@@ -155,7 +155,7 @@ export default function Navigation() {
   }, [gsapLoaded]);
 
   return (
-    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 left-0 right-0 transition-colors duration-300 z-50">
+    <nav ref={navRef} className="w-full px-4 py-4 fixed top-0 left-0 right-0 transition-colors duration-300 ">
       <div 
         ref={navBgRef} 
         className="absolute top-0 left-0 right-0 bottom-0 z-[-1] opacity-0"

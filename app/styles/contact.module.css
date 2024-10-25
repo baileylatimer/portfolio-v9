@@ -1,0 +1,31 @@
+.contactWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 1rem;
+  min-height: 100vh;
+  background-color: black;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 48rem; /* 3xl in Tailwind */
+  height: 600px; /* Fixed height for better control */
+  border-radius: 0.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Hide Typeform branding */
+iframe[data-qa="iframe"] {
+  height: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* Hide footer on contact page */
+:global(.contact-page) ~ footer {
+  display: none;
+}

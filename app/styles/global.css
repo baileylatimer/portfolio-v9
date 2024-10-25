@@ -186,6 +186,18 @@ margin-bottom:.3em;
   }
 }
 
+nav {
+  z-index: 10005
+}
+
+.page-hero {
+  z-index: 10004
+}
+
+.filter-modal-wrapper {
+  z-index: 10006
+}
+
 .nav-text, .footer-text {
   font-size: 15vw;
   line-height: 85%;
@@ -226,7 +238,6 @@ body {
 /* Navigation styles */
 nav {
   color: var(--color-bg);
-  z-index: 9999;
   overflow: visible; /* Change to visible to show nav-info */
   position: fixed;
   top: 0;
