@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef } from 'react';
 import CustomButton from './custom-button';
 
 interface FilterModalProps {
@@ -14,10 +14,47 @@ interface FilterModalProps {
   onClear: () => void;
 }
 
-// Type for GSAP Draggable instance
 interface DraggableInstance {
   kill: () => void;
 }
+
+interface FilterItemProps {
+  label: string;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+const FilterItem = forwardRef<HTMLButtonElement, FilterItemProps>(({ 
+  label, 
+  isSelected, 
+  onClick 
+}, ref) => (
+  <button 
+    ref={ref}
+    className={`filter-modal__filter-item w-full text-left uppercase font-supply color-bg ${!isSelected ? 'opacity-70' : ''}`}
+    onClick={onClick}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    role="checkbox"
+    aria-checked={isSelected}
+    tabIndex={0}
+  >
+    <span className="filter-modal__filter-item-brackets-inner anim-char" style={{ transitionDelay: '0.08s' }}>
+      [
+      <span className="filter-modal__filter-item-plus" aria-hidden="true">
+        {isSelected ? '+' : '\u00A0'}
+      </span>
+      ]
+    </span>
+    {' '}{label}
+  </button>
+));
+
+FilterItem.displayName = 'FilterItem';
 
 const FilterModal: React.FC<FilterModalProps> = ({
   isOpen,
@@ -33,11 +70,12 @@ const FilterModal: React.FC<FilterModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
+  const industryItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const serviceItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const draggableInstanceRef = useRef<DraggableInstance | null>(null);
 
   useEffect(() => {
-    // Dynamically import GSAP and Draggable
     Promise.all([
       import('gsap'),
       import('gsap/Draggable')
@@ -55,7 +93,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
     import('gsap/Draggable').then((DraggableModule) => {
       const Draggable = DraggableModule.default;
 
-      // Only enable dragging on desktop
       if (window.innerWidth > 768) {
         draggableInstanceRef.current = Draggable.create(modalContentRef.current, {
           type: "x,y",
@@ -72,6 +109,50 @@ const FilterModal: React.FC<FilterModalProps> = ({
           draggableInstanceRef.current.kill();
         }
       };
+    });
+  }, [gsapLoaded, isOpen]);
+
+  useEffect(() => {
+    if (!gsapLoaded || !isOpen) return;
+
+    import('gsap').then((gsapModule) => {
+      const gsap = gsapModule.default;
+
+      gsap.set([...industryItemsRef.current, ...serviceItemsRef.current], {
+        x: -20,
+        opacity: 0
+      });
+
+      const maxItems = Math.max(
+        industryItemsRef.current.length,
+        serviceItemsRef.current.length
+      );
+
+      for (let i = 0; i < maxItems; i++) {
+        const industryItem = industryItemsRef.current[i];
+        const serviceItem = serviceItemsRef.current[i];
+        const delay = i * 0.05;
+
+        if (industryItem) {
+          gsap.to(industryItem, {
+            x: 0,
+            opacity: 1,
+            duration: 0.2,
+            delay,
+            ease: "power1.out"
+          });
+        }
+
+        if (serviceItem) {
+          gsap.to(serviceItem, {
+            x: 0,
+            opacity: 1,
+            duration: 0.2,
+            delay,
+            ease: "power1.out"
+          });
+        }
+      }
     });
   }, [gsapLoaded, isOpen]);
 
@@ -94,31 +175,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const FilterItem = ({ label, isSelected, onClick }: { label: string; isSelected: boolean; onClick: () => void }) => (
-    <button 
-      className={`filter-modal__filter-item w-full text-left uppercase font-supply color-bg ${!isSelected ? 'opacity-70' : ''}`}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      role="checkbox"
-      aria-checked={isSelected}
-      tabIndex={0}
-    >
-      <span className="filter-modal__filter-item-brackets-inner anim-char" style={{ transitionDelay: '0.08s' }}>
-        [
-        <span className="filter-modal__filter-item-plus" aria-hidden="true">
-          {isSelected ? '+' : '\u00A0'}
-        </span>
-        ]
-      </span>
-      {' '}{label}
-    </button>
-  );
 
   return (
     <div 
@@ -148,13 +204,15 @@ const FilterModal: React.FC<FilterModalProps> = ({
             <h3 className="uppercase mb-4 font-supply">Industry</h3>
             <div className="space-y-2">
               <FilterItem
+                ref={el => industryItemsRef.current[0] = el}
                 label="All"
                 isSelected={selectedIndustries.length === 0}
                 onClick={() => onIndustryToggle('all')}
               />
-              {industries.map((industry) => (
+              {industries.map((industry, index) => (
                 <FilterItem
                   key={industry}
+                  ref={el => industryItemsRef.current[index + 1] = el}
                   label={industry}
                   isSelected={selectedIndustries.includes(industry)}
                   onClick={() => onIndustryToggle(industry)}
@@ -167,13 +225,15 @@ const FilterModal: React.FC<FilterModalProps> = ({
             <h3 className="uppercase mb-4 font-supply">Services</h3>
             <div className="space-y-2">
               <FilterItem
+                ref={el => serviceItemsRef.current[0] = el}
                 label="All"
                 isSelected={selectedServices.length === 0}
                 onClick={() => onServiceToggle('all')}
               />
-              {services.map((service) => (
+              {services.map((service, index) => (
                 <FilterItem
                   key={service}
+                  ref={el => serviceItemsRef.current[index + 1] = el}
                   label={service}
                   isSelected={selectedServices.includes(service)}
                   onClick={() => onServiceToggle(service)}

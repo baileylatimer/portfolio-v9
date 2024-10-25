@@ -18,7 +18,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   };
 
   return (
-    <section className="services-section py-16 bg-contrast-higher color-bg">
+    <section className="services-section py-16 bg-contrast-higher color-bg no-bullet-holes">
       <div className="container mx-auto px-4">
         <h2 className="eyebrow mb-8">SERVICES</h2>
         <div className="space-y-4">
