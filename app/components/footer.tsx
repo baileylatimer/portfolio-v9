@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from '@remix-run/react';
 import SvgCaFlag from './svg-ca-flag';
 import SvgStar from './svg-star';
 import SvgCoordinates from './svg-coordinates';
@@ -8,6 +9,8 @@ import CustomButton from './custom-button';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
+
   return (
     <footer className="relative bg-cover bg-top lg:bg-top pt-36 lg:pt-48 md:bg-[url('/images/footer-bg-extended.png')] bg-[url('/images/footer-bg-mobile.png')]">
       <div className='overflow-hidden relative'>
@@ -15,7 +18,7 @@ const Footer: React.FC = () => {
           <div className='flex flex-col lg:flex-row justify-center items-center lg:justify-between w-full pb-16'>
           <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-4 lg:mb-0 lg:block hidden'>Take your site to the next level</h4>
           <h4 className='eyebrow mix-blend-difference text-center lg:text-left mb-8 lg:mb-0 lg:hidden block mobile-eyebrow'>Take your site to <br /> the next level</h4>
-          <CustomButton>LET&apos;S TALK</CustomButton>
+          <CustomButton onClick={() => navigate('/contact')}>LET&apos;S TALK</CustomButton>
           </div>
   
           <div className="desktop hidden md:block font-secondary pb-24">
