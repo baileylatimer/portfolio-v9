@@ -42,7 +42,7 @@ const BulletHole: React.FC<BulletHoleProps> = ({ x, y }) => {
 
   return (
     <div 
-      className="absolute" 
+      className="absolute pointer-events-none" 
       style={{ 
         left: x, 
         top: y, 
@@ -60,7 +60,6 @@ const BulletHole: React.FC<BulletHoleProps> = ({ x, y }) => {
           height: '100%', 
           opacity,
           transition: 'opacity 0.5s',
-          pointerEvents: 'none',
           position: 'absolute',
           top: 0,
           left: 0,
@@ -73,8 +72,8 @@ const BulletHole: React.FC<BulletHoleProps> = ({ x, y }) => {
           position: 'absolute',
           width: '200px',
           height: '200px',
-          top: '-50%', // Move up by 150% of the bullet hole height
-          left: '-50%', // Center horizontally
+          top: '-50%',
+          left: '-50%',
         }}>
           <SmokeEffect duration={3000} /> 
           {smokeRendered.current = true}
