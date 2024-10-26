@@ -167,11 +167,11 @@ export default function Navigation() {
         <div className="flex flex-col">
           <Link ref={navTextRef} to="/" className="font-accent nav-text">LATIMER</Link>
           <div ref={navInfoRef} className="nav-info flex justify-between w-full mt-4 lg:mt-0">
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-1">
               <div>DIGITAL COWBOY</div>
               <div>LOS ANGELES, CA {time}</div>
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-1 no-bullet-holes">
               <Link to="/work" className="block">WORK</Link>
               <Link to="/about" className="block">ABOUT</Link>
             </div>
