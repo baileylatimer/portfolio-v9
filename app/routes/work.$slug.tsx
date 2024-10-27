@@ -2,6 +2,7 @@ import { json, LoaderFunction } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import { createClient } from '@sanity/client';
 import { PortableText } from '@portabletext/react';
+import type { PortableTextComponents } from '@portabletext/react';
 import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
@@ -235,20 +236,21 @@ NextProjectComponent.propTypes = {
   }).isRequired,
 };
 
-const portableTextComponents = {
+const portableTextComponents: PortableTextComponents = {
   list: {
-    bullet: ({children}: {children: React.ReactNode}) => <ul className="list-disc pl-4 mb-4">{children}</ul>,
-    number: ({children}: {children: React.ReactNode}) => <ol className="list-decimal pl-4 mb-4">{children}</ol>,
+    bullet: ({ children }) => <ul className="list-disc pl-4 mb-4">{children}</ul>,
+    number: ({ children }) => <ol className="list-decimal pl-4 mb-4">{children}</ol>,
   },
-  listItem: ({children}: {children: React.ReactNode}) => <li className="mb-1">{children}</li>,
+  listItem: ({ children }) => <li className="mb-1">{children}</li>,
   block: {
-    normal: ({children}: {children: React.ReactNode}) => <p className="mb-4">{children}</p>,
+    normal: ({ children }) => <p className="mb-4">{children}</p>,
   },
 };
 
 export default function Project() {
   const { project, nextProject } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const projectYear = new Date(project.projectDate).getFullYear();
 
@@ -258,10 +260,22 @@ export default function Project() {
   };
 
   useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     return () => {
+      window.removeEventListener('resize', checkMobile);
       document.body.style.overflow = '';
     };
   }, []);
+
+  const heroImage = isMobile && project.mobileImage?.asset?.url
+    ? project.mobileImage.asset.url
+    : project.mainImage.asset.url;
 
   return (
     <div className="project-page relative">
@@ -275,7 +289,7 @@ export default function Project() {
       <div className="project-hero-container relative">
         <div className="project-hero relative">
           <PixelizeImage
-            src={project.mainImage.asset.url}
+            src={heroImage}
             alt={project.title}
             className="w-full h-full object-cover"
             disableEffect={true}

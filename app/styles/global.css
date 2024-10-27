@@ -215,10 +215,8 @@ nav {
   --color-bg: #DCCFBE;
   --color-white: #fff;
   --color-contrast-higher: #1A1917;
-  --nav-height: auto; /* Change to auto to accommodate both nav-text and nav-info */
+  --nav-height: auto;
 }
-
-/* ... (keep all existing font-face declarations and other styles) ... */
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -233,18 +231,16 @@ body {
   background-repeat: repeat;
 }
 
-
-
 /* Navigation styles */
 nav {
   color: var(--color-bg);
-  overflow: visible; /* Change to visible to show nav-info */
+  overflow: visible;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   background-color: transparent;
-  padding-bottom: 1rem; /* Add some padding at the bottom */
+  padding-bottom: 1rem;
 }
 
 nav * {
@@ -259,7 +255,7 @@ nav * {
 
 .nav-info {
   transition: transform 0.3s ease;
-  opacity: 1; /* Ensure nav-info is visible */
+  opacity: 1;
 }
 
 @media screen and (min-width: 1024px) {
@@ -271,24 +267,14 @@ nav * {
 
 /* Adjust main content to account for fixed nav */
 main {
-  padding-top: calc(15vw * 0.85 + 2rem); /* Approximate nav height based on nav-text size and some extra space */
+  padding-top: calc(15vw * 0.85 + 2rem);
 }
 
 @media screen and (min-width: 1024px) {
   main {
-    padding-top: calc(16vw * 0.85 + 2rem); /* Adjust for larger screens */
+    padding-top: calc(16vw * 0.85 + 2rem);
   }
 }
-
-/* ... (keep all other existing styles) ... */
-
-
-
-
-
-
-
-
 
 footer {
   color: var(--color-bg); 
@@ -405,6 +391,27 @@ footer {
   transform: scale(1.05);
 }
 
+/* Fixed height for project cards */
+.project-card.fixed-height .aspect-w-16.aspect-h-9 {
+  height: 300px;
+}
+
+.project-card.fixed-height .plastic-wrap-container,
+.project-card.fixed-height .project-card-img {
+  height: 100%;
+}
+
+.project-card.fixed-height .project-card-img {
+  object-fit: cover;
+}
+
+@media screen and (min-width: 768px) {
+  .project-card.fixed-height .aspect-w-16.aspect-h-9 , .project-card img{
+    height: 550px;
+    display: block
+  }
+}
+
 /* Plastic Wrap Effect */
 .plastic-wrap-container {
   position: relative;
@@ -488,22 +495,6 @@ footer {
   border-width: 1px;
   line-height: 0;
   padding: 1em 1em 1.5em 1em;
-}
-
-/* Fixed height for non-full-width project cards */
-@media screen and (min-width: 768px) {
-  .project-card.fixed-height .aspect-w-16.aspect-h-9 {
-    height: 400px; /* Adjust this value as needed */
-  }
-
-  .project-card.fixed-height .plastic-wrap-container,
-  .project-card.fixed-height .project-card-img {
-    height: 100%;
-  }
-
-  .project-card.fixed-height .project-card-img {
-    object-fit: cover;
-  }
 }
 
 /* Plastic Card Effect */
