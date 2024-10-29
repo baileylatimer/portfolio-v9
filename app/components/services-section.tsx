@@ -1,9 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PixelizeImage from './PixelizeImage';
+
+interface ServiceMedia {
+  type?: 'image' | 'video';
+  image?: {
+    _ref: string;
+    url: string;
+  };
+  video?: {
+    _ref: string;
+    url: string;
+  };
+  alt?: string;
+}
 
 interface Service {
   _id: string;
   title: string;
   content: string;
+  media?: ServiceMedia;
 }
 
 interface ServicesSectionProps {
@@ -55,11 +70,41 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   }, [gsapLoaded, openIndex]);
 
   const splitContentIntoLines = (content: string) => {
-    // First split into paragraphs
     return content.split('\n').map(paragraph => {
-      // Then split each paragraph into sentences
       return paragraph.split(/(?<=\.)/).filter(line => line.trim());
     }).filter(paragraph => paragraph.length > 0);
+  };
+
+  const getMediaContent = (service: Service) => {
+    if (!service.media) return null;
+
+    const { type, image, video, alt } = service.media;
+
+    if (type === 'video' && video?.url) {
+      return (
+        <video
+          className="w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src={video.url} type="video/mp4" />
+        </video>
+      );
+    }
+
+    if (type === 'image' && image?.url) {
+      return (
+        <PixelizeImage
+          src={image.url}
+          alt={alt || service.title}
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -78,22 +123,31 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
               </button>
               {openIndex === index && (
                 <div className="pb-4">
-                  <div 
-                    ref={el => contentContainerRefs.current[index] = el}
-                    className="content-container"
-                  >
-                    {splitContentIntoLines(service.content).map((paragraph, pIndex) => (
-                      <div key={pIndex} className="mb-4 last:mb-0">
-                        {paragraph.map((line, lIndex) => (
-                          <div 
-                            key={`${pIndex}-${lIndex}`}
-                            className="content-line opacity-0 inline"
-                          >
-                            {line}
-                          </div>
-                        ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div 
+                      ref={el => contentContainerRefs.current[index] = el}
+                      className="content-container font-secondary text-md"
+                    >
+                      {splitContentIntoLines(service.content).map((paragraph, pIndex) => (
+                        <div key={pIndex} className="mb-4 last:mb-0">
+                          {paragraph.map((line, lIndex) => (
+                            <div 
+                              key={`${pIndex}-${lIndex}`}
+                              className="content-line opacity-0 inline"
+                            >
+                              {line}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    {service.media && (
+                      <div className="relative w-full pb-[100%]">
+                        <div className="absolute inset-0">
+                          {getMediaContent(service)}
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

@@ -24,7 +24,19 @@ export async function loader() {
     const servicesQuery = `*[_type == "service"] | order(order asc) {
       _id,
       title,
-      content
+      content,
+      media {
+        type,
+        alt,
+        "image": image.asset->{
+          _ref,
+          url
+        },
+        "video": video.asset->{
+          _ref,
+          url
+        }
+      }
     }`;
 
     const partnersQuery = `*[_type == "partner"] | order(order asc) {
