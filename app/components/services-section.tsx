@@ -33,6 +33,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   const contentContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const imageRefs = useRef<{ [key: string]: PixelizeImageRef | null }>({});
   const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const tabContentRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const initGSAP = async () => {
@@ -97,8 +98,18 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
             }
           };
 
-          // Create scroll trigger for each service
           ScrollTrigger.create(scrollConfig);
+        }
+      });
+
+      // Initialize tab content heights
+      tabContentRefs.current.forEach(ref => {
+        if (ref) {
+          gsap.set(ref, {
+            height: 0,
+            opacity: 0,
+            display: 'none'
+          });
         }
       });
     };
@@ -106,7 +117,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
     initGSAP();
 
     return () => {
-      // Cleanup ScrollTrigger instances
       if (typeof window !== 'undefined') {
         import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
           ScrollTrigger.getAll().forEach(trigger => trigger.kill());
@@ -115,12 +125,71 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
     };
   }, []);
 
+  const animateTabContent = async (index: number, isOpening: boolean) => {
+    if (!gsapLoaded) return;
+
+    const { gsap } = await import('gsap');
+    const content = tabContentRefs.current[index];
+    if (!content) return;
+
+    // Show content before measuring height
+    if (isOpening) {
+      gsap.set(content, {
+        display: 'block',
+        height: 'auto',
+        opacity: 0
+      });
+    }
+
+    // Get the natural height
+    const height = content.scrollHeight;
+
+    // Create timeline for smooth animation
+    const tl = gsap.timeline({
+      onComplete: () => {
+        if (!isOpening) {
+          gsap.set(content, { display: 'none' });
+        }
+      }
+    });
+
+    if (isOpening) {
+      tl.fromTo(content, 
+        { height: 0, opacity: 0 },
+        { height, opacity: 1, duration: 0.5, ease: 'power2.inOut' }
+      ).set(content, { height: 'auto' });
+    } else {
+      tl.to(content, {
+        height: 0,
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power2.inOut'
+      });
+    }
+  };
+
+  const toggleAccordion = (index: number) => {
+    const isOpening = openIndex !== index;
+    
+    // Close current tab if open
+    if (openIndex !== null) {
+      animateTabContent(openIndex, false);
+    }
+
+    // Open new tab or close current
+    if (isOpening) {
+      setOpenIndex(index);
+      animateTabContent(index, true);
+    } else {
+      setOpenIndex(null);
+    }
+  };
+
   // Effect to handle image depixelization when tab opens
   useEffect(() => {
     if (openIndex !== null) {
       const service = services[openIndex];
       if (service.media?.type === 'image') {
-        // Small delay to ensure image is mounted and initialized
         const timer = setTimeout(() => {
           const imageRef = imageRefs.current[service._id];
           if (imageRef) {
@@ -132,10 +201,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
     }
   }, [openIndex, services]);
 
-  const toggleAccordion = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-
   useEffect(() => {
     if (!gsapLoaded || openIndex === null) return;
 
@@ -145,16 +210,13 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
       const currentContainer = contentContainerRefs.current[openIndex];
       if (!currentContainer) return;
 
-      // Get all lines within the container
       const lines = currentContainer.querySelectorAll('.content-line');
       
-      // Reset all lines to initial state
       gsap.set(lines, { 
         opacity: 0,
         y: 15
       });
 
-      // Animate lines
       gsap.to(lines, {
         opacity: 1,
         y: 0,
@@ -225,7 +287,10 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
                   <PlusMinusToggle isOpen={openIndex === index} />
                 </div>
               </button>
-              {openIndex === index && (
+              <div 
+                ref={el => tabContentRefs.current[index] = el}
+                className="overflow-hidden"
+              >
                 <div className="pb-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div 
@@ -254,7 +319,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
                     )}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
