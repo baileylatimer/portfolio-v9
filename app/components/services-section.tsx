@@ -32,11 +32,77 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const contentContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const imageRefs = useRef<{ [key: string]: PixelizeImageRef | null }>({});
+  const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    import('gsap').then(() => {
+    const initGSAP = async () => {
+      const { gsap } = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      gsap.registerPlugin(ScrollTrigger);
       setGsapLoaded(true);
-    });
+
+      // Set initial state for all service items
+      serviceRefs.current.forEach((ref, index) => {
+        if (ref) {
+          gsap.set(ref, {
+            opacity: 0,
+            y: 15
+          });
+
+          // Create scroll trigger for each service
+          ScrollTrigger.create({
+            trigger: ref,
+            start: 'top bottom-=50',
+            end: 'bottom top+=50',
+            onEnter: () => {
+              gsap.to(ref, {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                ease: 'power2.out',
+                delay: index * 0.15
+              });
+            },
+            onLeave: () => {
+              gsap.to(ref, {
+                opacity: 0,
+                y: -15,
+                duration: 0.8,
+                ease: 'power2.in'
+              });
+            },
+            onEnterBack: () => {
+              gsap.to(ref, {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                ease: 'power2.out',
+                delay: index * 0.15
+              });
+            },
+            onLeaveBack: () => {
+              gsap.to(ref, {
+                opacity: 0,
+                y: 15,
+                duration: 0.8,
+                ease: 'power2.in'
+              });
+            }
+          });
+        }
+      });
+    };
+
+    initGSAP();
+
+    return () => {
+      // Cleanup ScrollTrigger instances
+      if (typeof window !== 'undefined') {
+        import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+          ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+        });
+      }
+    };
   }, []);
 
   // Effect to handle image depixelization when tab opens
@@ -135,9 +201,13 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
         <h2 className="eyebrow mb-8">SERVICES</h2>
         <div className="space-y-4 cursor-pointer">
           {services.map((service, index) => (
-            <div key={service._id} className="border-b border-dashed border-white last:border-b-0 cursor-pointer">
+            <div 
+              key={service._id} 
+              ref={el => serviceRefs.current[index] = el}
+              className="border-b border-dashed border-white last:border-b-0 cursor-pointer"
+            >
               <button
-                className="w-full text-left py-4 flex justify-between items-center focus:outline-none group "
+                className="w-full text-left py-4 flex justify-between items-center focus:outline-none group"
                 onClick={() => toggleAccordion(index)}
               >
                 <span className="font-default uppercase">{service.title}</span>
