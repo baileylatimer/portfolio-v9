@@ -41,6 +41,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
       gsap.registerPlugin(ScrollTrigger);
       setGsapLoaded(true);
 
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
       // Set initial state for all service items
       serviceRefs.current.forEach((ref, index) => {
         if (ref) {
@@ -49,8 +51,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
             y: 15
           });
 
-          // Create scroll trigger for each service
-          ScrollTrigger.create({
+          const scrollConfig = {
             trigger: ref,
             start: 'top bottom-=50',
             end: 'bottom top+=50',
@@ -64,31 +65,40 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
               });
             },
             onLeave: () => {
-              gsap.to(ref, {
-                opacity: 0,
-                y: -15,
-                duration: 0.8,
-                ease: 'power2.in'
-              });
+              if (!isMobile) {
+                gsap.to(ref, {
+                  opacity: 0,
+                  y: -15,
+                  duration: 0.8,
+                  ease: 'power2.in'
+                });
+              }
             },
             onEnterBack: () => {
-              gsap.to(ref, {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: 'power2.out',
-                delay: index * 0.15
-              });
+              if (!isMobile) {
+                gsap.to(ref, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.8,
+                  ease: 'power2.out',
+                  delay: index * 0.15
+                });
+              }
             },
             onLeaveBack: () => {
-              gsap.to(ref, {
-                opacity: 0,
-                y: 15,
-                duration: 0.8,
-                ease: 'power2.in'
-              });
+              if (!isMobile) {
+                gsap.to(ref, {
+                  opacity: 0,
+                  y: 15,
+                  duration: 0.8,
+                  ease: 'power2.in'
+                });
+              }
             }
-          });
+          };
+
+          // Create scroll trigger for each service
+          ScrollTrigger.create(scrollConfig);
         }
       });
     };
@@ -217,7 +227,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
               </button>
               {openIndex === index && (
                 <div className="pb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-64">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div 
                       ref={el => contentContainerRefs.current[index] = el}
                       className="content-container text-md font-secondary"
