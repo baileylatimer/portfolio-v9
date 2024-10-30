@@ -217,7 +217,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
               </button>
               {openIndex === index && (
                 <div className="pb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-64">
                     <div 
                       ref={el => contentContainerRefs.current[index] = el}
                       className="content-container text-md font-secondary"
