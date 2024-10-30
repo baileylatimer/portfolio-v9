@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface PixelizeImageProps {
   src: string;
@@ -6,13 +6,25 @@ interface PixelizeImageProps {
   className?: string;
   disableEffect?: boolean;
   inOverlay?: boolean;
+  manualTrigger?: boolean;
+}
+
+export interface PixelizeImageRef {
+  triggerDepixelize: () => void;
 }
 
 interface ScrollTriggerInstance {
   kill: () => void;
 }
 
-const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disableEffect = false, inOverlay = false }) => {
+const PixelizeImage = forwardRef<PixelizeImageRef, PixelizeImageProps>(({ 
+  src, 
+  alt, 
+  className, 
+  disableEffect = false,
+  inOverlay = false,
+  manualTrigger = false
+}, ref) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -47,7 +59,46 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
     }
   };
 
-  // Immediate initialization effect
+  useImperativeHandle(ref, () => ({
+    triggerDepixelize: async () => {
+      if (canvasRef.current && imageRef.current) {
+        const { gsap } = await import('gsap');
+        
+        const calculatePixelSize = (width: number, height: number) => {
+          const totalPixels = 18;
+          return Math.sqrt((width * height) / totalPixels);
+        };
+
+        const startPixelSize = calculatePixelSize(canvasRef.current.width, canvasRef.current.height);
+        const endPixelSize = 1;
+        const duration = 0.5;
+
+        gsap.to({}, {
+          duration,
+          onUpdate: function() {
+            const progress = this.progress();
+            if (canvasRef.current && imageRef.current) {
+              const ctx = canvasRef.current.getContext('2d');
+              if (ctx) {
+                const currentPixelSize = gsap.utils.interpolate(startPixelSize, endPixelSize, progress);
+                ctx.imageSmoothingEnabled = false;
+                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                ctx.drawImage(imageRef.current, 0, 0, canvasRef.current.width / currentPixelSize, canvasRef.current.height / currentPixelSize);
+                ctx.drawImage(canvasRef.current, 0, 0, canvasRef.current.width / currentPixelSize, canvasRef.current.height / currentPixelSize, 0, 0, canvasRef.current.width, canvasRef.current.height);
+              }
+            }
+          },
+          onComplete: () => {
+            if (canvasRef.current && imageRef.current) {
+              gsap.to(canvasRef.current, { opacity: 0, duration: 0.2 });
+              gsap.to(imageRef.current, { opacity: 1, duration: 0.2 });
+            }
+          }
+        });
+      }
+    }
+  }));
+
   useEffect(() => {
     if (!isLoaded || initializedRef.current) return;
 
@@ -57,7 +108,7 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
   }, [isLoaded]);
 
   useEffect(() => {
-    if (disableEffect) return;
+    if (disableEffect || manualTrigger) return;
 
     let gsap: typeof import('gsap').default;
     let ScrollTrigger: typeof import('gsap/ScrollTrigger').default;
@@ -150,7 +201,7 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
         scrollTriggerRef.current.kill();
       }
     };
-  }, [isLoaded, src, disableEffect, inOverlay]);
+  }, [isLoaded, src, disableEffect, inOverlay, manualTrigger]);
 
   useEffect(() => {
     const img = new Image();
@@ -161,7 +212,7 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
     img.onerror = () => {
       setError('Failed to load image');
     };
-  }, [src, disableEffect]);
+  }, [src]);
 
   if (disableEffect) {
     return (
@@ -200,6 +251,8 @@ const PixelizeImage: React.FC<PixelizeImageProps> = ({ src, alt, className, disa
       />
     </div>
   );
-};
+});
+
+PixelizeImage.displayName = 'PixelizeImage';
 
 export default PixelizeImage;

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import PixelizeImage from './PixelizeImage';
+/* eslint-disable react/prop-types */
+import { useState, useEffect, useRef } from 'react';
+import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
 
 interface ServiceMedia {
   type?: 'image' | 'video';
@@ -29,12 +30,30 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const contentContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const imageRefs = useRef<{ [key: string]: PixelizeImageRef | null }>({});
 
   useEffect(() => {
     import('gsap').then(() => {
       setGsapLoaded(true);
     });
   }, []);
+
+  // Effect to handle image depixelization when tab opens
+  useEffect(() => {
+    if (openIndex !== null) {
+      const service = services[openIndex];
+      if (service.media?.type === 'image') {
+        // Small delay to ensure image is mounted and initialized
+        const timer = setTimeout(() => {
+          const imageRef = imageRefs.current[service._id];
+          if (imageRef) {
+            imageRef.triggerDepixelize();
+          }
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [openIndex, services]);
 
   const toggleAccordion = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -97,9 +116,11 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
     if (type === 'image' && image?.url) {
       return (
         <PixelizeImage
+          ref={ref => imageRefs.current[service._id] = ref}
           src={image.url}
           alt={alt || service.title}
           className="w-full h-full object-cover"
+          manualTrigger={true}
         />
       );
     }
@@ -126,7 +147,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div 
                       ref={el => contentContainerRefs.current[index] = el}
-                      className="content-container font-secondary text-md"
+                      className="content-container text-md font-secondary"
                     >
                       {splitContentIntoLines(service.content).map((paragraph, pIndex) => (
                         <div key={pIndex} className="mb-4 last:mb-0">
