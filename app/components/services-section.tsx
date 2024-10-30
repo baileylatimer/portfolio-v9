@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from 'react';
 import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
+import PlusMinusToggle from './plus-minus-toggle';
 
 interface ServiceMedia {
   type?: 'image' | 'video';
@@ -132,15 +133,17 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
     <section className="services-section py-16 bg-contrast-higher color-bg no-bullet-holes">
       <div className="container mx-auto px-4">
         <h2 className="eyebrow mb-8">SERVICES</h2>
-        <div className="space-y-4">
+        <div className="space-y-4 cursor-pointer">
           {services.map((service, index) => (
-            <div key={service._id} className="border-b border-dashed border-white last:border-b-0">
+            <div key={service._id} className="border-b border-dashed border-white last:border-b-0 cursor-pointer">
               <button
-                className="w-full text-left py-4 flex justify-between items-center focus:outline-none"
+                className="w-full text-left py-4 flex justify-between items-center focus:outline-none group "
                 onClick={() => toggleAccordion(index)}
               >
                 <span className="font-default uppercase">{service.title}</span>
-                <span className="text-2xl">{openIndex === index ? '-' : '+'}</span>
+                <div className="flex-shrink-0 ml-4 transition-transform duration-300">
+                  <PlusMinusToggle isOpen={openIndex === index} />
+                </div>
               </button>
               {openIndex === index && (
                 <div className="pb-4">
