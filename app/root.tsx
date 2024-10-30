@@ -7,7 +7,7 @@ import {
   useLoaderData,
   useLocation,
 } from "@remix-run/react";
-import type { LinksFunction, LoaderFunction } from "@remix-run/node";
+import type { LinksFunction, LoaderFunction, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import BulletHole from '~/components/BulletHole';
@@ -28,6 +28,32 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: filterModalStyles },
   { rel: "icon", type: "image/gif", href: "/images/favicon.gif" },
 ];
+
+export const meta: MetaFunction = () => {
+  const title = "Latimer Design | Custom Shopify & Brand Design Studio LA";
+  const description = "Los Angeles-based digital studio crafting bold, custom Shopify experiences and brand identities. We transform innovative ideas into high-converting digital frontiers for ambitious brands.";
+  const image = "https://latimer.me/images/social-sharing.jpg";
+
+  return [
+    { title },
+    { name: "description", content: description },
+    
+    // Open Graph
+    { property: "og:type", content: "website" },
+    { property: "og:url", content: "https://latimer.me" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    { property: "og:image", content: image },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    
+    // Twitter Card
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: title },
+    { name: "twitter:description", content: description },
+    { name: "twitter:image", content: image },
+  ];
+};
 
 interface BulletHole {
   id: number;
