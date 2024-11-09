@@ -42,8 +42,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
       gsap.registerPlugin(ScrollTrigger);
       setGsapLoaded(true);
 
-      const isMobile = window.matchMedia('(max-width: 768px)').matches;
-
       // Set initial state for all service items
       serviceRefs.current.forEach((ref, index) => {
         if (ref) {
@@ -52,10 +50,10 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
             y: 15
           });
 
-          const scrollConfig = {
+          // Create scroll trigger for each service
+          ScrollTrigger.create({
             trigger: ref,
             start: 'top bottom-=50',
-            end: 'bottom top+=50',
             onEnter: () => {
               gsap.to(ref, {
                 opacity: 1,
@@ -65,40 +63,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
                 delay: index * 0.15
               });
             },
-            onLeave: () => {
-              if (!isMobile) {
-                gsap.to(ref, {
-                  opacity: 0,
-                  y: -15,
-                  duration: 0.8,
-                  ease: 'power2.in'
-                });
-              }
-            },
-            onEnterBack: () => {
-              if (!isMobile) {
-                gsap.to(ref, {
-                  opacity: 1,
-                  y: 0,
-                  duration: 0.8,
-                  ease: 'power2.out',
-                  delay: index * 0.15
-                });
-              }
-            },
-            onLeaveBack: () => {
-              if (!isMobile) {
-                gsap.to(ref, {
-                  opacity: 0,
-                  y: 15,
-                  duration: 0.8,
-                  ease: 'power2.in'
-                });
-              }
-            }
-          };
-
-          ScrollTrigger.create(scrollConfig);
+            once: true // Only trigger once when scrolling down
+          });
         }
       });
 
