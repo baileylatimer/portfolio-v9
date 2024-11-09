@@ -45,7 +45,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
       // Set initial state for all service items
       serviceRefs.current.forEach((ref, index) => {
         if (ref) {
-          gsap.set(ref, {
+          gsap.set(ref, { 
             opacity: 0,
             y: 15
           });
