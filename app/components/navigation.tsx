@@ -202,75 +202,39 @@ export default function Navigation() {
           // Track existing ScrollTrigger instances
           console.log('Existing ScrollTrigger instances before setup:', ScrollTrigger.getAll().length);
           
-          // CRITICAL FIX: Set up light section triggers if they exist
+          // DIAGNOSTIC LOGGING: Log detailed information about light sections
+          console.log('Querying for light sections...');
           const lightSections = gsap.utils.toArray('.light-section') as HTMLElement[];
-          console.log('Light sections found:', lightSections.length);
+          console.log(`Light sections found: ${lightSections.length}`);
           
-          // Use unknown[] instead of any[] to satisfy ESLint while avoiding TypeScript errors
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const lightSectionTriggers: unknown[] = [];
-          
-          if (lightSections.length > 0) {
-            lightSections.forEach((section, index) => {
-              console.log(`Creating ScrollTrigger for light section ${index}`);
-              const trigger = ScrollTrigger.create({
-                id: `lightSection-${index}`,
-                trigger: section,
-                start: 'top 10%',
-                end: 'bottom 10%',
-                onEnter: () => {
-                  console.log(`Light section ${index} entered`);
-                  gsap.to(navRef.current, { 
-                    color: 'var(--color-contrast-higher)', 
-                    duration: 0.3 
-                  });
-                  gsap.to(navBgRef.current, {
-                    opacity: 1,
-                    duration: 0.3
-                  });
-                },
-                onLeave: () => {
-                  console.log(`Light section ${index} left`);
-                  gsap.to(navRef.current, { 
-                    color: 'var(--color-bg)', 
-                    duration: 0.3 
-                  });
-                  gsap.to(navBgRef.current, {
-                    opacity: 0,
-                    duration: 0.3
-                  });
-                },
-                onEnterBack: () => {
-                  console.log(`Light section ${index} entered back`);
-                  gsap.to(navRef.current, { 
-                    color: 'var(--color-contrast-higher)', 
-                    duration: 0.3 
-                  });
-                  gsap.to(navBgRef.current, {
-                    opacity: 1,
-                    duration: 0.3
-                  });
-                },
-                onLeaveBack: () => {
-                  console.log(`Light section ${index} left back`);
-                  gsap.to(navRef.current, { 
-                    color: 'var(--color-bg)', 
-                    duration: 0.3 
-                  });
-                  gsap.to(navBgRef.current, {
-                    opacity: 0,
-                    duration: 0.3
-                  });
-                },
-              });
-              
-              lightSectionTriggers.push(trigger);
+          // Log details about each light section
+          lightSections.forEach((section, index) => {
+            const rect = section.getBoundingClientRect();
+            console.log(`Light section ${index} details:`, {
+              id: section.id,
+              className: section.className,
+              position: { top: rect.top, left: rect.left },
+              size: { width: rect.width, height: rect.height },
+              visible: rect.top < window.innerHeight && rect.bottom > 0,
+              parent: section.parentElement?.tagName,
+              children: section.children.length
             });
-            
-            console.log(`Created ${lightSectionTriggers.length} light section triggers`);
-          } else {
-            console.log('No light sections found on this page');
-          }
+          });
+          
+          // DIAGNOSTIC LOGGING: Check if we can find light sections with different queries
+          const lightSectionsByClass = document.querySelectorAll('.light-section');
+          console.log(`Light sections found by document.querySelectorAll: ${lightSectionsByClass.length}`);
+          
+          // Check if there are any elements with background color that might be light sections
+          const allElements = document.querySelectorAll('*');
+          let potentialLightSections = 0;
+          Array.from(allElements).forEach(el => {
+            const bgColor = window.getComputedStyle(el).backgroundColor;
+            if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+              potentialLightSections++;
+            }
+          });
+          console.log(`Potential light sections based on background color: ${potentialLightSections}`);
 
           // CRITICAL FIX: Use a direct window scroll event listener instead of ScrollTrigger
           // This ensures the scroll behavior works across all pages and after navigation
@@ -280,7 +244,43 @@ export default function Navigation() {
           let lastScrollTop = 0;
           let navTextVisible = true;
           
-          // Function to handle scroll events
+          // DIAGNOSTIC LOGGING: Add a MutationObserver to track DOM changes
+          console.log('Setting up MutationObserver to track DOM changes');
+          const observer = new MutationObserver((mutations) => {
+            console.log(`DOM mutation detected: ${mutations.length} mutations`);
+            
+            // Check if light sections have changed
+            const currentLightSections = document.querySelectorAll('.light-section');
+            console.log(`Light sections after DOM mutation: ${currentLightSections.length}`);
+            
+            if (currentLightSections.length !== lightSections.length) {
+              console.log('Light sections count changed! Re-querying...');
+              const newLightSections = gsap.utils.toArray('.light-section') as HTMLElement[];
+              console.log(`New light sections found: ${newLightSections.length}`);
+              
+              // Log details about each new light section
+              newLightSections.forEach((section, index) => {
+                const rect = section.getBoundingClientRect();
+                console.log(`New light section ${index} details:`, {
+                  id: section.id,
+                  className: section.className,
+                  position: { top: rect.top, left: rect.left },
+                  size: { width: rect.width, height: rect.height },
+                  visible: rect.top < window.innerHeight && rect.bottom > 0
+                });
+              });
+            }
+          });
+          
+          // Start observing the document with the configured parameters
+          observer.observe(document.body, { 
+            childList: true, 
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+          });
+          
+          // Function to handle scroll events with additional diagnostics
           const handleScroll = () => {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollDirection = scrollTop > lastScrollTop ? 1 : -1;
@@ -294,6 +294,59 @@ export default function Navigation() {
               navInfoTransform: navInfoRef.current?.style.transform
             });
             
+          // DIAGNOSTIC LOGGING: Check if we're over a light section and update nav color accordingly
+          // Re-query light sections on each scroll to ensure we have the latest
+          const currentLightSections = document.querySelectorAll('.light-section');
+          console.log(`Light sections during scroll: ${currentLightSections.length}`);
+          
+          // Use the current light sections from the DOM rather than the cached array
+          if (currentLightSections.length > 0 && navRef.current) {
+              // Get the current viewport position
+              const viewportTop = scrollTop;
+              // 10% from top of viewport for checking light sections
+              const viewportMiddle = viewportTop + (window.innerHeight * 0.1);
+              
+              // Check if we're over a light section
+              let isOverLightSection = false;
+              
+              // Use currentLightSections instead of the cached lightSections array
+              Array.from(currentLightSections).forEach((section, index) => {
+                const rect = section.getBoundingClientRect();
+                const sectionTop = rect.top + scrollTop;
+                const sectionBottom = rect.bottom + scrollTop;
+                
+                // Check if the section is in view (10% from top of viewport)
+                if (sectionTop <= viewportMiddle && sectionBottom >= viewportMiddle) {
+                  console.log(`Over light section ${index}`);
+                  isOverLightSection = true;
+                }
+              });
+              
+              // Update nav color based on whether we're over a light section
+              if (isOverLightSection) {
+                console.log('Setting nav to dark color (over light section)');
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-contrast-higher)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 1,
+                  duration: 0.3
+                });
+              } else {
+                console.log('Setting nav to light color (not over light section)');
+                gsap.to(navRef.current, { 
+                  color: 'var(--color-bg)', 
+                  duration: 0.3 
+                });
+                gsap.to(navBgRef.current, {
+                  opacity: 0,
+                  duration: 0.3
+                });
+              }
+            }
+            
+            // Handle nav text visibility based on scroll direction
             if (navTextRef.current && navInfoRef.current && navBgRef.current) {
               if (scrollDirection === 1 && navTextVisible && scrollTop > 10) { // Only hide after scrolling a bit
                 // Scrolling down and nav-text is visible
