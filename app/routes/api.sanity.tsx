@@ -18,6 +18,12 @@ export async function loader() {
       client,
       projectDate,
       technologies,
+      featured,
+      mainImage {
+        asset-> {
+          url
+        }
+      },
       "mainImageUrl": mainImage.asset->url
     }`;
 

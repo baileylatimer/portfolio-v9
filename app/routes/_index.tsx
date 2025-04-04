@@ -6,6 +6,7 @@ import HorseshoeModel from '~/components/HorseshoeModel';
 import MissionSection from '~/components/mission-section';
 import ServicesSection from '~/components/services-section';
 import PartnersSection from '~/components/partners-section';
+import GunBarrelReel from '~/components/GunBarrelReel';
 
 export const meta: MetaFunction = () => {
   return [
@@ -24,11 +25,18 @@ export const loader: LoaderFunction = async ({ request }) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
+    
+    // Filter featured projects (limit to 5)
+    const featuredProjects = (data.projects || [])
+      .filter((project: { featured: boolean }) => project.featured)
+      .slice(0, 5);
+    
     return { 
       services: data.services, 
       partners: data.partners,
       heroMedia: data.heroMedia || { mediaUrl: '/images/hero-bg--min.jpg' }, // Fallback to static image
-      mission: data.mission || null // Add mission data
+      mission: data.mission || null, // Add mission data
+      featuredProjects // Add featured projects
     };
   } catch (error: unknown) {
     console.error('Error fetching data:', error);
@@ -37,6 +45,7 @@ export const loader: LoaderFunction = async ({ request }) => {
       partners: [], 
       heroMedia: { mediaUrl: '/images/hero-bg--min.jpg' }, // Fallback to static image
       mission: null,
+      featuredProjects: [],
       error: (error as Error).message || 'Failed to fetch data' 
     };
   }
@@ -88,12 +97,25 @@ interface Mission {
   content: MissionContent[];
 }
 
+interface Project {
+  _id: string;
+  title: string;
+  slug: { current: string };
+  mainImage: {
+    asset: {
+      url: string;
+    };
+  };
+  featured: boolean;
+}
+
 export default function Index() {
-  const { services, partners, heroMedia, mission } = useLoaderData<{
+  const { services, partners, heroMedia, mission, featuredProjects } = useLoaderData<{
     services: Service[];
     partners: Partner[];
     heroMedia: HeroMedia;
     mission: Mission | null;
+    featuredProjects: Project[];
   }>();
 
   return (
@@ -104,6 +126,17 @@ export default function Index() {
       <div className="flex-grow flex mt-24">
         <HorseshoeModel />
       </div>
+      
+      {/* Gun Barrel Reel for featured projects */}
+      {featuredProjects.length > 0 && (
+        <div className="py-16">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl uppercase font-bold text-center mb-8">PROJECTS</h2>
+            <GunBarrelReel projects={featuredProjects} />
+          </div>
+        </div>
+      )}
+      
       <MissionSection mission={mission} />
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />
