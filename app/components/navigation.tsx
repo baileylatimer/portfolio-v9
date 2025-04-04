@@ -528,7 +528,7 @@ export default function Navigation() {
                 className="block hover:cursor-pointer relative"
                 style={{ 
                   cursor: 'pointer',
-                  padding: '5px 0',
+
                   pointerEvents: 'auto',
                   position: 'relative',
                   zIndex: 10010
@@ -582,7 +582,7 @@ export default function Navigation() {
                 className="block hover:cursor-pointer relative"
                 style={{ 
                   cursor: 'pointer',
-                  padding: '5px 0',
+
                   pointerEvents: 'auto',
                   position: 'relative',
                   zIndex: 10010
