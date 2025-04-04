@@ -7,6 +7,8 @@ export default function Navigation() {
   const navBgRef = useRef<HTMLDivElement>(null);
   const navTextRef = useRef<HTMLAnchorElement>(null);
   const navInfoRef = useRef<HTMLDivElement>(null);
+  const workLinkRef = useRef<HTMLAnchorElement>(null);
+  const aboutLinkRef = useRef<HTMLAnchorElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
 
   // Add a unique ID to the nav element to help track it
@@ -133,14 +135,18 @@ export default function Navigation() {
     updateTime(); // Initial call
     const timer = setInterval(updateTime, 10); // Update every 10ms for smooth millisecond updates
 
-    // Dynamically import GSAP and ScrollTrigger
-    console.log('Importing GSAP and ScrollTrigger');
+    // Dynamically import GSAP, ScrollTrigger, and TextPlugin
+    console.log('Importing GSAP, ScrollTrigger, and TextPlugin');
     import('gsap').then((gsapModule) => {
       const gsap = gsapModule.default;
-      import('gsap/ScrollTrigger').then((ScrollTriggerModule) => {
+      Promise.all([
+        import('gsap/ScrollTrigger'),
+        import('gsap/TextPlugin')
+      ]).then(([ScrollTriggerModule, TextPluginModule]) => {
         const ScrollTrigger = ScrollTriggerModule.default;
-        gsap.registerPlugin(ScrollTrigger);
-        console.log('GSAP and ScrollTrigger loaded and registered');
+        const TextPlugin = TextPluginModule.default;
+        gsap.registerPlugin(ScrollTrigger, TextPlugin);
+        console.log('GSAP, ScrollTrigger, and TextPlugin loaded and registered');
         setGsapLoaded(true);
       });
     });
@@ -517,6 +523,7 @@ export default function Navigation() {
             <div className="flex flex-col gap-1 no-bullet-holes">
               {/* Fix for navigation links - adding padding, ensuring pointer-events are enabled, and setting a higher z-index */}
               <Link 
+                ref={workLinkRef}
                 to="/work" 
                 className="block hover:cursor-pointer relative"
                 style={{ 
@@ -527,12 +534,50 @@ export default function Navigation() {
                   zIndex: 10010
                 }}
                 onClick={() => console.log('WORK link clicked')}
-                onMouseEnter={() => console.log('WORK link hover start')}
-                onMouseLeave={() => console.log('WORK link hover end')}
+                onMouseEnter={() => {
+                  console.log('WORK link hover start');
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      // Create a scrambled version of "WORK" using only the original letters
+                      const letters = "WORK".split("");
+                      const scramble = () => {
+                        // Shuffle the letters
+                        for (let i = letters.length - 1; i > 0; i--) {
+                          const j = Math.floor(Math.random() * (i + 1));
+                          [letters[i], letters[j]] = [letters[j], letters[i]];
+                        }
+                        return letters.join("");
+                      };
+                      
+                      // Create a timeline for the scramble effect
+                      const tl = gsap.timeline();
+                      
+                      // Add multiple scrambles to create the effect
+                      tl.to(workLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.1, text: "WORK" });
+                    });
+                  }
+                }}
+                onMouseLeave={() => {
+                  console.log('WORK link hover end');
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      gsap.to(workLinkRef.current, {
+                        duration: 0.1,
+                        text: "WORK"
+                      });
+                    });
+                  }
+                }}
               >
                 WORK
               </Link>
               <Link 
+                ref={aboutLinkRef}
                 to="/about" 
                 className="block hover:cursor-pointer relative"
                 style={{ 
@@ -543,8 +588,45 @@ export default function Navigation() {
                   zIndex: 10010
                 }}
                 onClick={() => console.log('ABOUT link clicked')}
-                onMouseEnter={() => console.log('ABOUT link hover start')}
-                onMouseLeave={() => console.log('ABOUT link hover end')}
+                onMouseEnter={() => {
+                  console.log('ABOUT link hover start');
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      // Create a scrambled version of "ABOUT" using only the original letters
+                      const letters = "ABOUT".split("");
+                      const scramble = () => {
+                        // Shuffle the letters
+                        for (let i = letters.length - 1; i > 0; i--) {
+                          const j = Math.floor(Math.random() * (i + 1));
+                          [letters[i], letters[j]] = [letters[j], letters[i]];
+                        }
+                        return letters.join("");
+                      };
+                      
+                      // Create a timeline for the scramble effect
+                      const tl = gsap.timeline();
+                      
+                      // Add multiple scrambles to create the effect
+                      tl.to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.1, text: "ABOUT" });
+                    });
+                  }
+                }}
+                onMouseLeave={() => {
+                  console.log('ABOUT link hover end');
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      gsap.to(aboutLinkRef.current, {
+                        duration: 0.1,
+                        text: "ABOUT"
+                      });
+                    });
+                  }
+                }}
               >
                 ABOUT
               </Link>
