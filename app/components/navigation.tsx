@@ -553,11 +553,11 @@ export default function Navigation() {
                       // Create a timeline for the scramble effect
                       const tl = gsap.timeline();
                       
-                      // Add multiple scrambles to create the effect
-                      tl.to(workLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(workLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(workLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(workLinkRef.current, { duration: 0.1, text: "WORK" });
+                      // Add multiple scrambles to create the effect (faster)
+                      tl.to(workLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(workLinkRef.current, { duration: 0.05, text: "WORK" });
                     });
                   }
                 }}
@@ -607,11 +607,11 @@ export default function Navigation() {
                       // Create a timeline for the scramble effect
                       const tl = gsap.timeline();
                       
-                      // Add multiple scrambles to create the effect
-                      tl.to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(aboutLinkRef.current, { duration: 0.1, text: scramble() })
-                        .to(aboutLinkRef.current, { duration: 0.1, text: "ABOUT" });
+                      // Add multiple scrambles to create the effect (faster)
+                      tl.to(aboutLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(aboutLinkRef.current, { duration: 0.05, text: "ABOUT" });
                     });
                   }
                 }}
