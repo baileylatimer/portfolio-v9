@@ -25,13 +25,13 @@ const VELOCITY_THRESHOLD = 0.1; // Velocity below which we snap to nearest chamb
 const SNAP_DURATION = 300; // Duration of snap animation in ms
 
 // Chamber positions (x, y coordinates relative to the center of the barrel)
-// These would need to be adjusted based on the actual barrel image
+// Adjusted based on the actual barrel image
 const CHAMBER_POSITIONS = [
-  { x: 0, y: -120 },    // Top chamber
-  { x: 114, y: -37 },   // Top right chamber
-  { x: 70, y: 100 },    // Bottom right chamber
-  { x: -70, y: 100 },   // Bottom left chamber
-  { x: -114, y: -37 },  // Top left chamber
+  { x: 35, y: -85 },    // Top chamber
+  { x: 105, y: 15 },   // Top right chamber
+  { x: 20, y: 110 },     // Bottom right chamber
+  { x: -94, y: 63 },    // Bottom left chamber
+  { x: -85, y: -60 },  // Top left chamber
 ];
 
 const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
@@ -266,32 +266,78 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   const featuredProjects = projects.slice(0, CHAMBER_COUNT);
   
   return (
-    <div className="relative w-full max-w-2xl mx-auto my-12">
-      {/* Active project title display */}
-      <div className="text-center mb-4">
-        <h2 className="text-3xl uppercase font-bold">
-          {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
-        </h2>
+    <div className="relative w-full overflow-hidden my-12">
+      <div className="container mx-auto px-4 relative">
+        {/* Project title and info section - positioned on the right */}
+        <div className="flex flex-col items-end text-right mb-8 ml-auto w-1/2">
+          <h2 className="text-5xl md:text-7xl uppercase font-bold mb-4">
+            {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
+          </h2>
+          <p className="text-xl uppercase mb-6">IN THE WILD</p>
+          
+          {/* Navigation controls */}
+          <div className="flex items-center space-x-8">
+            <button 
+              className="text-2xl"
+              onClick={() => {
+                const newIndex = (activeProjectIndex - 1 + CHAMBER_COUNT) % CHAMBER_COUNT;
+                setActiveProjectIndex(newIndex);
+                setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
+                lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                lastChamberIndexRef.current = newIndex;
+                playClickSound();
+              }}
+            >
+              ←
+            </button>
+            <button 
+              className="text-2xl"
+              onClick={() => {
+                const newIndex = (activeProjectIndex + 1) % CHAMBER_COUNT;
+                setActiveProjectIndex(newIndex);
+                setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
+                lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                lastChamberIndexRef.current = newIndex;
+                playClickSound();
+              }}
+            >
+              →
+            </button>
+            <a 
+              href={`/work/${featuredProjects[activeProjectIndex]?.slug.current}`}
+              className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
+            >
+              VIEW ALL
+            </a>
+          </div>
+        </div>
       </div>
       
-      {/* Gun barrel container */}
+      {/* Gun barrel container - positioned to the left with 40% off-screen */}
       <div 
         ref={containerRef}
-        className="relative w-full aspect-square max-w-md mx-auto"
+        className="relative"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        style={{ touchAction: 'none' }} // Prevent browser handling of touch gestures
+        style={{ 
+          touchAction: 'none',
+          height: isMobile ? '595px' : '1100px',
+          width: '100%',
+          overflow: 'hidden'
+        }}
       >
         {/* Rotating barrel */}
         <div 
           ref={barrelRef}
-          className="absolute inset-0 w-full h-full"
+          className="absolute h-full"
           style={{ 
             transform: `rotate(${barrelAngle}deg)`,
-            transformOrigin: 'center center',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+            transformOrigin: 'center center', // Rotate around the center
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            width: '100%',
+            left: '-40%' // Position 40% off-screen to the left
           }}
         >
           {/* Barrel image */}
@@ -301,63 +347,37 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
             className="w-full h-full object-contain"
           />
           
-          {/* Project images in chambers */}
-          {featuredProjects.map((project, index) => (
-            <div
-              key={project._id}
-              className="absolute rounded-full overflow-hidden"
-              style={{
-                width: '80px',
-                height: '80px',
-                left: `calc(50% + ${CHAMBER_POSITIONS[index].x}px - 40px)`,
-                top: `calc(50% + ${CHAMBER_POSITIONS[index].y}px - 40px)`,
-              }}
-            >
-              <img
-                src={project.mainImage.asset.url}
-                alt={project.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
+          {/* Project images in chambers - scaled up for the larger barrel */}
+          {featuredProjects.map((project, index) => {
+            // Scale factor based on the barrel size
+            const scaleFactor = isMobile ? 1.5 : 2.5;
+            const imageSize = 70 * scaleFactor;
+            const halfImageSize = imageSize / 2;
+            
+            return (
+              <div
+                key={project._id}
+                className="absolute rounded-full overflow-hidden"
+                style={{
+                  width: `${imageSize}px`,
+                  height: `${imageSize}px`,
+                  left: `calc(50% + ${CHAMBER_POSITIONS[index].x * scaleFactor}px - ${halfImageSize}px)`,
+                  top: `calc(50% + ${CHAMBER_POSITIONS[index].y * scaleFactor}px - ${halfImageSize}px)`,
+                }}
+              >
+                <img
+                  src={project.mainImage.asset.url}
+                  alt={project.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
       
-      {/* Navigation controls */}
-      <div className="flex justify-center items-center mt-6 space-x-8">
-        <button 
-          className="text-2xl"
-          onClick={() => {
-            const newIndex = (activeProjectIndex - 1 + CHAMBER_COUNT) % CHAMBER_COUNT;
-            setActiveProjectIndex(newIndex);
-            setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-            lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
-            lastChamberIndexRef.current = newIndex;
-            playClickSound();
-          }}
-        >
-          ←
-        </button>
-        <a 
-          href={`/work/${featuredProjects[activeProjectIndex]?.slug.current}`}
-          className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
-        >
-          VIEW ALL
-        </a>
-        <button 
-          className="text-2xl"
-          onClick={() => {
-            const newIndex = (activeProjectIndex + 1) % CHAMBER_COUNT;
-            setActiveProjectIndex(newIndex);
-            setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-            lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
-            lastChamberIndexRef.current = newIndex;
-            playClickSound();
-          }}
-        >
-          →
-        </button>
-      </div>
+      {/* Dotted border around the section */}
+      <div className="absolute inset-0 border-2 border-dashed border-black m-8 pointer-events-none"></div>
     </div>
   );
 };
