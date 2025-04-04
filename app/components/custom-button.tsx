@@ -1,5 +1,5 @@
 // components/CustomButton.tsx
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 interface CustomButtonProps {
   children: React.ReactNode;
@@ -10,10 +10,74 @@ interface CustomButtonProps {
 
 const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = 'on', className = '' }) => {
   const fillColor = fill === 'off' ? 'rgba(26, 25, 23, 0.01)' : '#1A1917'; // Very slight opacity for 'off' to keep shadow visible
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [gsapLoaded, setGsapLoaded] = useState(false);
+  const [buttonText, setButtonText] = useState('');
+
+  // Load GSAP and TextPlugin
+  useEffect(() => {
+    const loadGSAP = async () => {
+      const { default: gsap } = await import('gsap');
+      const { default: TextPlugin } = await import('gsap/TextPlugin');
+      gsap.registerPlugin(TextPlugin);
+      setGsapLoaded(true);
+    };
+
+    loadGSAP();
+  }, []);
+
+  // Store the button text when it changes
+  useEffect(() => {
+    if (textRef.current) {
+      // Get the text content of the button
+      const text = textRef.current.textContent || '';
+      setButtonText(text);
+    }
+  }, [children]);
+
+  // Handle hover effects
+  const handleMouseEnter = () => {
+    if (gsapLoaded && textRef.current && buttonText) {
+      import('gsap').then(({ default: gsap }) => {
+        // Create a scrambled version of the text using only the original letters
+        const letters = buttonText.split("");
+        const scramble = () => {
+          // Shuffle the letters
+          for (let i = letters.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [letters[i], letters[j]] = [letters[j], letters[i]];
+          }
+          return letters.join("");
+        };
+        
+        // Create a timeline for the scramble effect
+        const tl = gsap.timeline();
+        
+        // Add multiple scrambles to create the effect (faster)
+        tl.to(textRef.current, { duration: 0.05, text: scramble() })
+          .to(textRef.current, { duration: 0.05, text: scramble() })
+          .to(textRef.current, { duration: 0.05, text: scramble() })
+          .to(textRef.current, { duration: 0.05, text: buttonText });
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (gsapLoaded && textRef.current && buttonText) {
+      import('gsap').then(({ default: gsap }) => {
+        gsap.to(textRef.current, {
+          duration: 0.1,
+          text: buttonText
+        });
+      });
+    }
+  };
 
   return (
     <button
       onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`relative inline-block px-12 py-4 text-[#DCCFBE] transition-transform hover:scale-105 focus:outline-none ${className}`}
     >
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 943 350" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,7 +97,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = '
           </filter>
         </defs>
       </svg>
-      <span className="relative  whitespace-nowrap uppercase">{children}</span>
+      <span ref={textRef} className="relative whitespace-nowrap uppercase">{children}</span>
     </button>
   );
 };
