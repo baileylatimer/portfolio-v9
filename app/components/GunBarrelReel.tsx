@@ -266,52 +266,55 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   const featuredProjects = projects.slice(0, CHAMBER_COUNT);
   
   return (
-    <div className="relative w-full overflow-hidden my-12">
-      <div className="container mx-auto px-4 relative">
+    <div className="relative w-full overflow-hidden ">
+      <div className="container mx-auto px-4 absolute top-1/3">
         {/* Project title and info section - positioned on the right */}
-        <div className="flex flex-col items-end text-right mb-8 ml-auto w-1/2">
-          <h2 className="text-5xl md:text-7xl uppercase font-bold mb-4">
+        <div className="flex flex-col items-center text-center mb-8 ml-auto w-1/2">
+          <h2 className="text-5xl md:text-8xl uppercase font-bold mb-4 display-text">
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
-          <p className="text-xl uppercase mb-6">IN THE WILD</p>
           
-          {/* Navigation controls */}
-          <div className="flex items-center space-x-8">
-            <button 
-              className="text-2xl"
-              onClick={() => {
-                const newIndex = (activeProjectIndex - 1 + CHAMBER_COUNT) % CHAMBER_COUNT;
-                setActiveProjectIndex(newIndex);
-                setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-                lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
-                lastChamberIndexRef.current = newIndex;
-                playClickSound();
-              }}
-            >
-              ←
-            </button>
-            <button 
-              className="text-2xl"
-              onClick={() => {
-                const newIndex = (activeProjectIndex + 1) % CHAMBER_COUNT;
-                setActiveProjectIndex(newIndex);
-                setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-                lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
-                lastChamberIndexRef.current = newIndex;
-                playClickSound();
-              }}
-            >
-              →
-            </button>
-            <a 
-              href={`/work/${featuredProjects[activeProjectIndex]?.slug.current}`}
-              className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
-            >
-              VIEW ALL
-            </a>
-          </div>
+
         </div>
       </div>
+
+                {/* Navigation controls */}
+          <div className="container mx-auto px-4 absolute bottom-1/3">
+            <div className="flex items-center space-x-8">
+              <button 
+                className="text-2xl"
+                onClick={() => {
+                  const newIndex = (activeProjectIndex - 1 + CHAMBER_COUNT) % CHAMBER_COUNT;
+                  setActiveProjectIndex(newIndex);
+                  setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
+                  lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                  lastChamberIndexRef.current = newIndex;
+                  playClickSound();
+                }}
+              >
+                ←
+              </button>
+              <button 
+                className="text-2xl"
+                onClick={() => {
+                  const newIndex = (activeProjectIndex + 1) % CHAMBER_COUNT;
+                  setActiveProjectIndex(newIndex);
+                  setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
+                  lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                  lastChamberIndexRef.current = newIndex;
+                  playClickSound();
+                }}
+              >
+                →
+              </button>
+              <a 
+                href={`/work/${featuredProjects[activeProjectIndex]?.slug.current}`}
+                className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
+              >
+                VIEW ALL
+              </a>
+            </div>
+          </div>
       
       {/* Gun barrel container - positioned to the left with 40% off-screen */}
       <div 
@@ -362,13 +365,22 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   width: `${imageSize}px`,
                   height: `${imageSize}px`,
                   left: `calc(50% + ${CHAMBER_POSITIONS[index].x * scaleFactor}px - ${halfImageSize}px)`,
-                  top: `calc(50% + ${CHAMBER_POSITIONS[index].y * scaleFactor}px - ${halfImageSize}px)`,
+                  top: `calc(50% + ${CHAMBER_POSITIONS[index].y * scaleFactor}px - ${halfImageSize}px)`
                 }}
               >
+                {/* Project image */}
                 <img
                   src={project.mainImage.asset.url}
                   alt={project.title}
                   className="w-full h-full object-cover"
+                />
+                
+                {/* Glass overlay */}
+                <img
+                  src="/images/CHAMBER_GLASS.png"
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  style={{ zIndex: 10 }}
                 />
               </div>
             );

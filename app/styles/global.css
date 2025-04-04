@@ -1,5 +1,5 @@
 /* Custom global styles */
-
+ru
 :root {
   --color-bg: #DCCFBE;
   --color-white: #fff;
@@ -159,6 +159,11 @@ margin-bottom:.3em;
   font-family: 'Supply';
 }
 
+
+.display-text {
+  font-family: 'Missouri', serif;
+  text-transform: uppercase;
+}
 
 
 .eyebrow {
