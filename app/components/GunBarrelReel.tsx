@@ -370,11 +370,14 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   transformOrigin: 'center center'
                 }}
               >
-                {/* Project image */}
+                {/* Project image - apply sepia filter to non-active projects */}
                 <img
                   src={project.mainImage.asset.url}
                   alt={project.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-all duration-300"
+                  style={{
+                    filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.8)',
+                  }}
                 />
                 
                 {/* Glass overlay */}
