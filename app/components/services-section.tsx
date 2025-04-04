@@ -35,35 +35,37 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tabContentRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Initialize refs array when services change
   useEffect(() => {
-    const initGSAP = async () => {
+    // Pre-populate the refs arrays with the correct length
+    serviceRefs.current = serviceRefs.current.slice(0, services.length);
+    tabContentRefs.current = tabContentRefs.current.slice(0, services.length);
+    contentContainerRefs.current = contentContainerRefs.current.slice(0, services.length);
+    
+    // Ensure arrays have enough slots
+    while (serviceRefs.current.length < services.length) {
+      serviceRefs.current.push(null);
+      tabContentRefs.current.push(null);
+      contentContainerRefs.current.push(null);
+    }
+  }, [services]);
+
+  // Use Intersection Observer instead of ScrollTrigger for more reliable detection
+  useEffect(() => {
+    // Skip if no services or if not in browser
+    if (services.length === 0 || typeof window === 'undefined') return;
+
+    const loadGSAP = async () => {
       const { gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
       setGsapLoaded(true);
 
       // Set initial state for all service items
-      serviceRefs.current.forEach((ref, index) => {
+      serviceRefs.current.forEach((ref) => {
         if (ref) {
+          // Set initial state
           gsap.set(ref, {
             opacity: 0,
             y: 15
-          });
-
-          // Create scroll trigger for each service
-          ScrollTrigger.create({
-            trigger: ref,
-            start: 'top bottom-=50',
-            onEnter: () => {
-              gsap.to(ref, {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: 'power2.out',
-                delay: index * 0.15
-              });
-            },
-            once: true // Only trigger once when scrolling down
           });
         }
       });
@@ -78,18 +80,54 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
           });
         }
       });
-    };
 
-    initGSAP();
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
-          ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      // Create an observer for each service item
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Find the index of this element
+            const index = serviceRefs.current.findIndex(ref => ref === entry.target);
+            
+            if (index !== -1) {
+              // Animate the element
+              gsap.to(entry.target, {
+                opacity: 1,
+                y: 0,
+                duration: 0.5,
+                ease: 'power2.out',
+                delay: Math.min(index * 0.05, 0.2) // Even shorter delay with lower maximum
+              });
+              
+              // Stop observing this element
+              observer.unobserve(entry.target);
+            }
+          }
         });
-      }
+      }, {
+        root: null, // Use viewport as root
+        rootMargin: '0px 0px -10% 0px', // Trigger when element is 10% in view from bottom
+        threshold: 0.1 // Trigger when 10% of the element is visible
+      });
+
+      // Start observing each service item
+      serviceRefs.current.forEach(ref => {
+        if (ref) {
+          observer.observe(ref);
+        }
+      });
+
+      return () => {
+        // Clean up observer
+        serviceRefs.current.forEach(ref => {
+          if (ref) {
+            observer.unobserve(ref);
+          }
+        });
+      };
     };
-  }, []);
+
+    loadGSAP();
+  }, [services]); // Re-run when services change
 
   const animateTabContent = async (index: number, isOpening: boolean) => {
     if (!gsapLoaded) return;
