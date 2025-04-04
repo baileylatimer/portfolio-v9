@@ -27,7 +27,8 @@ export const loader: LoaderFunction = async ({ request }) => {
     return { 
       services: data.services, 
       partners: data.partners,
-      heroMedia: data.heroMedia || { mediaUrl: '/images/hero-bg--min.jpg' } // Fallback to static image
+      heroMedia: data.heroMedia || { mediaUrl: '/images/hero-bg--min.jpg' }, // Fallback to static image
+      mission: data.mission || null // Add mission data
     };
   } catch (error: unknown) {
     console.error('Error fetching data:', error);
@@ -35,6 +36,7 @@ export const loader: LoaderFunction = async ({ request }) => {
       services: [], 
       partners: [], 
       heroMedia: { mediaUrl: '/images/hero-bg--min.jpg' }, // Fallback to static image
+      mission: null,
       error: (error as Error).message || 'Failed to fetch data' 
     };
   }
@@ -61,11 +63,37 @@ interface HeroMedia {
   mediaUrl: string;
 }
 
+interface MarkDef {
+  _key: string;
+  _type: string;
+  href?: string;
+}
+
+interface MissionContent {
+  _key: string;
+  _type: string;
+  children: {
+    _key: string;
+    _type: string;
+    marks: string[];
+    text: string;
+  }[];
+  markDefs: MarkDef[];
+  style: string;
+}
+
+interface Mission {
+  _id: string;
+  title: string;
+  content: MissionContent[];
+}
+
 export default function Index() {
-  const { services, partners, heroMedia } = useLoaderData<{
+  const { services, partners, heroMedia, mission } = useLoaderData<{
     services: Service[];
     partners: Partner[];
     heroMedia: HeroMedia;
+    mission: Mission | null;
   }>();
 
   return (
@@ -76,7 +104,7 @@ export default function Index() {
       <div className="flex-grow flex mt-24">
         <HorseshoeModel />
       </div>
-      <MissionSection />
+      <MissionSection mission={mission} />
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />
     </div>

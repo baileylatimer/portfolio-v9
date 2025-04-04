@@ -7,6 +7,7 @@ import clientLogo from './clientLogo'
 import teamMember from './teamMember'
 import secretAbout from './secretAbout'
 import heroMedia from './heroMedia'
+import mission from './mission'
 
 export const schemaTypes = [
   partner,
@@ -18,4 +19,5 @@ export const schemaTypes = [
   teamMember,
   secretAbout,
   heroMedia,
+  mission,
 ]

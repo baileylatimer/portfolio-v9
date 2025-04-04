@@ -78,16 +78,23 @@ export async function loader() {
       "mediaUrl": media.asset->url
     }`;
     
-    const [projects, services, partners, imageWithText, clientLogos, heroMedia] = await Promise.all([
+    const missionQuery = `*[_type == "mission" && active == true] | order(order asc)[0] {
+      _id,
+      title,
+      content
+    }`;
+
+    const [projects, services, partners, imageWithText, clientLogos, heroMedia, mission] = await Promise.all([
       sanityClient.fetch(projectsQuery),
       sanityClient.fetch(servicesQuery),
       sanityClient.fetch(partnersQuery),
       sanityClient.fetch(imageWithTextQuery),
       sanityClient.fetch(clientLogosQuery),
-      sanityClient.fetch(heroMediaQuery)
+      sanityClient.fetch(heroMediaQuery),
+      sanityClient.fetch(missionQuery)
     ]);
 
-    return json({ projects, services, partners, imageWithText, clientLogos, heroMedia });
+    return json({ projects, services, partners, imageWithText, clientLogos, heroMedia, mission });
   } catch (error) {
     console.error('Error fetching data:', error);
     return json({ error: 'Failed to fetch data' }, { status: 500 });

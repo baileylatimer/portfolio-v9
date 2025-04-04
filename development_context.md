@@ -102,7 +102,46 @@ The site includes a hidden "secret" section:
 
 - GSAP is used for complex animations and transitions
 - ScrollTrigger plugin for scroll-based animations
+- TextPlugin for text manipulation effects
 - CSS transitions for simpler effects
+
+#### Text Scramble Effect
+
+The navigation links feature a text scramble effect on hover:
+
+```javascript
+// Create a scrambled version of text using only the original letters
+const letters = "WORK".split("");
+const scramble = () => {
+  // Shuffle the letters
+  for (let i = letters.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  return letters.join("");
+};
+
+// Create a timeline for the scramble effect
+const tl = gsap.timeline();
+
+// Add multiple scrambles to create the effect
+tl.to(elementRef.current, { duration: 0.05, text: scramble() })
+  .to(elementRef.current, { duration: 0.05, text: scramble() })
+  .to(elementRef.current, { duration: 0.05, text: scramble() })
+  .to(elementRef.current, { duration: 0.05, text: "WORK" });
+```
+
+This technique:
+- Uses GSAP's TextPlugin to animate text content
+- Only scrambles the original letters (preserving character set)
+- Creates multiple rapid iterations for a dynamic effect
+- Can be applied to any text element with a React ref
+- Requires importing and registering the TextPlugin:
+
+```javascript
+import { TextPlugin } from 'gsap/TextPlugin';
+gsap.registerPlugin(TextPlugin);
+```
 
 ### Performance Considerations
 
