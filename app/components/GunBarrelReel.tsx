@@ -365,7 +365,9 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   width: `${imageSize}px`,
                   height: `${imageSize}px`,
                   left: `calc(50% + ${CHAMBER_POSITIONS[index].x * scaleFactor}px - ${halfImageSize}px)`,
-                  top: `calc(50% + ${CHAMBER_POSITIONS[index].y * scaleFactor}px - ${halfImageSize}px)`
+                  top: `calc(50% + ${CHAMBER_POSITIONS[index].y * scaleFactor}px - ${halfImageSize}px)`,
+                  transform: `rotate(${-barrelAngle}deg)`, // Counter-rotate to keep upright
+                  transformOrigin: 'center center'
                 }}
               >
                 {/* Project image */}
