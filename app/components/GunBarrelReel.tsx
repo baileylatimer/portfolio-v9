@@ -11,6 +11,7 @@ interface FeaturedProject {
     };
   };
   featured: boolean;
+  order?: number; // Optional order field for sorting
 }
 
 interface GunBarrelReelProps {
@@ -36,18 +37,27 @@ const CHAMBER_POSITIONS = [
 
 const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   // State for barrel rotation
-  const [barrelAngle, setBarrelAngle] = useState(0);
+  // Initialize with Chamber 3 (index 3) as active
+  const [activeProjectIndex, setActiveProjectIndex] = useState(3);
   const [isDragging, setIsDragging] = useState(false);
-  const [activeProjectIndex, setActiveProjectIndex] = useState(0);
+  
+  // To position Chamber 3 (Bottom left) as the rightmost visible chamber,
+  // we need to rotate the barrel to the appropriate angle
+  // Since the barrel is 40% off-screen to the left, the rightmost visible chamber
+  // is actually the top chamber (index 0) when no rotation is applied
+  // So we need to rotate by (3 - 0) * 72 = 216 degrees
+  const [barrelAngle, setBarrelAngle] = useState(3 * DEGREES_PER_CHAMBER);
   
   // Refs for animation and interaction
   const containerRef = useRef<HTMLDivElement>(null);
   const barrelRef = useRef<HTMLDivElement>(null);
   const lastPositionRef = useRef({ x: 0, y: 0 });
   const velocityRef = useRef(0);
-  const lastAngleRef = useRef(0);
+  // Initialize lastAngleRef to match the initial barrel angle
+  const lastAngleRef = useRef(3 * DEGREES_PER_CHAMBER);
   const animationFrameRef = useRef<number | null>(null);
-  const lastChamberIndexRef = useRef(0);
+  // Initialize lastChamberIndexRef to match the active project index (3)
+  const lastChamberIndexRef = useRef(3);
   const clickSoundRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef(0);
   
@@ -117,11 +127,16 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     // Calculate current chamber index (0-4)
     const chamberIndex = Math.floor(normalizedAngle / DEGREES_PER_CHAMBER) % CHAMBER_COUNT;
     
+    // The chamber index directly corresponds to the active project index
+    // No need to reverse it
+    
     // If we've crossed to a new chamber, play click sound and update active project
     if (chamberIndex !== lastChamberIndexRef.current) {
       playClickSound();
       setActiveProjectIndex(chamberIndex);
       lastChamberIndexRef.current = chamberIndex;
+      
+      console.log(`Crossed to chamber: ${chamberIndex} at angle ${normalizedAngle}`);
     }
   }, [playClickSound]);
   
@@ -262,8 +277,50 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     animationFrameRef.current = requestAnimationFrame(animateBarrel);
   }, [isDragging, animateBarrel]);
   
-  // Limit to 5 projects maximum
-  const featuredProjects = projects.slice(0, CHAMBER_COUNT);
+  // Sort projects by order field and limit to 5 projects maximum
+  const featuredProjects = [...projects]
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .slice(0, CHAMBER_COUNT);
+  
+  // Log projects for debugging
+  useEffect(() => {
+    console.log('===== DEBUGGING LOGS =====');
+    console.log('Projects after sorting:');
+    featuredProjects.forEach((project, index) => {
+      // Get the chamber position description
+      const chamberPosition = index === 0 ? 'Top' : 
+                             index === 1 ? 'Top right' :
+                             index === 2 ? 'Bottom right' :
+                             index === 3 ? 'Bottom left' :
+                             'Top left';
+      
+      console.log(`Chamber ${index} (${chamberPosition}): ${project.title} (order: ${project.order || 'undefined'})`);
+    });
+    
+    // Log the initial active project and its position
+    console.log(`Initial active project: Chamber ${activeProjectIndex} (${
+      activeProjectIndex === 0 ? 'Top' : 
+      activeProjectIndex === 1 ? 'Top right' :
+      activeProjectIndex === 2 ? 'Bottom right' :
+      activeProjectIndex === 3 ? 'Bottom left' :
+      'Top left'
+    })`);
+    
+    // Log the initial barrel angle
+    console.log(`Initial barrel angle: ${barrelAngle} degrees`);
+    
+    // Log the chamber positions
+    console.log('Chamber positions:');
+    CHAMBER_POSITIONS.forEach((pos, index) => {
+      console.log(`Chamber ${index}: x=${pos.x}, y=${pos.y}`);
+    });
+    
+    // Log the expected navigation order
+    console.log('Expected navigation order:');
+    console.log('From Chamber 3 (Bottom left) -> Next should be Chamber 4 (Top left)');
+    console.log('From Chamber 3 (Bottom left) -> Previous should be Chamber 2 (Bottom right)');
+    console.log('===== END DEBUGGING LOGS =====');
+  }, [featuredProjects, activeProjectIndex, barrelAngle]);
   
   return (
     <div className="relative w-full overflow-hidden ">
@@ -279,15 +336,38 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
       </div>
 
                 {/* Navigation controls */}
-          <div className="container mx-auto px-4 absolute bottom-1/3">
-            <div className="flex items-center space-x-8">
+          <div className="container mx-auto px-4 absolute bottom-1/3 z-50">
+            <div className="flex items-end justify-end space-x-8">
               <button 
                 className="text-2xl"
                 onClick={() => {
+                  console.log('===== PREVIOUS BUTTON CLICKED =====');
+                  console.log(`Current active project: Chamber ${activeProjectIndex}`);
+                  
+                  // Go to previous project (counter-clockwise)
+                  // From Chamber 3 (Bottom left) we want to go to Chamber 2 (Bottom right)
                   const newIndex = (activeProjectIndex - 1 + CHAMBER_COUNT) % CHAMBER_COUNT;
+                  console.log(`New index calculation: (${activeProjectIndex} - 1 + ${CHAMBER_COUNT}) % ${CHAMBER_COUNT} = ${newIndex}`);
+                  
+                  // Calculate the corresponding barrel angle
+                  // We need to rotate the barrel clockwise
+                  // In CSS transform: rotate(), positive angles rotate clockwise
+                  // So to rotate clockwise, we need to increase the angle
+                  const newAngle = barrelAngle + DEGREES_PER_CHAMBER;
+                  console.log(`New angle calculation: ${barrelAngle} + ${DEGREES_PER_CHAMBER} = ${newAngle}`);
+                  console.log(`IMPORTANT: Increasing angle should rotate clockwise in CSS transform`);
+                  
+                  // Log the expected chamber position
+                  const chamberPosition = newIndex === 0 ? 'Top' : 
+                                         newIndex === 1 ? 'Top right' :
+                                         newIndex === 2 ? 'Bottom right' :
+                                         newIndex === 3 ? 'Bottom left' :
+                                         'Top left';
+                  console.log(`Expected new active project: Chamber ${newIndex} (${chamberPosition})`);
+                  
                   setActiveProjectIndex(newIndex);
-                  setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-                  lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                  setBarrelAngle(newAngle);
+                  lastAngleRef.current = newAngle;
                   lastChamberIndexRef.current = newIndex;
                   playClickSound();
                 }}
@@ -297,10 +377,33 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
               <button 
                 className="text-2xl"
                 onClick={() => {
+                  console.log('===== NEXT BUTTON CLICKED =====');
+                  console.log(`Current active project: Chamber ${activeProjectIndex}`);
+                  
+                  // Go to next project (counter-clockwise)
+                  // From Chamber 3 (Bottom left) we want to go to Chamber 4 (Top left)
                   const newIndex = (activeProjectIndex + 1) % CHAMBER_COUNT;
+                  console.log(`New index calculation: (${activeProjectIndex} + 1) % ${CHAMBER_COUNT} = ${newIndex}`);
+                  
+                  // Calculate the corresponding barrel angle
+                  // We need to rotate the barrel counter-clockwise
+                  // In CSS transform: rotate(), positive angles rotate clockwise
+                  // So to rotate counter-clockwise, we need to decrease the angle
+                  const newAngle = barrelAngle - DEGREES_PER_CHAMBER;
+                  console.log(`New angle calculation: ${barrelAngle} - ${DEGREES_PER_CHAMBER} = ${newAngle}`);
+                  console.log(`IMPORTANT: Decreasing angle should rotate counter-clockwise in CSS transform`);
+                  
+                  // Log the expected chamber position
+                  const chamberPosition = newIndex === 0 ? 'Top' : 
+                                         newIndex === 1 ? 'Top right' :
+                                         newIndex === 2 ? 'Bottom right' :
+                                         newIndex === 3 ? 'Bottom left' :
+                                         'Top left';
+                  console.log(`Expected new active project: Chamber ${newIndex} (${chamberPosition})`);
+                  
                   setActiveProjectIndex(newIndex);
-                  setBarrelAngle(newIndex * DEGREES_PER_CHAMBER);
-                  lastAngleRef.current = newIndex * DEGREES_PER_CHAMBER;
+                  setBarrelAngle(newAngle);
+                  lastAngleRef.current = newAngle;
                   lastChamberIndexRef.current = newIndex;
                   playClickSound();
                 }}
