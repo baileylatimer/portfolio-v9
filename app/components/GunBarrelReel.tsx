@@ -63,7 +63,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   // Responsive handling
   const isMobile = useMediaQuery({ maxWidth: 768 });
-  const barrelImage = isMobile ? '/images/BARREL_IMAGE_MOBILE' : '/images/BARREL_IMAGE_PNG.png';
+  const barrelImage = '/images/BARREL_IMAGE_PNG.png'; // Use the same image for both mobile and desktop
   
   // Initialize audio
   useEffect(() => {
@@ -119,26 +119,48 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     };
   }, []);
   
-  // Check if we've crossed a chamber boundary and update active project
-  const checkChamberCrossing = useCallback((angle: number) => {
+  // Determine which chamber is in the rightmost position (at 3 * DEGREES_PER_CHAMBER = 216 degrees)
+  const getRightmostChamber = useCallback((angle: number) => {
     // Normalize angle to 0-360 range
     const normalizedAngle = ((angle % 360) + 360) % 360;
     
-    // Calculate current chamber index (0-4)
-    const chamberIndex = Math.floor(normalizedAngle / DEGREES_PER_CHAMBER) % CHAMBER_COUNT;
+    // The rightmost position is at 3 * DEGREES_PER_CHAMBER (216 degrees)
+    // We need to find which chamber is closest to this position
     
-    // The chamber index directly corresponds to the active project index
-    // No need to reverse it
+    // Find the chamber that's closest to the rightmost position
+    let minDistance = 360;
+    let rightmostChamberIndex = 0;
     
-    // If we've crossed to a new chamber, play click sound and update active project
-    if (chamberIndex !== lastChamberIndexRef.current) {
-      playClickSound();
-      setActiveProjectIndex(chamberIndex);
-      lastChamberIndexRef.current = chamberIndex;
+    for (let i = 0; i < CHAMBER_COUNT; i++) {
+      const chamberAngle = i * DEGREES_PER_CHAMBER;
+      // Calculate the angular distance (accounting for the circular nature)
+      let distance = Math.abs(normalizedAngle - chamberAngle);
+      if (distance > 180) distance = 360 - distance;
       
-      console.log(`Crossed to chamber: ${chamberIndex} at angle ${normalizedAngle}`);
+      if (distance < minDistance) {
+        minDistance = distance;
+        rightmostChamberIndex = i;
+      }
     }
-  }, [playClickSound]);
+    
+    console.log(`Rightmost chamber at angle ${normalizedAngle}: Chamber ${rightmostChamberIndex}`);
+    return rightmostChamberIndex;
+  }, []);
+  
+  // Check if we've crossed a chamber boundary and update active project
+  const checkChamberCrossing = useCallback((angle: number) => {
+    // Determine which chamber is in the rightmost position
+    const rightmostChamberIndex = getRightmostChamber(angle);
+    
+    // If the rightmost chamber has changed, play click sound and update active project
+    if (rightmostChamberIndex !== lastChamberIndexRef.current) {
+      playClickSound();
+      setActiveProjectIndex(rightmostChamberIndex);
+      lastChamberIndexRef.current = rightmostChamberIndex;
+      
+      console.log(`Active project updated to Chamber ${rightmostChamberIndex} (rightmost position)`);
+    }
+  }, [playClickSound, getRightmostChamber]);
   
   // Animation loop for inertia effect
   const animateBarrel = useCallback((timestamp: number) => {
@@ -195,7 +217,14 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           // Ensure we end exactly at the target angle
           setBarrelAngle(snapTo);
           lastAngleRef.current = snapTo;
-          setActiveProjectIndex(nearestChamberIndex);
+          
+          // Determine which chamber is in the rightmost position
+          const rightmostChamberIndex = getRightmostChamber(snapTo);
+          
+          console.log(`Snap animation complete: Setting active project to rightmost chamber ${rightmostChamberIndex}`);
+          
+          setActiveProjectIndex(rightmostChamberIndex);
+          lastChamberIndexRef.current = rightmostChamberIndex;
         }
       };
       
@@ -206,7 +235,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     
     // Continue animation loop
     animationFrameRef.current = requestAnimationFrame(animateBarrel);
-  }, [checkChamberCrossing]);
+  }, [checkChamberCrossing, getRightmostChamber]);
   
   // Handle pointer down event
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -275,7 +304,24 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     
     // Start inertia animation
     animationFrameRef.current = requestAnimationFrame(animateBarrel);
-  }, [isDragging, animateBarrel]);
+    
+    // After the inertia animation completes, determine which chamber is in the rightmost position
+    const handleInertiaComplete = () => {
+      console.log('Inertia animation complete');
+      
+      // Determine which chamber is in the rightmost position
+      const rightmostChamberIndex = getRightmostChamber(lastAngleRef.current);
+      
+      console.log(`Rightmost chamber after inertia: Chamber ${rightmostChamberIndex}`);
+      
+      // Set the active project to the one in the rightmost position
+      setActiveProjectIndex(rightmostChamberIndex);
+      lastChamberIndexRef.current = rightmostChamberIndex;
+    };
+    
+    // Set a timeout to ensure the inertia animation has a chance to complete
+    setTimeout(handleInertiaComplete, 1000);
+  }, [isDragging, getRightmostChamber, animateBarrel]);
   
   // Sort projects by order field and limit to 5 projects maximum
   const featuredProjects = [...projects]
@@ -429,7 +475,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
         onPointerCancel={handlePointerUp}
         style={{ 
           touchAction: 'none',
-          height: isMobile ? '595px' : '1100px',
+          height: isMobile ? '580px' : '1100px',
           width: '100%',
           overflow: 'hidden'
         }}
@@ -443,7 +489,8 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
             transformOrigin: 'center center', // Rotate around the center
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',
             width: '100%',
-            left: '-40%' // Position 40% off-screen to the left
+            left: '-40%', // Position 40% off-screen to the left
+            scale: isMobile ? '0.75' : '1' // Scale down on mobile
           }}
         >
           {/* Barrel image */}
