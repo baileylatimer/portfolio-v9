@@ -123,19 +123,21 @@ export default function Index() {
       <Navigation />
 
       <Hero mediaUrl={heroMedia.mediaUrl} />
-      <div className="flex-grow flex mt-24">
-        <HorseshoeModel />
-      </div>
+
       
       {/* Gun Barrel Reel for featured projects */}
       {featuredProjects.length > 0 && (
         <div className="py-16 relative">
-          <div className="absolute top-8 left-8">
-            <h2 className="text-3xl uppercase font-bold">PROJECTS</h2>
+          <div className="absolute top-16 left-8">
+            <h2 className="font-accent eyebrow mb-8">PROJECTS</h2>
           </div>
           <GunBarrelReel projects={featuredProjects} />
         </div>
       )}
+
+<div className="flex-grow flex mt-24">
+        <HorseshoeModel />
+      </div>
       
       <MissionSection mission={mission} />
       <ServicesSection services={services} />

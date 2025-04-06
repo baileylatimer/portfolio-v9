@@ -370,10 +370,10 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   return (
     <div className="relative w-full overflow-hidden ">
-      <div className="container mx-auto px-4 absolute top-1/3">
+      <div className="container mx-auto px-4 absolute  top-12 md:top-1/3">
         {/* Project title and info section - positioned on the right */}
-        <div className="flex flex-col items-center text-center mb-8 ml-auto w-1/2">
-          <h2 className="text-5xl md:text-8xl uppercase font-bold mb-4 display-text">
+        <div className="flex flex-col items-end md:items-center  text-right md:text-center mb-8 ml-auto w-1/2">
+          <h2 className="text-5xl md:text-8xl uppercase font-bold mb-4 display-text color-contrast-higher">
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
           
@@ -382,7 +382,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
       </div>
 
                 {/* Navigation controls */}
-          <div className="container mx-auto px-4 absolute bottom-1/3 z-50">
+          <div className="container mx-auto px-4 absolute bottom-12 right-8 md:right-96 md:bottom-1/3 z-50">
             <div className="flex items-end justify-end space-x-8">
               <button 
                 className="text-2xl"
@@ -457,7 +457,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                 →
               </button>
               <a 
-                href={`/work/${featuredProjects[activeProjectIndex]?.slug.current}`}
+                href={`/work`}
                 className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
               >
                 VIEW ALL
@@ -490,7 +490,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',
             width: '100%',
             left: '-40%', // Position 40% off-screen to the left
-            scale: isMobile ? '0.75' : '1' // Scale down on mobile
+            scale: isMobile ? '1.6' : '1' // Scale down on mobile
           }}
         >
           {/* Barrel image */}
@@ -503,7 +503,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           {/* Project images in chambers - scaled up for the larger barrel */}
           {featuredProjects.map((project, index) => {
             // Scale factor based on the barrel size
-            const scaleFactor = isMobile ? 1.5 : 2.5;
+            const scaleFactor = isMobile ? 1 : 2.5;
             const imageSize = 70 * scaleFactor;
             const halfImageSize = imageSize / 2;
             
@@ -544,7 +544,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
       </div>
       
       {/* Dotted border around the section */}
-      <div className="absolute inset-0 border-2 border-dashed border-black m-8 pointer-events-none"></div>
+      <div className="absolute inset-0 border-2 border-dashed border-black m-8 z-n-1 pointer-events-none"></div>
     </div>
   );
 };

@@ -69,6 +69,10 @@ body {
   color: var(--color-bg)
 }
 
+.color-contrast-higher {
+  color: var(--color-contrast-higher)
+}
+
 .border-white {
   border-color: var(--color-bg);
 }
@@ -599,4 +603,9 @@ height: 90vh !important;
 .project-title {
   max-width: 200px;
 }
+}
+
+
+.z-n-1 {
+  z-index: -1;
 }
