@@ -123,7 +123,7 @@ export default function Index() {
       <Navigation />
 
       <Hero mediaUrl={heroMedia.mediaUrl} />
-
+      <MissionSection mission={mission} />
       
       {/* Gun Barrel Reel for featured projects */}
       {featuredProjects.length > 0 && (
@@ -139,7 +139,7 @@ export default function Index() {
         <HorseshoeModel />
       </div>
       
-      <MissionSection mission={mission} />
+
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />
     </div>
