@@ -112,6 +112,15 @@ export default defineType({
       type: 'number',
     }),
     defineField({
+      name: 'gunreelBackground',
+      title: 'Gun Reel Background',
+      type: 'image',
+      description: 'Background image to display when this project is active in the gun barrel reel',
+      options: {
+        hotspot: true,
+      },
+    }),
+    defineField({
       name: 'mediaBlocks',
       title: 'Media Blocks',
       type: 'array',

@@ -19,12 +19,18 @@ export async function loader() {
       projectDate,
       technologies,
       featured,
+      order,
       mainImage {
         asset-> {
           url
         }
       },
-      "mainImageUrl": mainImage.asset->url
+      "mainImageUrl": mainImage.asset->url,
+      gunreelBackground {
+        asset-> {
+          url
+        }
+      }
     }`;
 
     const servicesQuery = `*[_type == "service"] | order(order asc) {

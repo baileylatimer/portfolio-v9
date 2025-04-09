@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import CustomButton from './custom-button';
+import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
+import React from 'react';
+
+// No need for the PartnerShapeOutline component anymore
 
 // Define the project type based on Sanity schema
 interface FeaturedProject {
@@ -6,6 +11,11 @@ interface FeaturedProject {
   title: string;
   slug: { current: string } | string; // Can be either an object with current property or a string directly
   mainImage: {
+    asset: {
+      url: string;
+    };
+  };
+  gunreelBackground?: {
     asset: {
       url: string;
     };
@@ -30,7 +40,7 @@ interface GunBarrelReelProps {
 const CHAMBER_COUNT = 5;
 const DEGREES_PER_CHAMBER = 360 / CHAMBER_COUNT; // 72 degrees
 const FRICTION = 0.95; // Friction factor (0-1): higher = less friction
-const VELOCITY_THRESHOLD = 0.1; // Velocity below which we snap to nearest chamber
+const VELOCITY_THRESHOLD = 0.1; // Velocity below threshold we snap to nearest chamber
 const SNAP_DURATION = 300; // Duration of snap animation in ms
 
 // Chamber positions (x, y coordinates relative to the center of the barrel)
@@ -48,6 +58,14 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   // Initialize with Chamber 3 (index 3) as active
   const [activeProjectIndex, setActiveProjectIndex] = useState(3);
   const [isDragging, setIsDragging] = useState(false);
+  const [previousActiveIndex, setPreviousActiveIndex] = useState<number | null>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
+  
+  // Ref for the pixelize image
+  const pixelizeRef = useRef<PixelizeImageRef>(null);
+  
+  // Key for the PixelizeImage component to force re-render
+  const [pixelizeKey, setPixelizeKey] = useState(0);
   
   // To position Chamber 3 (Bottom left) as the rightmost visible chamber,
   // we need to rotate the barrel to the appropriate angle
@@ -163,12 +181,48 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     // If the rightmost chamber has changed, play click sound and update active project
     if (rightmostChamberIndex !== lastChamberIndexRef.current) {
       playClickSound();
+      
+      // Store the previous active index before updating
+      setPreviousActiveIndex(activeProjectIndex);
+      
+      // Update the active project index
       setActiveProjectIndex(rightmostChamberIndex);
       lastChamberIndexRef.current = rightmostChamberIndex;
       
+      // Set initialLoad to false after the first chamber change
+      if (initialLoad) {
+        console.log('Initial load complete, setting initialLoad to false');
+        setInitialLoad(false);
+      } else {
+        console.log('Not initial load, preparing to trigger depixelization');
+        console.log('Current pixelizeKey:', pixelizeKey);
+        
+        // Log the current state of the ref before incrementing the key
+        console.log('pixelizeRef before key change:', pixelizeRef.current ? 'exists' : 'null');
+        
+        // Increment the key to force a re-render of the PixelizeImage component
+        const newKey = pixelizeKey + 1;
+        console.log('Setting new pixelizeKey:', newKey);
+        setPixelizeKey(newKey);
+        
+        // Use a longer timeout to ensure the component has fully re-rendered before triggering the effect
+        setTimeout(() => {
+          // Log the state of the ref after the timeout
+          console.log('pixelizeRef after timeout:', pixelizeRef.current ? 'exists' : 'null');
+          
+          // Trigger the depixelization effect
+          if (pixelizeRef.current) {
+            console.log('Calling triggerDepixelize() method');
+            pixelizeRef.current.triggerDepixelize();
+          } else {
+            console.log('ERROR: pixelizeRef.current is null after timeout');
+          }
+        }, 200); // Increased timeout to 200ms
+      }
+      
       console.log(`Active project updated to Chamber ${rightmostChamberIndex} (rightmost position)`);
     }
-  }, [playClickSound, getRightmostChamber]);
+  }, [playClickSound, getRightmostChamber, activeProjectIndex, initialLoad, pixelizeKey]);
   
   // Animation loop for inertia effect
   const animateBarrel = useCallback((timestamp: number) => {
@@ -396,10 +450,10 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   return (
     <div className="relative w-full overflow-hidden ">
-      <div className="container mx-auto px-4 absolute  top-12 md:top-1/3">
+      <div className="container mx-auto px-4 absolute  top-12 md:top-1/3 md:right-36">
         {/* Project title and info section - positioned on the right */}
-        <div className="flex flex-col items-end md:items-center  text-right md:text-center mb-8 ml-auto w-1/2">
-          <h2 className="text-5xl md:text-8xl uppercase font-bold mb-4 display-text color-contrast-higher">
+        <div className="flex flex-col items-center  text-center mb-8 ml-auto w-full md:w-1/2">
+          <h2 className="text-4xl md:text-8xl uppercase font-bold mb-4 display-text color-bg">
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
           
@@ -408,7 +462,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
       </div>
 
                 {/* Navigation controls */}
-          <div className="container mx-auto px-4 absolute bottom-12 right-8 md:right-96 md:bottom-1/3 z-50">
+          <div className="container mx-auto px-4 absolute bottom-12 md:right-96 md:bottom-20 z-50">
             <div className="flex items-end justify-end space-x-8">
               <button 
                 className="text-2xl"
@@ -437,14 +491,53 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                                          'Top left';
                   console.log(`Expected new active project: Chamber ${newIndex} (${chamberPosition})`);
                   
+                  // Set initialLoad to false to enable pixelization effect
+                  setInitialLoad(false);
+                  
+                  // Store the current active index before updating
+                  setPreviousActiveIndex(activeProjectIndex);
+                  
+                  // Update state
                   setActiveProjectIndex(newIndex);
                   setBarrelAngle(newAngle);
                   lastAngleRef.current = newAngle;
                   lastChamberIndexRef.current = newIndex;
+                  
+                  // Log the current state of the ref before incrementing the key
+                  console.log('Arrow button: pixelizeRef before key change:', pixelizeRef.current ? 'exists' : 'null');
+                  
+                  // Increment the key to force a re-render of the PixelizeImage component
+                  const newKey = pixelizeKey + 1;
+                  console.log('Arrow button: Setting new pixelizeKey:', newKey);
+                  setPixelizeKey(newKey);
+                  
+                  // Use a timeout to ensure the component has re-rendered before triggering the effect
+                  setTimeout(() => {
+                    // Log the state of the ref after the timeout
+                    console.log('Arrow button: pixelizeRef after timeout:', pixelizeRef.current ? 'exists' : 'null');
+                    
+                    // Trigger the depixelization effect
+                    if (pixelizeRef.current) {
+                      console.log('Arrow button: Calling triggerDepixelize() method');
+                      pixelizeRef.current.triggerDepixelize();
+                    } else {
+                      console.log('Arrow button: ERROR: pixelizeRef.current is null after timeout');
+                    }
+                  }, 200);
+                  
                   playClickSound();
                 }}
               >
-                ←
+                <svg 
+                  width="65" 
+                  height="52" 
+                  viewBox="0 0 65 52" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ transform: isMobile ? 'scale(0.85)' : 'none' }}
+                >
+                  <path d="M3 26H65M3 26C14.2648 19.0028 18.3008 13.4101 21.2018 1M3 26C14.2648 32.9972 18.3007 38.5899 21.2018 51" stroke="#DCCFBE" strokeWidth="3"/>
+                </svg>
               </button>
               <button 
                 className="text-2xl"
@@ -473,21 +566,61 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                                          'Top left';
                   console.log(`Expected new active project: Chamber ${newIndex} (${chamberPosition})`);
                   
+                  // Set initialLoad to false to enable pixelization effect
+                  setInitialLoad(false);
+                  
+                  // Store the current active index before updating
+                  setPreviousActiveIndex(activeProjectIndex);
+                  
+                  // Update state
                   setActiveProjectIndex(newIndex);
                   setBarrelAngle(newAngle);
                   lastAngleRef.current = newAngle;
                   lastChamberIndexRef.current = newIndex;
+                  
+                  // Log the current state of the ref before incrementing the key
+                  console.log('Arrow button (next): pixelizeRef before key change:', pixelizeRef.current ? 'exists' : 'null');
+                  
+                  // Increment the key to force a re-render of the PixelizeImage component
+                  const newKey = pixelizeKey + 1;
+                  console.log('Arrow button (next): Setting new pixelizeKey:', newKey);
+                  setPixelizeKey(newKey);
+                  
+                  // Use a timeout to ensure the component has re-rendered before triggering the effect
+                  setTimeout(() => {
+                    // Log the state of the ref after the timeout
+                    console.log('Arrow button (next): pixelizeRef after timeout:', pixelizeRef.current ? 'exists' : 'null');
+                    
+                    // Trigger the depixelization effect
+                    if (pixelizeRef.current) {
+                      console.log('Arrow button (next): Calling triggerDepixelize() method');
+                      pixelizeRef.current.triggerDepixelize();
+                    } else {
+                      console.log('Arrow button (next): ERROR: pixelizeRef.current is null after timeout');
+                    }
+                  }, 200);
+                  
                   playClickSound();
                 }}
               >
-                →
+                <svg 
+                  width="65" 
+                  height="52" 
+                  viewBox="0 0 65 52" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  style={{ transform: isMobile ? 'scale(0.85) scaleX(-1)' : 'scaleX(-1)' }}
+                >
+                  <path d="M3 26H65M3 26C14.2648 19.0028 18.3008 13.4101 21.2018 1M3 26C14.2648 32.9972 18.3007 38.5899 21.2018 51" stroke="#DCCFBE" strokeWidth="3"/>
+                </svg>
               </button>
-              <a 
-                href={`/work`}
-                className="px-6 py-2 border border-black uppercase text-sm tracking-wider hover:bg-black hover:text-white transition-colors"
+              <CustomButton 
+                onClick={() => window.location.href = '/work'}
+                className="uppercase color-bg"
+                fill="off"
               >
                 VIEW ALL
-              </a>
+              </CustomButton>
             </div>
           </div>
       
@@ -501,7 +634,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
         onPointerCancel={handlePointerUp}
         style={{ 
           touchAction: 'none',
-          height: isMobile ? '580px' : '1100px',
+          height: isMobile ? '90vh' : '1100px',
           width: '100%',
           overflow: 'hidden'
         }}
@@ -593,8 +726,70 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
         </div>
       </div>
       
-      {/* Dotted border around the section */}
-      <div className="absolute inset-0 border-2 border-dashed border-black m-8 z-n-1 pointer-events-none"></div>
+      {/* SVG definitions for clipping */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          {/* Desktop clip path */}
+          <clipPath id="desktopShapeClip" clipPathUnits="objectBoundingBox">
+            <path d="M0 0.13C0.05 0.13 0.09 0.07 0.09 0H0.91C0.91 0.07 0.95 0.13 1 0.13V0.87C0.95 0.87 0.91 0.93 0.91 1H0.09C0.09 0.93 0.05 0.87 0 0.87V0.13Z" />
+          </clipPath>
+          
+          {/* Mobile clip path - taller and narrower */}
+          <clipPath id="mobileShapeClip" clipPathUnits="objectBoundingBox">
+            <path d="M0 0.036C0.044 0.036 0.079 0.02 0.079 0H0.921C0.921 0.02 0.956 0.036 1 0.036V0.964C0.956 0.964 0.921 0.98 0.921 1H0.079C0.079 0.98 0.044 0.964 0 0.964V0.036Z" />
+          </clipPath>
+        </defs>
+      </svg>
+      
+      {/* Background image for the active project */}
+      {featuredProjects[activeProjectIndex]?.gunreelBackground?.asset?.url ? (
+        <div className="gunreel-bg absolute inset-0 m-2 md:m-12 z-n-1 pointer-events-none">
+          {/* Container with the clipped image */}
+          <div 
+            className="w-full h-full relative" 
+            style={{ 
+              clipPath: isMobile ? 'url(#mobileShapeClip)' : 'url(#desktopShapeClip)'
+            }}
+          >
+            {initialLoad ? (
+              // Regular image on initial load
+              <img
+                src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                alt={`${featuredProjects[activeProjectIndex].title} background`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              // Pixelized image with transition effect
+              <PixelizeImage
+                key={pixelizeKey}
+                ref={pixelizeRef}
+                src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                alt={`${featuredProjects[activeProjectIndex].title} background`}
+                className="w-full h-full object-cover"
+                manualTrigger={true}
+                disableEffect={false}
+                duration={0.2}
+              />
+            )}
+            
+            {/* Gradient overlay at the bottom */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 w-full" 
+              style={{ 
+                height: isMobile ? '160px' : '215px',
+                background: 'linear-gradient(180deg, rgba(26, 25, 23, 0.00) 0%, #1A1917 100%)',
+                zIndex: 5
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        // Fallback to dotted border if no background image is available
+        <div className="absolute inset-0 m-8 z-n-1 pointer-events-none border-2 border-dashed border-[#DCCFBE]" style={{ 
+          clipPath: isMobile ? 'url(#mobileShapeClip)' : 'url(#desktopShapeClip)'
+        }}>
+        </div>
+      )}
     </div>
   );
 };

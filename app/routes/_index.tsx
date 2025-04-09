@@ -128,9 +128,9 @@ export default function Index() {
       {/* Gun Barrel Reel for featured projects */}
       {featuredProjects.length > 0 && (
         <div className="py-16 relative">
-          <div className="absolute top-16 left-8">
+          {/* <div className="absolute top-10 md:top-16 left-4 md:left-12">
             <h2 className="font-accent eyebrow mb-8">PROJECTS</h2>
-          </div>
+          </div> */}
           <GunBarrelReel projects={featuredProjects} />
         </div>
       )}

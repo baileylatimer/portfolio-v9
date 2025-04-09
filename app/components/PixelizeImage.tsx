@@ -7,6 +7,7 @@ interface PixelizeImageProps {
   disableEffect?: boolean;
   inOverlay?: boolean;
   manualTrigger?: boolean;
+  duration?: number;
 }
 
 export interface PixelizeImageRef {
@@ -23,7 +24,8 @@ const PixelizeImage = forwardRef<PixelizeImageRef, PixelizeImageProps>(({
   className, 
   disableEffect = false,
   inOverlay = false,
-  manualTrigger = false
+  manualTrigger = false,
+  duration = 0.5
 }, ref) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,6 @@ const PixelizeImage = forwardRef<PixelizeImageRef, PixelizeImageProps>(({
 
         const startPixelSize = calculatePixelSize(canvasRef.current.width, canvasRef.current.height);
         const endPixelSize = 1;
-        const duration = 0.5;
 
         gsap.to({}, {
           duration,
