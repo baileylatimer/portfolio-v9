@@ -6,6 +6,7 @@ import SvgCoordinates from './svg-coordinates';
 import SvgPeaceSign from './svg-peace-sign';
 import SvgEmailArrow from './svg-email-arrow';
 import CustomButton from './custom-button';
+import ScrambleText from './ScrambleText';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -50,10 +51,18 @@ const Footer: React.FC = () => {
            <span>©{currentYear}</span>
 
             <div className='flex gap-4 uppercase'>
-              <a href="https://www.instagram.com/latimer2k/" target="_blank" rel="noopener noreferrer">Instagram,</a>
-              <a href="https://dribbble.com/latimer" target="_blank" rel="noopener noreferrer">Dribbble,</a>
-              <a href="https://twitter.com/latimer2k" target="_blank" rel="noopener noreferrer">X,</a>
-              <a href="https://www.linkedin.com/in/baileylatimer/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a href="https://www.instagram.com/latimer2k/" target="_blank" rel="noopener noreferrer">
+                <ScrambleText>Instagram</ScrambleText>,
+              </a>
+              <a href="https://dribbble.com/latimer" target="_blank" rel="noopener noreferrer">
+                <ScrambleText>Dribbble</ScrambleText>,
+              </a>
+              <a href="https://twitter.com/latimer2k" target="_blank" rel="noopener noreferrer">
+                <ScrambleText>X</ScrambleText>,
+              </a>
+              <a href="https://www.linkedin.com/in/baileylatimer/" target="_blank" rel="noopener noreferrer">
+                <ScrambleText>LinkedIn</ScrambleText>
+              </a>
             </div>
           </div>
         </div>
