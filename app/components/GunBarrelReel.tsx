@@ -858,7 +858,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                     alt={project.title}
                     className="w-full h-full object-cover transition-all duration-300"
                     style={{
-                      filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.8)',
+                      filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.6)',
                     }}
                   />
                   
@@ -903,7 +903,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           >
             {initialLoad ? (
               // Regular image on initial load
-              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.8) contrast(1.2)' }}>
+              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.6) contrast(1.2)' }}>
                 <img
                   src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
                   alt={`${featuredProjects[activeProjectIndex].title} background`}
