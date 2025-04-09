@@ -135,9 +135,9 @@ export default function Index() {
         </div>
       )}
 
-<div className="flex-grow flex mt-24">
+{/* <div className="flex-grow flex mt-24">
         <HorseshoeModel />
-      </div>
+      </div> */}
       
 
       <ServicesSection services={services} />

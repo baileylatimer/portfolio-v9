@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 interface FeaturedProject {
   _id: string;
   title: string;
-  slug: { current: string };
+  slug: { current: string } | string; // Can be either an object with current property or a string directly
   mainImage: {
     asset: {
       url: string;
@@ -13,6 +13,14 @@ interface FeaturedProject {
   featured: boolean;
   order?: number; // Optional order field for sorting
 }
+
+// Helper function to get the slug string regardless of format
+const getSlug = (slug: { current: string } | string): string => {
+  if (typeof slug === 'string') {
+    return slug;
+  }
+  return slug?.current || '';
+};
 
 interface GunBarrelReelProps {
   projects: FeaturedProject[];
@@ -327,6 +335,24 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   const featuredProjects = [...projects]
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .slice(0, CHAMBER_COUNT);
+    
+  // Debug log for project data
+  useEffect(() => {
+    console.log('===== PROJECT DATA DEBUGGING =====');
+    console.log('Raw projects array:', projects);
+    console.log('Sorted and sliced featuredProjects array:', featuredProjects);
+    
+    console.log('Project slugs:');
+    featuredProjects.forEach((project, index) => {
+      console.log(`Project ${index} (${project.title}): slug = ${JSON.stringify(project.slug)}`);
+      console.log(`Full project data for ${index}:`, project);
+    });
+    
+    console.log('Active project index:', activeProjectIndex);
+    console.log('Active project data:', featuredProjects[activeProjectIndex]);
+    console.log('Active project slug:', getSlug(featuredProjects[activeProjectIndex]?.slug));
+    console.log('===== END PROJECT DATA DEBUGGING =====');
+  }, [featuredProjects, activeProjectIndex, projects]);
   
   // Log projects for debugging
   useEffect(() => {
@@ -520,23 +546,47 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   transformOrigin: 'center center'
                 }}
               >
-                {/* Project image - apply sepia filter to non-active projects */}
-                <img
-                  src={project.mainImage.asset.url}
-                  alt={project.title}
-                  className="w-full h-full object-cover transition-all duration-300"
-                  style={{
-                    filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.8)',
+                {/* Clickable link wrapper */}
+                <a 
+                  href={`/work/${getSlug(project.slug)}`}
+                  className="block w-full h-full relative"
+                  onClick={(e) => {
+                    // Prevent default behavior to see logs
+                    e.preventDefault();
+                    console.log('Link clicked for project:', project);
+                    console.log('Project slug:', project.slug);
+                    console.log('Project slug type:', typeof project.slug);
+                    console.log('Project slug value:', getSlug(project.slug));
+                    
+                    // After 3 seconds, navigate to the project page
+                    setTimeout(() => {
+                      const slug = getSlug(project.slug);
+                      if (slug) {
+                        window.location.href = `/work/${slug}`;
+                      } else {
+                        console.error('Project slug is undefined:', project);
+                      }
+                    }, 3000);
                   }}
-                />
-                
-                {/* Glass overlay */}
-                <img
-                  src="/images/CHAMBER_GLASS.png"
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  style={{ zIndex: 10 }}
-                />
+                >
+                  {/* Project image - apply sepia filter to non-active projects */}
+                  <img
+                    src={project.mainImage.asset.url}
+                    alt={project.title}
+                    className="w-full h-full object-cover transition-all duration-300"
+                    style={{
+                      filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.8)',
+                    }}
+                  />
+                  
+                  {/* Glass overlay */}
+                  <img
+                    src="/images/CHAMBER_GLASS.png"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ zIndex: 10 }}
+                  />
+                </a>
               </div>
             );
           })}
