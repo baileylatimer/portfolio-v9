@@ -18,6 +18,7 @@ export async function loader() {
       client,
       projectDate,
       technologies,
+      industry,
       featured,
       order,
       mainImage {

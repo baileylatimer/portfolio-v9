@@ -20,6 +20,7 @@ interface FeaturedProject {
       url: string;
     };
   };
+  industry?: string[]; // Industry field for the pill
   featured: boolean;
   order?: number; // Optional order field for sorting
 }
@@ -456,8 +457,13 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           <h2 className="text-4xl md:text-8xl uppercase font-bold mb-4 display-text color-bg">
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
-          
-
+          <div className="flex flex-wrap gap-2 justify-center mb-4">
+            {featuredProjects[activeProjectIndex]?.industry?.map((ind, index) => (
+              <span key={`ind-${index}`} className="color-bg uppercase px-2 py-1 rounded pill">
+                {ind}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -753,23 +759,27 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           >
             {initialLoad ? (
               // Regular image on initial load
-              <img
-                src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
-                alt={`${featuredProjects[activeProjectIndex].title} background`}
-                className="w-full h-full object-cover"
-              />
+              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.8) contrast(1.2)' }}>
+                <img
+                  src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                  alt={`${featuredProjects[activeProjectIndex].title} background`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             ) : (
               // Pixelized image with transition effect
-              <PixelizeImage
-                key={pixelizeKey}
-                ref={pixelizeRef}
-                src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
-                alt={`${featuredProjects[activeProjectIndex].title} background`}
-                className="w-full h-full object-cover"
-                manualTrigger={true}
-                disableEffect={false}
-                duration={0.2}
-              />
+              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.8) contrast(1.2)' }}>
+                <PixelizeImage
+                  key={pixelizeKey}
+                  ref={pixelizeRef}
+                  src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                  alt={`${featuredProjects[activeProjectIndex].title} background`}
+                  className="w-full h-full object-cover"
+                  manualTrigger={true}
+                  disableEffect={false}
+                  duration={0.2}
+                />
+              </div>
             )}
             
             {/* Gradient overlay at the bottom */}

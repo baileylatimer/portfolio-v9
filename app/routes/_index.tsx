@@ -106,7 +106,9 @@ interface Project {
       url: string;
     };
   };
+  industry?: string[];
   featured: boolean;
+  order?: number;
 }
 
 export default function Index() {
