@@ -59,7 +59,8 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   // Initialize with Chamber 3 (index 3) as active
   const [activeProjectIndex, setActiveProjectIndex] = useState(3);
   const [isDragging, setIsDragging] = useState(false);
-  const [previousActiveIndex, setPreviousActiveIndex] = useState<number | null>(null);
+  // We'll use this state to track the previous active index for animation purposes
+  const [, setPreviousActiveIndex] = useState<number | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   
   // Ref for the pixelize image
@@ -67,6 +68,10 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   // Key for the PixelizeImage component to force re-render
   const [pixelizeKey, setPixelizeKey] = useState(0);
+  
+  // State for GSAP
+  const [gsapLoaded, setGsapLoaded] = useState(false);
+  const industryRefs = useRef<(HTMLSpanElement | null)[]>([]);
   
   // To position Chamber 3 (Bottom left) as the rightmost visible chamber,
   // we need to rotate the barrel to the appropriate angle
@@ -92,10 +97,20 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const barrelImage = '/images/BARREL_IMAGE_PNG.png'; // Use the same image for both mobile and desktop
   
-  // Initialize audio
+  // Initialize audio and load GSAP
   useEffect(() => {
     clickSoundRef.current = new Audio('/sounds/GUN_CLICK_SOUND.wav');
     clickSoundRef.current.preload = 'auto';
+    
+    // Load GSAP and TextPlugin
+    const loadGSAP = async () => {
+      const { default: gsap } = await import('gsap');
+      const { default: TextPlugin } = await import('gsap/TextPlugin');
+      gsap.registerPlugin(TextPlugin);
+      setGsapLoaded(true);
+    };
+
+    loadGSAP();
     
     return () => {
       // Clean up animation frame on unmount
@@ -174,6 +189,33 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     return rightmostChamberIndex;
   }, []);
   
+  // Function to scramble text
+  const scrambleText = useCallback((element: HTMLSpanElement, originalText: string) => {
+    if (gsapLoaded) {
+      import('gsap').then(({ default: gsap }) => {
+        // Create a scrambled version of the text using only the original letters
+        const letters = originalText.split("");
+        const scramble = () => {
+          // Shuffle the letters
+          for (let i = letters.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [letters[i], letters[j]] = [letters[j], letters[i]];
+          }
+          return letters.join("");
+        };
+        
+        // Create a timeline for the scramble effect
+        const tl = gsap.timeline();
+        
+        // Add multiple scrambles to create the effect (faster)
+        tl.to(element, { duration: 0.05, text: scramble() })
+          .to(element, { duration: 0.05, text: scramble() })
+          .to(element, { duration: 0.05, text: scramble() })
+          .to(element, { duration: 0.05, text: originalText });
+      });
+    }
+  }, [gsapLoaded]);
+
   // Check if we've crossed a chamber boundary and update active project
   const checkChamberCrossing = useCallback((angle: number) => {
     // Determine which chamber is in the rightmost position
@@ -391,6 +433,85 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .slice(0, CHAMBER_COUNT);
     
+  // Direct scramble function for debugging
+  const forceScrambleAllIndustries = useCallback(() => {
+    console.log("Force scrambling all industries");
+    console.log("GSAP loaded:", gsapLoaded);
+    console.log("Industry refs:", industryRefs.current);
+    
+    if (gsapLoaded) {
+      const industries = featuredProjects[activeProjectIndex]?.industry || [];
+      console.log("Industries to scramble:", industries);
+      
+      // Log all refs
+      industryRefs.current.forEach((ref, i) => {
+        console.log(`Ref ${i}:`, ref ? "exists" : "null");
+      });
+      
+      // Try to scramble each industry text directly
+      industries.forEach((industry, index) => {
+        const ref = document.querySelector(`.pill:nth-child(${index + 1})`) as HTMLSpanElement;
+        if (ref) {
+          console.log(`Found industry element ${index} via querySelector`);
+          scrambleText(ref, industry);
+        } else {
+          console.log(`Could not find industry element ${index} via querySelector`);
+        }
+      });
+    }
+  }, [activeProjectIndex, featuredProjects, gsapLoaded, scrambleText]);
+    
+  // Update industry refs when featured projects change
+  useEffect(() => {
+    // Reset the refs array with null values
+    const totalIndustries = featuredProjects.reduce(
+      (count, project) => count + (project.industry?.length || 0), 
+      0
+    );
+    industryRefs.current = Array(totalIndustries).fill(null);
+  }, [featuredProjects]);
+  
+  // Trigger scramble effect when active project changes
+  useEffect(() => {
+    if (!initialLoad && gsapLoaded) {
+      console.log("Active project changed, triggering scramble effect");
+      
+      // Get the industry texts for the active project
+      const industries = featuredProjects[activeProjectIndex]?.industry || [];
+      console.log("Industries for active project:", industries);
+      
+      // Try both ref methods
+      
+      // Method 1: Using our refs array
+      industries.forEach((industry, index) => {
+        const startIndex = featuredProjects.slice(0, activeProjectIndex).reduce(
+          (count, project) => count + (project.industry?.length || 0), 
+          0
+        );
+        const ref = industryRefs.current[startIndex + index];
+        console.log(`Industry ${index} ref:`, ref ? "exists" : "null");
+        if (ref) {
+          console.log(`Scrambling industry ${index} using ref`);
+          scrambleText(ref, industry);
+        }
+      });
+      
+      // Method 2: Direct DOM query as fallback
+      setTimeout(() => {
+        const pillElements = document.querySelectorAll('.pill');
+        console.log(`Found ${pillElements.length} pill elements via querySelector`);
+        
+        industries.forEach((industry, index) => {
+          if (index < pillElements.length) {
+            const element = pillElements[index] as HTMLSpanElement;
+            console.log(`Scrambling industry ${index} using querySelector`);
+            scrambleText(element, industry);
+          }
+        });
+      }, 50);
+    }
+  }, [activeProjectIndex, featuredProjects, gsapLoaded, initialLoad, scrambleText]);
+    
   // Debug log for project data
   useEffect(() => {
     console.log('===== PROJECT DATA DEBUGGING =====');
@@ -458,12 +579,35 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
           <div className="flex flex-wrap gap-2 justify-center mb-4">
-            {featuredProjects[activeProjectIndex]?.industry?.map((ind, index) => (
-              <span key={`ind-${index}`} className="color-bg uppercase px-2 py-1 rounded pill">
-                {ind}
-              </span>
-            ))}
+            {featuredProjects[activeProjectIndex]?.industry?.map((ind, index) => {
+              const refIndex = featuredProjects.slice(0, activeProjectIndex).reduce(
+                (count, project) => count + (project.industry?.length || 0), 
+                0
+              ) + index;
+              
+              return (
+                <span 
+                  key={`ind-${index}`} 
+                  className="color-bg uppercase px-2 py-1 rounded pill"
+                  ref={el => {
+                    if (industryRefs.current.length > refIndex) {
+                      industryRefs.current[refIndex] = el;
+                    }
+                  }}
+                >
+                  {ind}
+                </span>
+              );
+            })}
           </div>
+          
+          {/* Debug button - remove in production */}
+          <button 
+            onClick={forceScrambleAllIndustries}
+            className="text-xs opacity-0"
+          >
+            Debug Scramble
+          </button>
         </div>
       </div>
 
