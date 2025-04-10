@@ -291,13 +291,19 @@ export default function Navigation() {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollDirection = scrollTop > lastScrollTop ? 1 : -1;
             
-            // Log scroll information
+            // Enhanced logging for debugging the navigation behavior
             console.log('Window scroll event:', {
               scrollTop,
               scrollDirection,
               navTextVisible,
               navTextTransform: navTextRef.current?.style.transform,
-              navInfoTransform: navInfoRef.current?.style.transform
+              navInfoTransform: navInfoRef.current?.style.transform,
+              // Add more detailed information
+              navTextHeight: navTextRef.current?.offsetHeight,
+              navInfoTop: navInfoRef.current?.getBoundingClientRect().top,
+              isAnimating: !!navTextRef.current?.style.transform || !!navInfoRef.current?.style.transform,
+              scrollThreshold: 10, // Current threshold for triggering animation
+              animationDuration: 0.3 // Current animation duration
             });
             
           // DIAGNOSTIC LOGGING: Check if we're over a light section and update nav color accordingly
@@ -352,72 +358,54 @@ export default function Navigation() {
               }
             }
             
-            // Handle nav text visibility based on scroll direction
+            // Handle nav text visibility based on scroll position
             if (navTextRef.current && navInfoRef.current && navBgRef.current) {
-              if (scrollDirection === 1 && navTextVisible && scrollTop > 10) { // Only hide after scrolling a bit
-                // Scrolling down and nav-text is visible
-                console.log('Hiding nav text (scrolling down)');
+              // Get the height of the LATIMER text for calculations
+              const navTextHeight = navTextRef.current.offsetHeight;
+              const navInfoInitialTop = navTextHeight + 16; // 16px is the mt-4 value
+              
+              // Calculate how much to transform based on scroll position
+              // This creates a smooth, natural effect tied directly to scroll position
+              if (scrollTop <= 0) {
+                // At the very top of the page - show LATIMER fully
+                console.log('At top of page - showing LATIMER fully');
+                gsap.set(navTextRef.current, { yPercent: 0 });
+                gsap.set(navInfoRef.current, { y: 0 });
+                gsap.set(navBgRef.current, { height: '100%', y: 0 });
+                navTextVisible = true;
+              } else {
+                // Calculate a progress value between 0 and 1 based on scroll position
+                // This determines how much to hide/move elements
+                const maxScrollForEffect = navTextHeight * 1.5; // Complete the effect over 1.5x the text height
+                const progress = Math.min(1, scrollTop / maxScrollForEffect);
                 
-                const navInfoRect = navInfoRef.current.getBoundingClientRect();
-                const desiredTop = window.innerWidth >= 1024 ? 40 : 30;
-                const moveDistance = navInfoRect.top - desiredTop;
+                console.log('Scroll progress:', progress);
                 
-                console.log('Nav info positioning:', {
-                  currentTop: navInfoRect.top,
-                  desiredTop,
-                  moveDistance
-                });
-
-                gsap.to(navTextRef.current, { 
-                  yPercent: -100, 
-                  duration: 0.3,
-                  onComplete: () => {
-                    console.log('Nav text hide animation complete');
-                    console.log('Current nav text transform:', navTextRef.current?.style.transform);
-                  }
-                });
+                // Apply transforms proportionally to scroll position
+                // This creates a natural "sticky" effect without jumpy animations
+                gsap.set(navTextRef.current, { yPercent: -100 * progress });
                 
-                gsap.to(navInfoRef.current, { 
-                  y: -moveDistance,
-                  duration: 0.3,
-                  onComplete: () => {
-                    console.log('Nav info move animation complete');
-                    console.log('Current nav info transform:', navInfoRef.current?.style.transform);
-                  }
-                });
-
+                // Calculate the distance to move nav-info to stick to top
+                const moveDistance = navInfoInitialTop * progress;
+                gsap.set(navInfoRef.current, { y: -moveDistance });
+                
+                // Adjust background height and position proportionally
                 if (window.innerWidth >= 1024) {
                   // Desktop behavior
-                  gsap.to(navBgRef.current, { height: `calc(100% - ${navTextHeight/4}px)`, y: -navTextHeight/4, duration: 0.3 });
+                  gsap.set(navBgRef.current, { 
+                    height: `calc(100% - ${navTextHeight/4 * progress}px)`, 
+                    y: -navTextHeight/4 * progress 
+                  });
                 } else {
                   // Mobile behavior
-                  gsap.to(navBgRef.current, { height: `calc(100% - ${navTextHeight/2}px)`, y: -navTextHeight/2, duration: 0.3 });
+                  gsap.set(navBgRef.current, { 
+                    height: `calc(100% - ${navTextHeight/2 * progress}px)`, 
+                    y: -navTextHeight/2 * progress 
+                  });
                 }
-                navTextVisible = false;
-              } else if (scrollDirection === -1 && !navTextVisible) {
-                // Scrolling up and nav-text is hidden
-                console.log('Showing nav text (scrolling up)');
                 
-                gsap.to(navTextRef.current, { 
-                  yPercent: 0, 
-                  duration: 0.3,
-                  onComplete: () => {
-                    console.log('Nav text show animation complete');
-                    console.log('Current nav text transform:', navTextRef.current?.style.transform);
-                  }
-                });
-                
-                gsap.to(navInfoRef.current, { 
-                  y: 0, 
-                  duration: 0.3,
-                  onComplete: () => {
-                    console.log('Nav info reset animation complete');
-                    console.log('Current nav info transform:', navInfoRef.current?.style.transform);
-                  }
-                });
-                
-                gsap.to(navBgRef.current, { height: '100%', y: 0, duration: 0.3 });
-                navTextVisible = true;
+                // Update visibility state for tracking
+                navTextVisible = progress < 0.5;
               }
             }
             
