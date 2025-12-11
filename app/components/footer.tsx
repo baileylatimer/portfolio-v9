@@ -7,10 +7,12 @@ import SvgPeaceSign from './svg-peace-sign';
 import SvgEmailArrow from './svg-email-arrow';
 import CustomButton from './custom-button';
 import ScrambleText from './ScrambleText';
+import { useAsciiMode } from '~/contexts/AsciiModeContext';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const navigate = useNavigate();
+  const { asciiMode, toggleAsciiMode } = useAsciiMode();
 
   return (
     <footer className="relative bg-cover bg-top lg:bg-top pt-36 lg:pt-48 md:bg-[url('/images/footer-bg-extended.png')] bg-[url('/images/footer-bg-mobile.png')]">
@@ -50,7 +52,7 @@ const Footer: React.FC = () => {
           <div className='flex justify-between w-full mix-blend-difference md:flex hidden'> 
            <span>©{currentYear}</span>
 
-            <div className='flex gap-4 uppercase'>
+            <div className='flex gap-4 uppercase items-center'>
               <a href="https://www.instagram.com/latimer2k/" target="_blank" rel="noopener noreferrer">
                 <ScrambleText>Instagram</ScrambleText>,
               </a>
@@ -63,6 +65,26 @@ const Footer: React.FC = () => {
               <a href="https://www.linkedin.com/in/baileylatimer/" target="_blank" rel="noopener noreferrer">
                 <ScrambleText>LinkedIn</ScrambleText>
               </a>
+              
+              {/* ASCII Mode Toggle */}
+              <div className="ascii-toggle">
+                <label>
+                  <span>ASCII</span>
+                  <div className={`relative w-10 h-5 transition-colors duration-200 ease-in-out rounded-full ${asciiMode ? 'bg-white' : 'bg-gray-400'}`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={asciiMode}
+                      onChange={toggleAsciiMode}
+                    />
+                    <div
+                      className={`absolute left-0.5 top-0.5 bg-black w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${
+                        asciiMode ? 'transform translate-x-5' : ''
+                      }`}
+                    />
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
         </div>

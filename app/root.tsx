@@ -10,6 +10,7 @@ import {
 import type { LinksFunction, LoaderFunction, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
+import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
@@ -235,7 +236,9 @@ export default function App() {
         <Links />
       </head>
       <BulletHoleProvider>
-        <AppContent />
+        <AsciiModeProvider>
+          <AppContent />
+        </AsciiModeProvider>
       </BulletHoleProvider>
     </html>
   );

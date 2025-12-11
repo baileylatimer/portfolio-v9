@@ -6,6 +6,9 @@ import SvgTarget from '~/components/svg-target';
 import SvgGrid from '~/components/svg-grid';
 import CustomButton from '~/components/custom-button';
 import { useOutletContext } from '@remix-run/react';
+import AsciiVideo from '~/components/AsciiVideo';
+import AsciiImage from '~/components/AsciiImage';
+import { useAsciiMode } from '~/contexts/AsciiModeContext';
 
 interface HeroProps {
   bottomElementsScale?: number;
@@ -22,6 +25,7 @@ export default function Hero({ bottomElementsScale = 1, mediaUrl }: HeroProps) {
   const desktopFlagWidth = 143 * bottomElementsScale;
   const desktopFlagHeight = 44 * bottomElementsScale;
   const navigate = useNavigate();
+  const { asciiMode } = useAsciiMode();
 
   const { openSecretSection } = useOutletContext<OutletContextType>();
   const isVideo = mediaUrl?.endsWith('.mp4') || mediaUrl?.endsWith('.webm');
@@ -43,20 +47,40 @@ export default function Hero({ bottomElementsScale = 1, mediaUrl }: HeroProps) {
     <div className="hero-section relative h-screen w-full overflow-hidden">
       {/* Background Media */}
       {isVideo ? (
-        <video
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-        >
-          <source src={mediaUrl} type="video/mp4" />
-        </video>
+        asciiMode ? (
+          <AsciiVideo
+            src={mediaUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : (
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          >
+            <source src={mediaUrl} type="video/mp4" />
+            <track kind="captions" />
+          </video>
+        )
       ) : (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{backgroundImage: `url('${mediaUrl}')`}}
-        />
+        asciiMode ? (
+          <AsciiImage
+            src={mediaUrl}
+            alt="Hero background"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{backgroundImage: `url('${mediaUrl}')`}}
+          />
+        )
       )}
       
       <div className="absolute inset-0 bg-black bg-opacity-20" style={{
