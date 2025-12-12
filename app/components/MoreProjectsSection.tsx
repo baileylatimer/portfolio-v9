@@ -23,6 +23,7 @@ interface MoreProjectsSectionProps {
 
 export default function MoreProjectsSection({ projects, currentProjectId }: MoreProjectsSectionProps) {
   const [hoveredProject, setHoveredProject] = useState<Project | null>(null);
+  const [hoverCount, setHoverCount] = useState(0);
   const navigate = useNavigate();
 
   // Filter out current project
@@ -33,10 +34,14 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
   };
 
   const handleProjectHover = (project: Project) => {
+    console.log('🎯 Hover triggered:', project.title, 'Previous:', hoveredProject?.title || 'none');
+    setHoverCount(c => c + 1);
     setHoveredProject(project);
+    console.log('🎯 Hover count incremented to:', hoverCount + 1);
   };
 
   const handleProjectLeave = () => {
+    console.log('🎯 Mouse leave - clearing hover');
     setHoveredProject(null);
   };
 
@@ -197,7 +202,7 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
             <div className="absolute bottom-0 left-0 w-[245px] h-[245px] bg-transparent">
               {hoveredProject ? (
                 <PixelizeImage
-                  key={hoveredProject._id}
+                  key={`${hoveredProject._id}-${hoverCount}`}
                   src={hoveredProject.mainImage.asset.url}
                   alt={hoveredProject.title}
                   className="w-full h-full object-cover"
