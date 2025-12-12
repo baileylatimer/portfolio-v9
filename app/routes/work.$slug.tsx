@@ -1,4 +1,5 @@
 import { json, LoaderFunction } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { createClient } from '@sanity/client';
 import { PortableText } from '@portabletext/react';
@@ -112,6 +113,42 @@ export const loader: LoaderFunction = async ({ params }) => {
   }
 
   return json({ project, projects });
+};
+
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
+  if (!data?.project) {
+    return [{ title: "Project Not Found | Latimer Design" }];
+  }
+
+  const { project } = data;
+  const title = `${project.title} | Latimer Design`;
+  const description = `${project.challenge.substring(0, 150)}...`;
+  const imageUrl = project.mainImage.asset.url;
+  const url = `https://latimer.me/work/${params.slug}`;
+
+  return [
+    { title },
+    { name: "description", content: description },
+    
+    // Open Graph
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    { property: "og:image", content: imageUrl },
+    { property: "og:url", content: url },
+    { property: "og:type", content: "website" },
+    { property: "og:site_name", content: "Latimer Design" },
+    
+    // Twitter Card
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: title },
+    { name: "twitter:description", content: description },
+    { name: "twitter:image", content: imageUrl },
+    { name: "twitter:site", content: "@LatimerDesign" },
+    
+    // Additional SEO
+    { name: "author", content: "Latimer Design" },
+    { name: "robots", content: "index, follow" },
+  ];
 };
 
 const getColSpan = (columns: number | undefined) => {
