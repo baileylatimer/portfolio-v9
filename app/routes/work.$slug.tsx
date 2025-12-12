@@ -122,8 +122,10 @@ export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
 
   const { project } = data;
   const title = `${project.title} | Latimer Design`;
-  const description = `${project.challenge.substring(0, 150)}...`;
-  const imageUrl = project.mainImage.asset.url;
+  const description = project.challenge && project.challenge.trim()
+    ? `${project.challenge.substring(0, 150)}...`
+    : `A project by Latimer Design featuring ${project.industry?.join(', ') || 'creative work'}.`;
+  const imageUrl = project.mainImage?.asset?.url || 'https://latimer.me/images/social-sharing.jpg';
   const url = `https://latimer.me/work/${params.slug}`;
 
   return [
@@ -320,19 +322,23 @@ export default function Project() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-8 color-bg">
-                  <div>
-                    <h3 className="uppercase mb-4">Challenge</h3>
-                    <p className="font-secondary text-md">{project.challenge}</p>
-                  </div>
-                  <div>
-                    <h3 className="uppercase mb-4">Solution</h3>
-                    <div className="font-secondary text-md">
-                      <PortableText 
-                        value={project.solution}
-                        components={portableTextComponents}
-                      />
+                  {project.challenge && project.challenge.trim() && (
+                    <div>
+                      <h3 className="uppercase mb-4">Challenge</h3>
+                      <p className="font-secondary text-md">{project.challenge}</p>
                     </div>
-                  </div>
+                  )}
+                  {project.solution && project.solution.length > 0 && (
+                    <div>
+                      <h3 className="uppercase mb-4">Solution</h3>
+                      <div className="font-secondary text-md">
+                        <PortableText 
+                          value={project.solution}
+                          components={portableTextComponents}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
