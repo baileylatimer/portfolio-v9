@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from '@remix-run/react';
 import PixelizeImage from './PixelizeImage';
+import ScrambleText from './ScrambleText';
 
 interface Project {
   _id: string;
@@ -155,7 +156,9 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
                         ? { backgroundColor: 'var(--color-contrast-higher)' } 
                         : undefined
                       }>
-                        {project.title}
+                        <ScrambleText isActive={hoveredProject?._id === project._id}>
+                          {project.title}
+                        </ScrambleText>
                       </span>
                     </div>
                     
@@ -170,7 +173,9 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
                         ? { backgroundColor: 'var(--color-contrast-higher)' } 
                         : undefined
                       }>
-                        {extractYear(project.projectDate)}
+                        <ScrambleText isActive={hoveredProject?._id === project._id}>
+                          {extractYear(project.projectDate)}
+                        </ScrambleText>
                       </span>
                     </div>
                     
@@ -187,7 +192,10 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
                       }>
                         {project.industry.map((ind, index) => (
                           <span key={index} className="text-sm uppercase">
-                            [{ind}]{index < project.industry.length - 1 ? ' ' : ''}
+                            <ScrambleText isActive={hoveredProject?._id === project._id}>
+                              [{ind}]
+                            </ScrambleText>
+                            {index < project.industry.length - 1 ? ' ' : ''}
                           </span>
                         ))}
                       </span>
