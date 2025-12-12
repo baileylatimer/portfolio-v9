@@ -1,5 +1,5 @@
 import { json, LoaderFunction } from "@remix-run/node";
-import { useLoaderData, useNavigate } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { createClient } from '@sanity/client';
 import { PortableText } from '@portabletext/react';
 import type { PortableTextComponents } from '@portabletext/react';
@@ -7,7 +7,8 @@ import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
 import PixelizeImage from "~/components/PixelizeImage";
-import { useState, useEffect, useRef, useCallback } from 'react';
+import MoreProjectsSection from "~/components/MoreProjectsSection";
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 const sanityClient = createClient({
@@ -62,7 +63,7 @@ interface Project {
 
 interface LoaderData {
   project: Project;
-  nextProject: Project;
+  projects: Project[];
 }
 
 export const loader: LoaderFunction = async ({ params }) => {
@@ -104,17 +105,13 @@ export const loader: LoaderFunction = async ({ params }) => {
   }`;
   
   const projects = await sanityClient.fetch(projectsQuery);
-  const currentProjectIndex = projects.findIndex((p: Project) => p.slug.current === slug);
-  const nextProjectIndex = (currentProjectIndex + 1) % projects.length;
-
-  const project = projects[currentProjectIndex];
-  const nextProject = projects[nextProjectIndex];
+  const project = projects.find((p: Project) => p.slug.current === slug);
 
   if (!project) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  return json({ project, nextProject });
+  return json({ project, projects });
 };
 
 const getColSpan = (columns: number | undefined) => {
@@ -164,77 +161,6 @@ MediaBlockComponent.propTypes = {
   }).isRequired,
 };
 
-interface NextProjectComponentProps {
-  nextProject: {
-    slug: { current: string };
-    mainImage: { asset: { url: string } };
-    title: string;
-  };
-}
-
-const NextProjectComponent: React.FC<NextProjectComponentProps> = ({ nextProject }) => {
-  const navigate = useNavigate();
-  const ref = useRef<HTMLDivElement>(null);
-
-  const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        setTimeout(() => {
-          navigate(`/work/${nextProject.slug.current}`);
-        }, 500); // 500ms delay for smoother transition
-      }
-    });
-  }, [navigate, nextProject.slug.current]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(handleIntersection, {
-      root: null,
-      rootMargin: "0px",
-      threshold: 0.5 // Trigger when 50% of the component is visible
-    });
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
-    };
-  }, [handleIntersection]);
-
-  return (
-    <div ref={ref} className="next-project-component h-screen relative">
-      <PixelizeImage
-        src={nextProject.mainImage.asset.url}
-        alt={nextProject.title}
-        className="w-full h-full object-cover"
-        disableEffect={true}
-      />
-      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="uppercase color-bg mb-2">NEXT PROJECT</h2>
-          <h3 className="uppercase color-bg project-title">{nextProject.title}</h3>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-NextProjectComponent.propTypes = {
-  nextProject: PropTypes.shape({
-    slug: PropTypes.shape({
-      current: PropTypes.string.isRequired,
-    }).isRequired,
-    mainImage: PropTypes.shape({
-      asset: PropTypes.shape({
-        url: PropTypes.string.isRequired,
-      }).isRequired,
-    }).isRequired,
-    title: PropTypes.string.isRequired,
-  }).isRequired,
-};
 
 const portableTextComponents: PortableTextComponents = {
   list: {
@@ -248,7 +174,7 @@ const portableTextComponents: PortableTextComponents = {
 };
 
 export default function Project() {
-  const { project, nextProject } = useLoaderData<LoaderData>();
+  const { project, projects } = useLoaderData<LoaderData>();
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -392,7 +318,7 @@ export default function Project() {
           ))}
         </div>
       </div>
-      <NextProjectComponent nextProject={nextProject} />
+      <MoreProjectsSection projects={projects} currentProjectId={project._id} />
     </div>
   );
 }

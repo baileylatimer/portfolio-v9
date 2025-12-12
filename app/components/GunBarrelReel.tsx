@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import CustomButton from './custom-button';
 import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
+import AsciiImage from './AsciiImage';
+import { useAsciiMode } from '~/contexts/AsciiModeContext';
 import React from 'react';
 
 // No need for the PartnerShapeOutline component anymore
@@ -72,6 +74,9 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   // State for GSAP
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const industryRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  
+  // ASCII mode
+  const { asciiMode } = useAsciiMode();
   
   // To position Chamber 3 (Bottom left) as the rightmost visible chamber,
   // we need to rotate the barrel to the appropriate angle
@@ -853,14 +858,25 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   }}
                 >
                   {/* Project image - apply sepia filter to non-active projects */}
-                  <img
-                    src={project.mainImage.asset.url}
-                    alt={project.title}
-                    className="w-full h-full object-cover transition-all duration-300"
-                    style={{
-                      filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.6)',
-                    }}
-                  />
+              {asciiMode ? (
+                <AsciiImage
+                  src={project.mainImage.asset.url}
+                  alt={project.title}
+                  className="w-full h-full object-cover transition-all duration-300"
+                  style={{
+                    filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.6)',
+                  }}
+                />
+              ) : (
+                <img
+                  src={project.mainImage.asset.url}
+                  alt={project.title}
+                  className="w-full h-full object-cover transition-all duration-300"
+                  style={{
+                    filter: index === activeProjectIndex ? 'none' : 'sepia(0.7) brightness(0.6)',
+                  }}
+                />
+              )}
                   
                   {/* Glass overlay */}
                   <img
@@ -903,26 +919,42 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           >
             {initialLoad ? (
               // Regular image on initial load
-              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.6) contrast(1.2)' }}>
+            <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.6) contrast(1.2)' }}>
+              {asciiMode ? (
+                <AsciiImage
+                  src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                  alt={`${featuredProjects[activeProjectIndex].title} background`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
                 <img
                   src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
                   alt={`${featuredProjects[activeProjectIndex].title} background`}
                   className="w-full h-full object-cover"
                 />
-              </div>
+              )}
+            </div>
             ) : (
               // Pixelized image with transition effect
               <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.8) contrast(1.2)' }}>
-                <PixelizeImage
-                  key={pixelizeKey}
-                  ref={pixelizeRef}
-                  src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
-                  alt={`${featuredProjects[activeProjectIndex].title} background`}
-                  className="w-full h-full object-cover"
-                  manualTrigger={true}
-                  disableEffect={false}
-                  duration={0.2}
-                />
+                {asciiMode ? (
+                  <AsciiImage
+                    src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                    alt={`${featuredProjects[activeProjectIndex].title} background`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <PixelizeImage
+                    key={pixelizeKey}
+                    ref={pixelizeRef}
+                    src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
+                    alt={`${featuredProjects[activeProjectIndex].title} background`}
+                    className="w-full h-full object-cover"
+                    manualTrigger={true}
+                    disableEffect={false}
+                    duration={0.2}
+                  />
+                )}
               </div>
             )}
             

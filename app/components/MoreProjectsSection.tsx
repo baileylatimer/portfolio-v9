@@ -1,0 +1,217 @@
+import { useState } from 'react';
+import { useNavigate } from '@remix-run/react';
+import PixelizeImage from './PixelizeImage';
+
+interface Project {
+  _id: string;
+  title: string;
+  slug: { current: string };
+  projectDate: string;
+  services: string[];
+  industry: string[];
+  mainImage: {
+    asset: {
+      url: string;
+    };
+  };
+}
+
+interface MoreProjectsSectionProps {
+  projects: Project[];
+  currentProjectId?: string;
+}
+
+export default function MoreProjectsSection({ projects, currentProjectId }: MoreProjectsSectionProps) {
+  const [hoveredProject, setHoveredProject] = useState<Project | null>(null);
+  const navigate = useNavigate();
+
+  // Filter out current project
+  const otherProjects = projects.filter(project => project._id !== currentProjectId);
+
+  const extractYear = (dateString: string): string => {
+    return new Date(dateString).getFullYear().toString();
+  };
+
+  const handleProjectHover = (project: Project) => {
+    setHoveredProject(project);
+  };
+
+  const handleProjectLeave = () => {
+    setHoveredProject(null);
+  };
+
+  const handleProjectClick = (project: Project) => {
+    navigate(`/work/${project.slug.current}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, project: Project) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleProjectClick(project);
+    }
+  };
+
+  return (
+    <section className="more-projects-section py-8 md:py-16">
+      <div className="px-2">
+        
+        {/* Mobile Layout - Simple List */}
+        <div className="block md:hidden">
+          <h2 className="text-lg uppercase color-bg mb-8 font-bold">MORE PROJECTS</h2>
+          
+          {/* Mobile Project List */}
+          <div className="space-y-0">
+            {otherProjects.map((project, index) => (
+              <div
+                key={project._id}
+                className="project-row cursor-pointer py-3 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                onClick={() => handleProjectClick(project)}
+                onKeyDown={(e) => handleKeyDown(e, project)}
+                role="button"
+                tabIndex={0}
+                aria-label={`View project: ${project.title}`}
+                style={index < otherProjects.length - 1 
+                  ? { borderBottom: '1px solid var(--color-contrast-higher)' } 
+                  : undefined
+                }
+              >
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  
+                  {/* Project Name */}
+                  <div className="col-span-4">
+                    <span className="inline-block px-2 text-xs uppercase color-contrast">
+                      {project.title}
+                    </span>
+                  </div>
+                  
+                  {/* Year */}
+                  <div className="col-span-2">
+                    <span className="inline-block px-2 text-xs color-contrast">
+                      {extractYear(project.projectDate)}
+                    </span>
+                  </div>
+                  
+                  {/* Industry */}
+                  <div className="col-span-6 text-right">
+                    <span className="inline-block px-2 color-contrast">
+                      {project.industry.map((ind, index) => (
+                        <span key={index} className="text-xs uppercase">
+                          [{ind}]{index < project.industry.length - 1 ? ' ' : ''}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                  
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Layout - Full Width with Positioned Image */}
+        <div className="hidden md:block relative">
+          
+          {/* Project List Container */}
+          <div className="relative">
+            
+            {/* Top Label - aligned with first project */}
+            <div className="absolute top-3 left-0">
+              <h2 className="text-base uppercase color-contrast">MORE PROJECTS</h2>
+            </div>
+            
+            {/* Projects List */}
+            <div className="space-y-0 ml-[300px]">
+              {otherProjects.map((project, index) => (
+                <div
+                  key={project._id}
+                  className="project-row cursor-pointer py-3 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                  onMouseEnter={() => handleProjectHover(project)}
+                  onMouseLeave={handleProjectLeave}
+                  onClick={() => handleProjectClick(project)}
+                  onKeyDown={(e) => handleKeyDown(e, project)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View project: ${project.title}`}
+                  style={index < otherProjects.length - 1 
+                    ? { borderBottom: '1px solid var(--color-contrast-higher)' } 
+                    : undefined
+                  }
+                >
+                  <div className="grid grid-cols-12 gap-4 items-center">
+                    
+                    {/* Project Name */}
+                    <div className="col-span-4">
+                      <span className={`inline-block px-2 text-base uppercase transition-all duration-150 ${
+                        hoveredProject?._id === project._id 
+                          ? 'color-bg' 
+                          : 'color-contrast'
+                      }`}
+                      style={hoveredProject?._id === project._id 
+                        ? { backgroundColor: 'var(--color-contrast-higher)' } 
+                        : undefined
+                      }>
+                        {project.title}
+                      </span>
+                    </div>
+                    
+                    {/* Year */}
+                    <div className="col-span-2">
+                      <span className={`inline-block px-2 text-base transition-all duration-150 ${
+                        hoveredProject?._id === project._id 
+                          ? 'color-bg' 
+                          : 'color-contrast'
+                      }`}
+                      style={hoveredProject?._id === project._id 
+                        ? { backgroundColor: 'var(--color-contrast-higher)' } 
+                        : undefined
+                      }>
+                        {extractYear(project.projectDate)}
+                      </span>
+                    </div>
+                    
+                    {/* Industry */}
+                    <div className="col-span-6 text-right">
+                      <span className={`inline-block px-2 transition-all duration-150 ${
+                        hoveredProject?._id === project._id 
+                          ? 'color-bg' 
+                          : 'color-contrast'
+                      }`}
+                      style={hoveredProject?._id === project._id 
+                        ? { backgroundColor: 'var(--color-contrast-higher)' } 
+                        : undefined
+                      }>
+                        {project.industry.map((ind, index) => (
+                          <span key={index} className="text-sm uppercase">
+                            [{ind}]{index < project.industry.length - 1 ? ' ' : ''}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                    
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Bottom Left Positioned Image */}
+            <div className="absolute bottom-0 left-0 w-[245px] h-[245px] bg-transparent">
+              {hoveredProject ? (
+                <PixelizeImage
+                  key={hoveredProject._id}
+                  src={hoveredProject.mainImage.asset.url}
+                  alt={hoveredProject.title}
+                  className="w-full h-full object-cover"
+                  disableEffect={false}
+                />
+              ) : (
+                <div className="w-full h-full bg-transparent" />
+              )}
+            </div>
+            
+          </div>
+        </div>
+        
+      </div>
+    </section>
+  );
+}
