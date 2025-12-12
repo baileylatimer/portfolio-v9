@@ -10,6 +10,7 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({ children, className = '', i
   const textRef = useRef<HTMLSpanElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const [originalText, setOriginalText] = useState('');
+  const isAnimatingRef = useRef(false);
 
   // Load GSAP and TextPlugin
   useEffect(() => {
@@ -23,18 +24,23 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({ children, className = '', i
     loadGSAP();
   }, []);
 
-  // Store the original text when it changes
+  // Store the original text when it changes - but only when not animating
   useEffect(() => {
-    if (textRef.current) {
-      // Get the text content
-      const text = textRef.current.textContent || '';
-      setOriginalText(text);
+    if (!isAnimatingRef.current) {
+      // Use children prop as primary source of truth
+      if (typeof children === 'string') {
+        setOriginalText(children);
+      } else if (textRef.current) {
+        const text = textRef.current.textContent || '';
+        setOriginalText(text);
+      }
     }
   }, [children]);
 
   // Handle external isActive prop changes
   useEffect(() => {
     if (isActive && gsapLoaded && textRef.current && originalText) {
+      isAnimatingRef.current = true; // Mark as animating
       import('gsap').then(({ default: gsap }) => {
         // Create a scrambled version of the text using only the original letters
         const letters = originalText.split("");
@@ -54,14 +60,24 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({ children, className = '', i
         tl.to(textRef.current, { duration: 0.05, text: scramble() })
           .to(textRef.current, { duration: 0.05, text: scramble() })
           .to(textRef.current, { duration: 0.05, text: scramble() })
-          .to(textRef.current, { duration: 0.05, text: originalText });
+          .to(textRef.current, { 
+            duration: 0.05, 
+            text: originalText,
+            onComplete: () => {
+              isAnimatingRef.current = false; // Animation finished
+            }
+          });
       });
     } else if (!isActive && gsapLoaded && textRef.current && originalText) {
+      isAnimatingRef.current = true; // Mark as animating
       // Restore original text when isActive becomes false
       import('gsap').then(({ default: gsap }) => {
         gsap.to(textRef.current, {
           duration: 0.1,
-          text: originalText
+          text: originalText,
+          onComplete: () => {
+            isAnimatingRef.current = false; // Animation finished
+          }
         });
       });
     }
@@ -70,6 +86,7 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({ children, className = '', i
   // Handle hover effects (for standalone use)
   const handleMouseEnter = () => {
     if (gsapLoaded && textRef.current && originalText) {
+      isAnimatingRef.current = true; // Mark as animating
       import('gsap').then(({ default: gsap }) => {
         // Create a scrambled version of the text using only the original letters
         const letters = originalText.split("");
@@ -89,17 +106,27 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({ children, className = '', i
         tl.to(textRef.current, { duration: 0.05, text: scramble() })
           .to(textRef.current, { duration: 0.05, text: scramble() })
           .to(textRef.current, { duration: 0.05, text: scramble() })
-          .to(textRef.current, { duration: 0.05, text: originalText });
+          .to(textRef.current, { 
+            duration: 0.05, 
+            text: originalText,
+            onComplete: () => {
+              isAnimatingRef.current = false; // Animation finished
+            }
+          });
       });
     }
   };
 
   const handleMouseLeave = () => {
     if (gsapLoaded && textRef.current && originalText) {
+      isAnimatingRef.current = true; // Mark as animating
       import('gsap').then(({ default: gsap }) => {
         gsap.to(textRef.current, {
           duration: 0.1,
-          text: originalText
+          text: originalText,
+          onComplete: () => {
+            isAnimatingRef.current = false; // Animation finished
+          }
         });
       });
     }
