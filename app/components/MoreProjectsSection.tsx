@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from '@remix-run/react';
-import PixelizeImage from './PixelizeImage';
+import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
 import ScrambleText from './ScrambleText';
 
 interface Project {
@@ -25,6 +25,8 @@ interface MoreProjectsSectionProps {
 export default function MoreProjectsSection({ projects, currentProjectId }: MoreProjectsSectionProps) {
   const [hoveredProject, setHoveredProject] = useState<Project | null>(null);
   const [hoverCount, setHoverCount] = useState(0);
+  const [pixelizeKey, setPixelizeKey] = useState(0);
+  const pixelizeRef = useRef<PixelizeImageRef>(null);
   const navigate = useNavigate();
 
   // Filter out current project
@@ -39,6 +41,22 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
     setHoverCount(c => c + 1);
     setHoveredProject(project);
     console.log('🎯 Hover count incremented to:', hoverCount + 1);
+
+    // Pixelization effect - increment key to force fresh pixelated mount
+    const newKey = pixelizeKey + 1;
+    console.log('🎨 Setting new pixelizeKey:', newKey);
+    setPixelizeKey(newKey);
+
+    // After component mounts pixelated, trigger depixelize animation
+    setTimeout(() => {
+      console.log('🎨 pixelizeRef after timeout:', pixelizeRef.current ? 'exists' : 'null');
+      if (pixelizeRef.current) {
+        console.log('🎨 Calling triggerDepixelize() method');
+        pixelizeRef.current.triggerDepixelize();
+      } else {
+        console.log('🎨 ERROR: pixelizeRef.current is null after timeout');
+      }
+    }, 200);
   };
 
   const handleProjectLeave = () => {
@@ -63,7 +81,7 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
         
         {/* Mobile Layout - Simple List */}
         <div className="block md:hidden">
-          <h2 className="text-lg uppercase color-bg mb-8 font-bold">MORE PROJECTS</h2>
+          <h2 className="text-lg uppercase color-contrast mb-8 font-bold">MORE PROJECTS</h2>
           
           {/* Mobile Project List */}
           <div className="space-y-0">
@@ -210,11 +228,14 @@ export default function MoreProjectsSection({ projects, currentProjectId }: More
             <div className="absolute bottom-0 left-0 w-[245px] h-[245px] bg-transparent">
               {hoveredProject ? (
                 <PixelizeImage
-                  key={`${hoveredProject._id}-${hoverCount}`}
+                  key={pixelizeKey}
+                  ref={pixelizeRef}
                   src={hoveredProject.mainImage.asset.url}
                   alt={hoveredProject.title}
                   className="w-full h-full object-cover"
+                  manualTrigger={true}
                   disableEffect={false}
+                  duration={0.1}
                 />
               ) : (
                 <div className="w-full h-full bg-transparent" />
