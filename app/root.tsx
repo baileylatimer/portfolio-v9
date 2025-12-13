@@ -28,6 +28,7 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: globalStyles },
   { rel: "stylesheet", href: filterModalStyles },
   { rel: "icon", type: "image/gif", href: "/images/favicon.gif" },
+  { rel: "preconnect", href: "https://cdn.jsdelivr.net" },
 ];
 
 export const meta: MetaFunction = () => {
@@ -182,6 +183,50 @@ function AppContent() {
 
   const showFooter = location.pathname !== '/contact';
 
+  // Initialize GSAP ScrollSmoother
+  useEffect(() => {
+    const initScrollSmoother = () => {
+      if (typeof window !== 'undefined') {
+        console.log('🎯 Initializing ScrollSmoother...');
+        
+        // Load ScrollSmoother from CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/gsap@3.14.1/dist/ScrollSmoother.min.js';
+        script.onload = async () => {
+          console.log('✅ ScrollSmoother CDN loaded');
+          
+          try {
+            const { default: gsap } = await import('gsap');
+            console.log('✅ GSAP imported');
+            
+            // @ts-ignore - ScrollSmoother is loaded from CDN
+            gsap.registerPlugin(window.ScrollSmoother);
+            console.log('✅ ScrollSmoother plugin registered');
+            
+            // @ts-ignore - ScrollSmoother is loaded from CDN
+            const smoother = window.ScrollSmoother.create({
+              wrapper: '#smooth-wrapper',
+              content: '#smooth-content',
+              smooth: 2,
+              effects: true,
+              normalizeScroll: true,
+            });
+            
+            console.log('🚀 ScrollSmoother created:', smoother);
+          } catch (error) {
+            console.error('❌ ScrollSmoother initialization failed:', error);
+          }
+        };
+        script.onerror = () => {
+          console.error('❌ Failed to load ScrollSmoother CDN');
+        };
+        document.head.appendChild(script);
+      }
+    };
+
+    initScrollSmoother();
+  }, []);
+
   return (
     <body
       className="min-h-screen relative flex flex-col"
@@ -190,21 +235,25 @@ function AppContent() {
         backgroundRepeat: 'repeat',
       }}
     >
-      <div 
-        className="absolute inset-0 pointer-events-none" 
-        style={{
-          backgroundImage: `
-            repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px),
-            repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px)
-          `,
-          zIndex: -1,
-        }} 
-      />
-      <div className="relative z-10 flex-grow">
-        <Navigation />
-        <Outlet context={{ openSecretSection }} />
+      <div id="smooth-wrapper">
+        <div id="smooth-content">
+          <div 
+            className="absolute inset-0 pointer-events-none" 
+            style={{
+              backgroundImage: `
+                repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.1) 39px, rgba(0,0,0,0.1) 40px)
+              `,
+              zIndex: -1,
+            }} 
+          />
+          <div className="relative z-10 flex-grow">
+            <Navigation />
+            <Outlet context={{ openSecretSection }} />
+          </div>
+          {showFooter && <Footer />}
+        </div>
       </div>
-      {showFooter && <Footer />}
       {bulletHoles?.map((hole: BulletHole) => (
         <BulletHole key={hole.id} x={hole.x} y={hole.y} />
       ))}

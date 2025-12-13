@@ -21,6 +21,7 @@
     "@remix-run/serve": "^2.13.1",
     "@sanity/client": "^6.22.1",
     "@sanity/image-url": "^1.0.2",
+    "@studio-freight/lenis": "^1.0.42",
     "gsap": "^3.12.5",
     "isbot": "^4.1.0",
     "react": "^18.2.0",
