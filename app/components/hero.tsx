@@ -138,7 +138,11 @@ export default function Hero({ bottomElementsScale = 1, mediaUrl, posterImageUrl
       </div>
       
       {/* Content */}
-
+      <div className="absolute inset-0 flex items-center justify-center">
+        <CustomButton onClick={() => navigate('/contact')}>
+          LET&apos;S TALK
+        </CustomButton>
+      </div>
       
       {/* Bottom elements */}
       <div className="absolute bottom-4 left-0 right-0 flex justify-between items-end px-4">
