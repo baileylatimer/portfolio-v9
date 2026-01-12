@@ -21,6 +21,23 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'posterImage',
+      title: 'Poster Image',
+      type: 'image',
+      description: 'Fast-loading image (200KB max) shown while video loads. Use first frame of video for seamless transition.',
+      options: {
+        hotspot: true,
+      },
+      validation: (Rule) => Rule.custom((posterImage, context) => {
+        // Simplified validation - recommend poster image for all media
+        if (!posterImage) {
+          return 'Poster image is recommended for fast loading performance';
+        }
+        
+        return true;
+      }),
+    }),
+    defineField({
       name: 'active',
       title: 'Active',
       type: 'boolean',
