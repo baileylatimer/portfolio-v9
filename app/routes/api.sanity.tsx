@@ -88,7 +88,8 @@ export async function loader() {
     const heroMediaQuery = `*[_type == "heroMedia" && active == true][0] {
       _id,
       title,
-      "mediaUrl": media.asset->url
+      "mediaUrl": media.asset->url,
+      "posterImageUrl": posterImage.asset->url
     }`;
     
     const missionQuery = `*[_type == "mission" && active == true] | order(order asc)[0] {

@@ -70,6 +70,7 @@ interface Partner {
 
 interface HeroMedia {
   mediaUrl: string;
+  posterImageUrl?: string;
 }
 
 interface MarkDef {
@@ -124,7 +125,7 @@ export default function Index() {
     <div className="min-h-screen flex flex-col">
       <Navigation />
 
-      <Hero mediaUrl={heroMedia.mediaUrl} />
+      <Hero mediaUrl={heroMedia.mediaUrl} posterImageUrl={heroMedia.posterImageUrl} />
       <MissionSection mission={mission} />
       
       {/* Gun Barrel Reel for featured projects */}
