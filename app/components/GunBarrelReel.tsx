@@ -919,7 +919,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
           >
             {initialLoad ? (
               // Regular image on initial load
-            <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.6) contrast(1.2)' }}>
+            <div className="w-full h-full" >
               {asciiMode ? (
                 <AsciiImage
                   src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
@@ -936,7 +936,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
             </div>
             ) : (
               // Pixelized image with transition effect
-              <div className="w-full h-full" style={{ filter: 'sepia(1) brightness(0.8) contrast(1.2)' }}>
+              <div className="w-full h-full" >
                 {asciiMode ? (
                   <AsciiImage
                     src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
