@@ -577,13 +577,13 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   return (
     <div className="relative w-full overflow-hidden ">
-      <div className="container mx-auto px-4 absolute  top-12 md:top-1/3 md:right-36">
+      <div className="container mx-auto px-4 absolute top-45 md:right-36">
         {/* Project title and info section - positioned on the right */}
-        <div className="flex flex-col items-center  text-center mb-8 ml-auto w-full md:w-1/2">
+        <div className="flex flex-col items-center  text-center ml-auto w-full md:w-1/2">
           <h2 className="text-4xl md:text-8xl uppercase font-bold mb-4 display-text color-bg">
             {featuredProjects[activeProjectIndex]?.title || 'Featured Project'}
           </h2>
-          <div className="flex flex-wrap gap-2 justify-center mb-4">
+          <div className="flex flex-wrap gap-2 justify-center">
             {featuredProjects[activeProjectIndex]?.industry?.map((ind, index) => {
               const refIndex = featuredProjects.slice(0, activeProjectIndex).reduce(
                 (count, project) => count + (project.industry?.length || 0), 
