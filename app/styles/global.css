@@ -743,3 +743,13 @@ height: 90vh !important;
   width: 0;
   height: 0;
 }
+
+.top-45 {
+  top: 3rem;
+}
+
+@media (min-width: 768px) {
+  .top-45 {
+    top: 45%;
+  }
+}
