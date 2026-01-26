@@ -1,6 +1,7 @@
 import React from 'react';
 import { useOutletContext } from '@remix-run/react';
 import SvgTarget from './svg-target';
+import ShatterableText from './ShatterableText';
 
 interface OutletContextType {
   openSecretSection: () => void;
@@ -77,7 +78,7 @@ const MissionSection: React.FC<MissionSectionProps> = ({ mission }) => {
   
   // Use mission data if available, otherwise use default content
   const title = mission?.title || "ABOUT";
-  const content = mission?.content ? renderRichText(mission.content) : defaultContent;
+  const content = mission?.content ? renderRichText(mission.content) || defaultContent : defaultContent;
 
   return (
     <section className="light-section py-16 px-4 md:px-8 lg:px-16">
@@ -88,7 +89,11 @@ const MissionSection: React.FC<MissionSectionProps> = ({ mission }) => {
             <SmallGrid />
           </div>
           <p className='font-secondary'>
-            {content}
+            <ShatterableText
+              text={content}
+              id="mission"
+              className="inline"
+            />
             <span className="inline-block align-middle ml-2 scale-75 md:scale-100">
               <SvgTarget 
                 color="var(--color-contrast-higher)" 

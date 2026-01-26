@@ -12,12 +12,14 @@ import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
 import { ShootingModeProvider, useShootingMode } from '~/contexts/ShootingModeContext';
+import { DestructionProvider } from '~/contexts/DestructionContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
 import SecretSection from '~/components/SecretSection';
 import ShootingModeToggle from '~/components/ShootingModeToggle';
 import Revolver from '~/components/Revolver';
+import RepairButton from '~/components/RepairButton';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 import { sanityClient } from "~/lib/sanity.server";
 import type { PortableTextBlock } from '@portabletext/types';
@@ -268,9 +270,12 @@ export default function App() {
       <BulletHoleProvider>
         <AsciiModeProvider>
           <ShootingModeProvider>
-            <AppContent />
-            <ShootingModeToggle />
-            <Revolver />
+            <DestructionProvider>
+              <AppContent />
+              <ShootingModeToggle />
+              <Revolver />
+              <RepairButton />
+            </DestructionProvider>
           </ShootingModeProvider>
         </AsciiModeProvider>
       </BulletHoleProvider>

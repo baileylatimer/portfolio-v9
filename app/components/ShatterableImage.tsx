@@ -1,9 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useShootingMode } from '~/contexts/ShootingModeContext';
+import { useDestruction } from '~/contexts/DestructionContext';
 
 interface ShatterableImageProps {
   src: string;
   alt: string;
+  id?: string; // Unique identifier for this image
   className?: string;
   style?: React.CSSProperties;
   children?: React.ReactNode;
@@ -26,17 +28,21 @@ interface ProgressiveFragment {
 const ShatterableImage: React.FC<ShatterableImageProps> = ({ 
   src, 
   alt, 
+  id,
   className = "",
   style,
   children 
 }) => {
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [stage, setStage] = useState<'intact' | 'cracking' | 'pixelating' | 'fragmented' | 'destroyed' | 'respawning'>('intact');
+  const [stage, setStage] = useState<'intact' | 'cracking' | 'pixelating' | 'fragmented' | 'destroyed'>('intact');
   const [fragments, setFragments] = useState<ProgressiveFragment[]>([]);
   const { isShootingMode } = useShootingMode();
+  const { destroyImage, isImageDestroyed } = useDestruction();
   const animationFrameRef = useRef<number>();
-  const respawnTimeoutRef = useRef<number>();
+  
+  // Generate unique image ID if none provided
+  const imageId = id || `image-${src.split('/').pop()?.split('.')[0] || 'unknown'}`;
 
   // Award-winning progressive destruction sequence
   const shatterImage = useCallback(() => {
@@ -47,6 +53,9 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
     if (stage === 'intact') {
       // FIRST SHOT: Complete shatter sequence
       console.log('🖼️ First shot - starting full shatter sequence');
+      
+      // Mark image as destroyed immediately on first shot (for repair button)
+      destroyImage(imageId);
       
       // Stage 1: Crack effect (200ms)
       setStage('cracking');
@@ -115,15 +124,14 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
         // Check if all fragments will be gone after this
         const remainingAfterFall = visibleFragments.length;
         if (remainingAfterFall === 0) {
-          console.log('🖼️ All fragments knocked off - starting respawn sequence');
+          console.log('🖼️ All fragments knocked off - visual destruction complete');
           setTimeout(() => {
             setStage('destroyed');
-            startRespawnSequence();
           }, 1000); // Give falling fragments time to animate
         }
       }
     }
-  }, [stage, fragments]);
+  }, [stage, fragments, destroyImage, imageId]);
 
   // Generate grid of fragments for progressive destruction
   const generateProgressiveFragments = (): ProgressiveFragment[] => {
@@ -249,22 +257,6 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
     animationFrameRef.current = requestAnimationFrame(animate);
   };
 
-  // Start respawn sequence after all fragments are gone
-  const startRespawnSequence = () => {
-    console.log('🖼️ Starting respawn sequence...');
-    setStage('destroyed');
-    
-    respawnTimeoutRef.current = window.setTimeout(() => {
-      console.log('🖼️ Respawning image...');
-      setStage('respawning');
-      setFragments([]);
-      
-      setTimeout(() => {
-        setStage('intact');
-        console.log('🖼️ Image respawned and ready for destruction!');
-      }, 500); // Brief transition
-    }, 4000); // 4 seconds before respawn
-  };
 
   // Listen for shatter events when in shooting mode
   useEffect(() => {
@@ -322,9 +314,6 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      if (respawnTimeoutRef.current) {
-        clearTimeout(respawnTimeoutRef.current);
-      }
     };
   }, [isShootingMode, shatterImage, src, stage]);
 
@@ -342,14 +331,21 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
     }
   }, [fragments, animateFallingFragments]);
 
+  // Listen for repair events from DestructionContext
+  useEffect(() => {
+    if (!isImageDestroyed(imageId) && stage !== 'intact') {
+      // Image was repaired! Reset to intact state
+      console.log('🔧 ShatterableImage: Image repaired, resetting to intact state');
+      setStage('intact');
+      setFragments([]);
+    }
+  }, [isImageDestroyed, imageId, stage]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (respawnTimeoutRef.current) {
-        clearTimeout(respawnTimeoutRef.current);
       }
     };
   }, []);
@@ -364,11 +360,10 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
         className={`
           w-full h-full object-cover
           transition-all duration-200
-          ${stage === 'intact' || stage === 'respawning' ? '' : 'pointer-events-none'}
+          ${stage === 'intact' ? '' : 'pointer-events-none'}
           ${stage === 'cracking' ? 'animate-pulse' : ''}
           ${stage === 'pixelating' ? 'filter blur-[2px] contrast-125 saturate-150' : ''}
           ${stage === 'fragmented' || stage === 'destroyed' ? 'opacity-0' : ''}
-          ${stage === 'respawning' ? 'opacity-50' : ''}
         `}
         style={{
           ...style,
@@ -377,8 +372,7 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
             : stage === 'pixelating'
             ? 'blur(2px) contrast(1.25) saturate(1.5)'
             : style?.filter,
-          transform: stage === 'cracking' ? 'scale(1.02)' : 
-                    stage === 'respawning' ? 'scale(0.95)' : undefined
+          transform: stage === 'cracking' ? 'scale(1.02)' : undefined
         }}
       />
 
@@ -441,7 +435,7 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
       {stage === 'destroyed' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center text-white/50">
-            <div className="text-sm uppercase tracking-wider">Respawning...</div>
+            <div className="text-sm uppercase tracking-wider">Destroyed</div>
           </div>
         </div>
       )}
