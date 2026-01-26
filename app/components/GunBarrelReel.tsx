@@ -4,6 +4,7 @@ import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
 import AsciiImage from './AsciiImage';
 import ShatterableImage from './ShatterableImage';
 import { useAsciiMode } from '~/contexts/AsciiModeContext';
+import { useShootingMode } from '~/contexts/ShootingModeContext';
 import React from 'react';
 
 // No need for the PartnerShapeOutline component anymore
@@ -76,8 +77,9 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const industryRefs = useRef<(HTMLSpanElement | null)[]>([]);
   
-  // ASCII mode
+  // ASCII mode and shooting mode
   const { asciiMode } = useAsciiMode();
+  const { isShootingMode } = useShootingMode();
   
   // To position Chamber 3 (Bottom left) as the rightmost visible chamber,
   // we need to rotate the barrel to the appropriate angle
@@ -350,6 +352,12 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
   
   // Handle pointer down event
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Disable drag when in shooting mode
+    if (isShootingMode) {
+      console.log('🔫 Shooting mode active - blocking drag interaction');
+      return;
+    }
+    
     // Prevent text selection during drag
     e.preventDefault();
     
@@ -372,10 +380,12 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     if (containerRef.current) {
       containerRef.current.setPointerCapture(e.pointerId);
     }
-  }, []);
+  }, [isShootingMode]);
   
   // Handle pointer move event
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    // Disable drag when in shooting mode
+    if (isShootingMode) return;
     if (!isDragging) return;
     
     // Calculate angles
@@ -400,10 +410,12 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     
     // Update last position
     lastPositionRef.current = { x: e.clientX, y: e.clientY };
-  }, [isDragging, getAngleFromPointer, checkChamberCrossing]);
+  }, [isShootingMode, isDragging, getAngleFromPointer, checkChamberCrossing]);
   
   // Handle pointer up event
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // Disable drag when in shooting mode
+    if (isShootingMode) return;
     if (!isDragging) return;
     
     setIsDragging(false);
@@ -432,7 +444,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
     
     // Set a timeout to ensure the inertia animation has a chance to complete
     setTimeout(handleInertiaComplete, 1000);
-  }, [isDragging, getRightmostChamber, animateBarrel]);
+  }, [isShootingMode, isDragging, getRightmostChamber, animateBarrel]);
   
   // Sort projects by order field and limit to 5 projects maximum
   const featuredProjects = [...projects]

@@ -362,6 +362,7 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
         src={src}
         alt={alt}
         className={`
+          w-full h-full object-cover
           transition-all duration-200
           ${stage === 'intact' || stage === 'respawning' ? '' : 'pointer-events-none'}
           ${stage === 'cracking' ? 'animate-pulse' : ''}
