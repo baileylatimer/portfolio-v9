@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useContext } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { useShootingMode } from '~/contexts/ShootingModeContext';
+import { BulletHoleContext } from '~/contexts/BulletHoleContext';
 
 const Revolver: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -10,19 +11,40 @@ const Revolver: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const revolverRef = useRef<THREE.Group>();
   const mousePositionRef = useRef({ x: 0, y: 0 });
+  const currentMousePosRef = useRef({ x: 0, y: 0 });
   const targetRotationRef = useRef({ x: 0, y: 0 });
   const currentRotationRef = useRef({ x: 0, y: 0 });
   const animationIdRef = useRef<number>();
+  const firingIntervalRef = useRef<number>();
+  const audioRef = useRef<HTMLAudioElement>();
+  const isShootingModeRef = useRef<boolean>(false);
+  const isFiringRef = useRef<boolean>(false);
   
   // Base rotation for proper first-person view
   const BASE_ROTATION_X = -Math.PI * 0.05; // Slight downward tilt
   const BASE_ROTATION_Y = Math.PI * 1.5; // 270° (90° + 180°) for proper first-person view with barrel pointing away
   
   const { isShootingMode } = useShootingMode();
+  const { addBulletHole } = useContext(BulletHoleContext) || {};
+
+  // Update refs when state changes
+  useEffect(() => {
+    isShootingModeRef.current = isShootingMode;
+    
+    // Clear interval if shooting mode is disabled
+    if (!isShootingMode && firingIntervalRef.current) {
+      clearInterval(firingIntervalRef.current);
+      firingIntervalRef.current = undefined;
+      isFiringRef.current = false;
+    }
+  }, [isShootingMode]);
 
   // Cursor tracking with smooth interpolation
   const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isShootingMode) return;
+    if (!isShootingModeRef.current) return;
+
+    // Store current mouse position for bullet holes
+    currentMousePosRef.current = { x: event.clientX, y: event.clientY };
 
     // Convert mouse position to normalized coordinates (-1 to 1)
     const x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -36,7 +58,70 @@ const Revolver: React.FC = () => {
     
     // Vertical rotation: -15° to +15° (up-down aim)  
     targetRotationRef.current.x = y * Math.PI * 0.08; // 0.08 radians ≈ 4.5°, range ±15°
-  }, [isShootingMode]);
+  }, []);
+
+  // Fire a single shot
+  const fireSingleShot = useCallback((event?: MouseEvent) => {
+    if (!isShootingModeRef.current) return;
+
+    // Use provided event position or current mouse position
+    const shootPos = event 
+      ? { x: event.clientX, y: event.clientY }
+      : currentMousePosRef.current;
+
+    console.log('🔫 BANG! Shooting at:', shootPos);
+
+    // Create bullet hole at cursor position
+    if (addBulletHole && shootPos.x && shootPos.y) {
+      const x = shootPos.x + window.scrollX;
+      const y = shootPos.y + window.scrollY;
+      addBulletHole(x, y, document.body);
+    }
+
+    // Play gunshot sound
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0; // Reset to start
+      audioRef.current.play().catch(err => console.log('Audio play failed:', err));
+    }
+
+    // Trigger screen shake
+    document.body.classList.add('screen-shake');
+    
+    // Remove screen shake class after animation completes
+    setTimeout(() => {
+      document.body.classList.remove('screen-shake');
+    }, 80); // Match animation duration in CSS
+  }, [addBulletHole]);
+
+  // Handle mouse down - start firing
+  const handleMouseDown = useCallback((event: MouseEvent) => {
+    if (!isShootingModeRef.current || isFiringRef.current) return;
+
+    isFiringRef.current = true;
+
+    // Fire immediately
+    fireSingleShot(event);
+
+    // Start interval for continuous firing (realistic revolver timing: ~325ms)
+    firingIntervalRef.current = window.setInterval(() => {
+      if (!isShootingModeRef.current) {
+        clearInterval(firingIntervalRef.current!);
+        firingIntervalRef.current = undefined;
+        isFiringRef.current = false;
+        return;
+      }
+      fireSingleShot();
+    }, 325);
+  }, [fireSingleShot]);
+
+  // Handle mouse up - stop firing
+  const handleMouseUp = useCallback(() => {
+    if (firingIntervalRef.current) {
+      clearInterval(firingIntervalRef.current);
+      firingIntervalRef.current = undefined;
+    }
+    isFiringRef.current = false;
+  }, []);
 
   // Animation loop for smooth cursor following
   const animate = useCallback(() => {
@@ -154,8 +239,15 @@ const Revolver: React.FC = () => {
     camera.position.set(0, 0, 0);
     camera.lookAt(0, 0, -1);
 
-    // Add mouse move listener
+    // Initialize audio
+    audioRef.current = new Audio('/sounds/gunshot.wav');
+    audioRef.current.volume = 0.3; // Adjust volume as needed
+
+    // Add mouse move and mouse down/up listeners
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseleave', handleMouseUp); // Stop firing when mouse leaves window
 
     // Handle window resize
     const handleResize = () => {
@@ -177,7 +269,16 @@ const Revolver: React.FC = () => {
       }
       
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseleave', handleMouseUp);
       window.removeEventListener('resize', handleResize);
+      
+      // Clear any firing interval
+      if (firingIntervalRef.current) {
+        clearInterval(firingIntervalRef.current);
+        firingIntervalRef.current = undefined;
+      }
       
       if (mountRef.current && renderer.domElement) {
         mountRef.current.removeChild(renderer.domElement);
@@ -199,7 +300,7 @@ const Revolver: React.FC = () => {
         });
       }
     };
-  }, [isShootingMode, handleMouseMove, animate]);
+  }, [isShootingMode, animate]);
 
   // Don't render anything if shooting mode is off
   if (!isShootingMode) {

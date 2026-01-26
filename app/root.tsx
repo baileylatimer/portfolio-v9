@@ -11,7 +11,7 @@ import type { LinksFunction, LoaderFunction, MetaFunction } from "@remix-run/nod
 import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
-import { ShootingModeProvider } from '~/contexts/ShootingModeContext';
+import { ShootingModeProvider, useShootingMode } from '~/contexts/ShootingModeContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
@@ -119,6 +119,7 @@ export const loader: LoaderFunction = async () => {
 function AppContent() {
   const { teamMembers, secretAboutData } = useLoaderData<{ teamMembers: TeamMember[], secretAboutData: SecretAboutData }>();
   const { bulletHoles, addBulletHole, addBurstHoles } = useContext(BulletHoleContext) || {};
+  const { isShootingMode } = useShootingMode();
   const singleShotAudioRef = useRef<HTMLAudioElement>(null);
   const burstAudioRef = useRef<HTMLAudioElement>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -128,42 +129,19 @@ function AppContent() {
   const location = useLocation();
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
-    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.no-bullet-holes'))) return;
-    setIsMouseDown(true);
-    mouseDownTimerRef.current = setTimeout(() => {
-      const x = e.clientX + window.scrollX;
-      const y = e.clientY + window.scrollY;
-      addBurstHoles?.(x, y, e.target as HTMLElement);
-      if (burstAudioRef.current) {
-        burstAudioRef.current.currentTime = 0;
-        burstAudioRef.current.play().catch(error => console.error("Burst audio playback failed:", error));
-      }
-    }, 200);
-  }, [addBurstHoles]);
+    // COMPLETELY DISABLE old bullet hole system - only Revolver creates bullet holes now
+    return;
+  }, []);
 
   const handleMouseUp = useCallback(() => {
-    setIsMouseDown(false);
-    if (mouseDownTimerRef.current) {
-      clearTimeout(mouseDownTimerRef.current);
-    }
+    // COMPLETELY DISABLE old bullet hole system - only Revolver creates bullet holes now
+    return;
   }, []);
 
   const handleClick = useCallback((e: MouseEvent) => {
-    if (e.target instanceof Element && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.no-bullet-holes'))) return;
-    const now = Date.now();
-    if (!isMouseDown && now - lastClickTime.current > 100) { // 100ms debounce
-      lastClickTime.current = now;
-      const x = e.clientX + window.scrollX;
-      const y = e.clientY + window.scrollY;
-      addBulletHole?.(x, y, e.target as HTMLElement);
-      if (singleShotAudioRef.current) {
-        singleShotAudioRef.current.currentTime = 0;
-        singleShotAudioRef.current.play()
-          .then(() => console.log("Single shot audio played successfully"))
-          .catch(error => console.error("Single shot audio playback failed:", error));
-      }
-    }
-  }, [isMouseDown, addBulletHole]);
+    // COMPLETELY DISABLE old bullet hole system - only Revolver creates bullet holes now
+    return;
+  }, []);
 
   useEffect(() => {
     document.body.addEventListener('click', handleClick);
