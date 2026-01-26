@@ -26,6 +26,11 @@ const Revolver: React.FC = () => {
   const recoilRotationRef = useRef({ x: 0, y: 0, z: 0 });
   const recoilRotTargetRef = useRef({ x: 0, y: 0, z: 0 });
   
+  // Muzzle flash refs
+  const muzzleFlashLightRef = useRef<THREE.PointLight>();
+  const muzzleFlashSpriteRef = useRef<THREE.Sprite>();
+  const muzzleFlashActiveRef = useRef(false);
+  
   // Base rotation for proper first-person view
   const BASE_ROTATION_X = -Math.PI * 0.05; // Slight downward tilt
   const BASE_ROTATION_Y = Math.PI * 1.5; // 270° (90° + 180°) for proper first-person view with barrel pointing away
@@ -90,6 +95,26 @@ const Revolver: React.FC = () => {
     }, 150);
   }, []);
 
+  // Trigger muzzle flash effect
+  const triggerMuzzleFlash = useCallback(() => {
+    if (!muzzleFlashLightRef.current || !muzzleFlashSpriteRef.current) return;
+
+    muzzleFlashActiveRef.current = true;
+
+    // Flash the light (bright orange burst)
+    muzzleFlashLightRef.current.intensity = 3.0;
+    muzzleFlashLightRef.current.color.setHex(0xff6600); // Bright orange
+
+    // Show the sprite (muzzle flash graphic)
+    muzzleFlashSpriteRef.current.material.opacity = 1.0;
+    muzzleFlashSpriteRef.current.scale.set(0.3, 0.3, 0.3);
+
+    // Fade out over ~60ms
+    setTimeout(() => {
+      muzzleFlashActiveRef.current = false;
+    }, 60);
+  }, []);
+
   // Fire a single shot
   const fireSingleShot = useCallback((event?: MouseEvent) => {
     if (!isShootingModeRef.current) return;
@@ -110,6 +135,9 @@ const Revolver: React.FC = () => {
 
     // Trigger gun recoil animation
     triggerRecoil();
+
+    // Trigger muzzle flash effect
+    triggerMuzzleFlash();
 
     // Play gunshot sound
     if (audioRef.current) {
@@ -195,6 +223,16 @@ const Revolver: React.FC = () => {
     revolverRef.current.rotation.y = BASE_ROTATION_Y + currentRotationRef.current.y + recoilRotationRef.current.y;
     revolverRef.current.rotation.z = recoilRotationRef.current.z; // Only recoil affects Z rotation
 
+    // Update muzzle flash fade-out animation
+    if (muzzleFlashLightRef.current && muzzleFlashSpriteRef.current) {
+      if (!muzzleFlashActiveRef.current) {
+        // Fade out
+        muzzleFlashLightRef.current.intensity *= 0.85; // Fast fade
+        muzzleFlashSpriteRef.current.material.opacity *= 0.85;
+        muzzleFlashSpriteRef.current.scale.multiplyScalar(0.95); // Shrink as it fades
+      }
+    }
+
     // Render the scene
     rendererRef.current.render(sceneRef.current, cameraRef.current);
 
@@ -279,8 +317,46 @@ const Revolver: React.FC = () => {
 
         scene.add(revolver);
         revolverRef.current = revolver;
+
+        // Create muzzle flash light (bright orange point light)
+        const muzzleLight = new THREE.PointLight(0xff6600, 0, 2); // Orange, intensity 0 (off), distance 2
+        muzzleLight.position.set(0, -0.38, -1.65); // At actual barrel tip (further forward)
+        scene.add(muzzleLight);
+        muzzleFlashLightRef.current = muzzleLight;
+
+        // Create muzzle flash sprite (procedural fire texture)
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
         
-        console.log('🔫 Revolver ready for action!');
+        if (context) {
+          // Create gradient fire effect
+          const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+          gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');    // White center
+          gradient.addColorStop(0.3, 'rgba(255, 200, 0, 1)');    // Bright yellow
+          gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.8)');  // Orange
+          gradient.addColorStop(1, 'rgba(200, 0, 0, 0)');        // Red fade out
+          
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, 128, 128);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+          map: texture, 
+          transparent: true, 
+          opacity: 0,
+          blending: THREE.AdditiveBlending
+        });
+        
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.set(0, -0.38, -1.6); // At barrel tip (slightly closer than light)
+        sprite.scale.set(0, 0, 0); // Start hidden
+        scene.add(sprite);
+        muzzleFlashSpriteRef.current = sprite;
+        
+        console.log('🔫 Revolver ready for action with muzzle flash!');
       },
       (progress) => {
         console.log('🔫 Loading revolver...', Math.round((progress.loaded / progress.total) * 100) + '%');
@@ -295,7 +371,7 @@ const Revolver: React.FC = () => {
     camera.lookAt(0, 0, -1);
 
     // Initialize audio
-    audioRef.current = new Audio('/sounds/gunshot.wav');
+    audioRef.current = new Audio('/sounds/colt-shot.wav');
     audioRef.current.volume = 0.3; // Adjust volume as needed
 
     // Add mouse move and mouse down/up listeners
