@@ -126,7 +126,20 @@ const Revolver: React.FC = () => {
 
     console.log('🔫 BANG! Shooting at:', shootPos);
 
-    // Create bullet hole at cursor position
+    // Check for shatterable images first
+    console.log('🔫 REVOLVER: Dispatching shatter-image event', {
+      x: shootPos.x,
+      y: shootPos.y,
+      isShootingMode: isShootingModeRef.current
+    });
+    const shatterEvent = new CustomEvent('shatter-image', {
+      detail: { x: shootPos.x, y: shootPos.y },
+      bubbles: true
+    });
+    document.dispatchEvent(shatterEvent);
+    console.log('🔫 REVOLVER: Shatter event dispatched to document');
+
+    // Create bullet hole at cursor position (if not hitting shatterable image)
     if (addBulletHole && shootPos.x && shootPos.y) {
       const x = shootPos.x + window.scrollX;
       const y = shootPos.y + window.scrollY;

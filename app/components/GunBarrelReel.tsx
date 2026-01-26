@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import CustomButton from './custom-button';
 import PixelizeImage, { PixelizeImageRef } from './PixelizeImage';
 import AsciiImage from './AsciiImage';
+import ShatterableImage from './ShatterableImage';
 import { useAsciiMode } from '~/contexts/AsciiModeContext';
 import React from 'react';
 
@@ -868,7 +869,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   }}
                 />
               ) : (
-                <img
+                <ShatterableImage
                   src={project.mainImage.asset.url}
                   alt={project.title}
                   className="w-full h-full object-cover transition-all duration-300"
@@ -927,7 +928,7 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <img
+                <ShatterableImage
                   src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
                   alt={`${featuredProjects[activeProjectIndex].title} background`}
                   className="w-full h-full object-cover"
@@ -944,15 +945,10 @@ const GunBarrelReel: React.FC<GunBarrelReelProps> = ({ projects }) => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <PixelizeImage
-                    key={pixelizeKey}
-                    ref={pixelizeRef}
+                  <ShatterableImage
                     src={featuredProjects[activeProjectIndex].gunreelBackground.asset.url}
                     alt={`${featuredProjects[activeProjectIndex].title} background`}
                     className="w-full h-full object-cover"
-                    manualTrigger={true}
-                    disableEffect={false}
-                    duration={0.2}
                   />
                 )}
               </div>

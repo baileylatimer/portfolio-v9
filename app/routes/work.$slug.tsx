@@ -8,6 +8,7 @@ import PageHero from "~/components/page-hero";
 import SvgLink from "~/components/svg-link";
 import CustomButton from "~/components/custom-button";
 import PixelizeImage from "~/components/PixelizeImage";
+import ShatterableImage from "~/components/ShatterableImage";
 import MoreProjectsSection from "~/components/MoreProjectsSection";
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
@@ -179,7 +180,7 @@ const MediaBlockComponent: React.FC<{ block: MediaBlock }> = ({ block }) => {
           className="w-full h-full object-cover"
         />
       ) : (
-        <PixelizeImage
+        <ShatterableImage
           src={block.media.asset.url}
           alt=""
           className="w-full h-full object-cover"
@@ -253,11 +254,10 @@ export default function Project() {
       </div>
       <div className="project-hero-container relative">
         <div className="project-hero relative">
-          <PixelizeImage
+          <ShatterableImage
             src={heroImage}
             alt={project.title}
             className="w-full h-full object-cover"
-            disableEffect={true}
           />
           <div className="absolute bottom-0 left-0 right-0 h-[120px] md:h-[215px] bg-gradient-to-t from-[#100F0E] to-transparent"></div>
           <div className="absolute bottom-8 left-4 z-50 ">

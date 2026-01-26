@@ -1,6 +1,7 @@
 import React from 'react';
 import { PortableText } from '@portabletext/react';
 import PixelizeImage from './PixelizeImage';
+import ShatterableImage from './ShatterableImage';
 import { PortableTextBlock } from '@portabletext/types';
 
 interface ImageWithTextProps {
@@ -35,7 +36,7 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({ title, content, image, im
           </div>
           <div className="md:w-1/2 relative light-section">
             <div className="relative light-section">
-              <PixelizeImage
+              <ShatterableImage
                 src={image.asset.url}
                 alt={title}
                 className="w-full h-auto"
