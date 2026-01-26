@@ -2,7 +2,6 @@ import type { MetaFunction, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import Navigation from "~/components/navigation";
 import Hero from '~/components/hero';
-import HorseshoeModel from '~/components/HorseshoeModel';
 import MissionSection from '~/components/mission-section';
 import ServicesSection from '~/components/services-section';
 import PartnersSection from '~/components/partners-section';
@@ -137,11 +136,6 @@ export default function Index() {
           <GunBarrelReel projects={featuredProjects} />
         </div>
       )}
-
-{/* <div className="flex-grow flex mt-24">
-        <HorseshoeModel />
-      </div> */}
-      
 
       <ServicesSection services={services} />
       <PartnersSection partners={partners} />

@@ -11,10 +11,13 @@ import type { LinksFunction, LoaderFunction, MetaFunction } from "@remix-run/nod
 import { json } from "@remix-run/node";
 import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleContext';
 import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
+import { ShootingModeProvider } from '~/contexts/ShootingModeContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
 import SecretSection from '~/components/SecretSection';
+import ShootingModeToggle from '~/components/ShootingModeToggle';
+import Revolver from '~/components/Revolver';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 import { sanityClient } from "~/lib/sanity.server";
 import type { PortableTextBlock } from '@portabletext/types';
@@ -286,7 +289,11 @@ export default function App() {
       </head>
       <BulletHoleProvider>
         <AsciiModeProvider>
-          <AppContent />
+          <ShootingModeProvider>
+            <AppContent />
+            <ShootingModeToggle />
+            <Revolver />
+          </ShootingModeProvider>
         </AsciiModeProvider>
       </BulletHoleProvider>
     </html>
