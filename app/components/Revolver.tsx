@@ -20,9 +20,16 @@ const Revolver: React.FC = () => {
   const isShootingModeRef = useRef<boolean>(false);
   const isFiringRef = useRef<boolean>(false);
   
+  // Recoil animation refs
+  const recoilOffsetRef = useRef({ x: 0, y: 0, z: 0 });
+  const recoilTargetRef = useRef({ x: 0, y: 0, z: 0 });
+  const recoilRotationRef = useRef({ x: 0, y: 0, z: 0 });
+  const recoilRotTargetRef = useRef({ x: 0, y: 0, z: 0 });
+  
   // Base rotation for proper first-person view
   const BASE_ROTATION_X = -Math.PI * 0.05; // Slight downward tilt
   const BASE_ROTATION_Y = Math.PI * 1.5; // 270° (90° + 180°) for proper first-person view with barrel pointing away
+  const BASE_POSITION = { x: 0, y: -0.5, z: -1.5 }; // Base gun position
   
   const { isShootingMode } = useShootingMode();
   const { addBulletHole } = useContext(BulletHoleContext) || {};
@@ -60,6 +67,29 @@ const Revolver: React.FC = () => {
     targetRotationRef.current.x = y * Math.PI * 0.08; // 0.08 radians ≈ 4.5°, range ±15°
   }, []);
 
+  // Trigger gun recoil animation
+  const triggerRecoil = useCallback(() => {
+    // Position recoil: MASSIVE kick for old .45 Colt revolver
+    recoilTargetRef.current = {
+      x: (Math.random() - 0.5) * 0.04, // Bigger random horizontal kick
+      y: 0.12, // DRAMATIC upward kick (old revolver power!)
+      z: 0.18 // STRONG kick back toward shooter
+    };
+
+    // Rotation recoil: DRAMATIC muzzle rise (old gun has serious kick)
+    recoilRotTargetRef.current = {
+      x: 0.35 + (Math.random() - 0.5) * 0.08, // MASSIVE barrel rise (~20+ degrees)
+      y: (Math.random() - 0.5) * 0.05, // More horizontal rotation
+      z: (Math.random() - 0.5) * 0.04 // More barrel roll
+    };
+
+    // Auto-return to zero after ~150ms (longer hold at peak)
+    setTimeout(() => {
+      recoilTargetRef.current = { x: 0, y: 0, z: 0 };
+      recoilRotTargetRef.current = { x: 0, y: 0, z: 0 };
+    }, 150);
+  }, []);
+
   // Fire a single shot
   const fireSingleShot = useCallback((event?: MouseEvent) => {
     if (!isShootingModeRef.current) return;
@@ -78,6 +108,9 @@ const Revolver: React.FC = () => {
       addBulletHole(x, y, document.body);
     }
 
+    // Trigger gun recoil animation
+    triggerRecoil();
+
     // Play gunshot sound
     if (audioRef.current) {
       audioRef.current.currentTime = 0; // Reset to start
@@ -91,7 +124,7 @@ const Revolver: React.FC = () => {
     setTimeout(() => {
       document.body.classList.remove('screen-shake');
     }, 80); // Match animation duration in CSS
-  }, [addBulletHole]);
+  }, [addBulletHole, triggerRecoil]);
 
   // Handle mouse down - start firing
   const handleMouseDown = useCallback((event: MouseEvent) => {
@@ -123,7 +156,7 @@ const Revolver: React.FC = () => {
     isFiringRef.current = false;
   }, []);
 
-  // Animation loop for smooth cursor following
+  // Animation loop for smooth cursor following and recoil
   const animate = useCallback(() => {
     if (!revolverRef.current || !rendererRef.current || !sceneRef.current || !cameraRef.current) {
       animationIdRef.current = requestAnimationFrame(animate);
@@ -132,13 +165,35 @@ const Revolver: React.FC = () => {
 
     // Smooth interpolation (lerp) for realistic gun weight
     const lerpFactor = 0.08; // Lower = more lag/weight feeling
+    
+    // Dynamic recoil lerp: fast snap UP, slow settle DOWN
+    const isRecoiling = recoilTargetRef.current.x !== 0 || recoilTargetRef.current.y !== 0 || recoilTargetRef.current.z !== 0;
+    const recoilLerpFactor = isRecoiling ? 0.4 : 0.12; // Fast up (0.4), slow down (0.12)
 
+    // Update cursor tracking
     currentRotationRef.current.x += (targetRotationRef.current.x - currentRotationRef.current.x) * lerpFactor;
     currentRotationRef.current.y += (targetRotationRef.current.y - currentRotationRef.current.y) * lerpFactor;
 
-    // Apply rotation to the revolver - BASE rotation + cursor movement
-    revolverRef.current.rotation.x = BASE_ROTATION_X + currentRotationRef.current.x;
-    revolverRef.current.rotation.y = BASE_ROTATION_Y + currentRotationRef.current.y;
+    // Update recoil animation (asymmetric spring physics)
+    recoilOffsetRef.current.x += (recoilTargetRef.current.x - recoilOffsetRef.current.x) * recoilLerpFactor;
+    recoilOffsetRef.current.y += (recoilTargetRef.current.y - recoilOffsetRef.current.y) * recoilLerpFactor;
+    recoilOffsetRef.current.z += (recoilTargetRef.current.z - recoilOffsetRef.current.z) * recoilLerpFactor;
+
+    recoilRotationRef.current.x += (recoilRotTargetRef.current.x - recoilRotationRef.current.x) * recoilLerpFactor;
+    recoilRotationRef.current.y += (recoilRotTargetRef.current.y - recoilRotationRef.current.y) * recoilLerpFactor;
+    recoilRotationRef.current.z += (recoilRotTargetRef.current.z - recoilRotationRef.current.z) * recoilLerpFactor;
+
+    // Apply position: BASE + recoil offset
+    revolverRef.current.position.set(
+      BASE_POSITION.x + recoilOffsetRef.current.x,
+      BASE_POSITION.y + recoilOffsetRef.current.y,
+      BASE_POSITION.z + recoilOffsetRef.current.z
+    );
+
+    // Apply rotation: BASE + cursor movement + recoil
+    revolverRef.current.rotation.x = BASE_ROTATION_X + currentRotationRef.current.x + recoilRotationRef.current.x;
+    revolverRef.current.rotation.y = BASE_ROTATION_Y + currentRotationRef.current.y + recoilRotationRef.current.y;
+    revolverRef.current.rotation.z = recoilRotationRef.current.z; // Only recoil affects Z rotation
 
     // Render the scene
     rendererRef.current.render(sceneRef.current, cameraRef.current);
