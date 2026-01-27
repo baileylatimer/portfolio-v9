@@ -9,11 +9,11 @@ const WEAPON_3D_CONFIGS = {
   [WeaponType.REVOLVER]: {
     modelPath: '/models/revolver.glb',
     soundPath: '/sounds/colt-shot.wav',
-    scale: [0.042, 0.042, 0.042], // Reduced by 70% from 0.14 to 0.042
-    position: [0, -0.4, -1.3], // Adjusted position for smaller model
+    scale: [0.035, 0.035, 0.035], // Made smaller for better proportions
+    position: [0, -0.35, -1.2], // Adjusted position for smaller model
     rotation: [-Math.PI * 0.05, Math.PI * 0.5, 0], // Slight downward tilt, 90° turn for first-person view
     fireRate: 325, // ms between shots
-    muzzlePosition: [0, -0.32, -1.45], // Adjusted muzzle position for smaller model
+    muzzlePosition: [0, -0.28, -1.35], // Adjusted muzzle position for smaller model
     baseRotation: {
       x: -Math.PI * 0.05,
       y: Math.PI * 1.5, // 270° for proper first-person view
@@ -44,6 +44,12 @@ const Weapon3D: React.FC = () => {
   const currentMousePosRef = useRef({ x: 0, y: 0 });
   const targetRotationRef = useRef({ x: 0, y: 0 });
   const currentRotationRef = useRef({ x: 0, y: 0 });
+  
+  // Position sway refs for realistic hand movement
+  const targetPositionRef = useRef({ x: 0, y: 0 });
+  const currentPositionRef = useRef({ x: 0, y: 0 });
+  const idleSwayTimeRef = useRef(0);
+  
   const animationIdRef = useRef<number>();
   const firingIntervalRef = useRef<number>();
   const audioRef = useRef<HTMLAudioElement>();
@@ -84,6 +90,10 @@ const Weapon3D: React.FC = () => {
     // Calculate target rotations with constraints
     targetRotationRef.current.y = -x * Math.PI * 0.2; // Horizontal rotation
     targetRotationRef.current.x = y * Math.PI * 0.08; // Vertical rotation
+    
+    // Calculate target position sway - subtle movement based on mouse position
+    targetPositionRef.current.x = x * 0.02; // Subtle horizontal sway
+    targetPositionRef.current.y = y * 0.015; // Subtle vertical sway
   }, [is3DWeapon]);
 
   // Trigger gun recoil animation
@@ -225,10 +235,21 @@ const Weapon3D: React.FC = () => {
     const lerpFactor = 0.08;
     const isRecoiling = recoilTargetRef.current.x !== 0 || recoilTargetRef.current.y !== 0 || recoilTargetRef.current.z !== 0;
     const recoilLerpFactor = isRecoiling ? 0.4 : 0.12;
+    
+    // Update idle sway time for breathing effect
+    idleSwayTimeRef.current += 0.016; // Approximate time per frame
+
+    // Calculate idle sway (breathing effect)
+    const breathingX = Math.sin(idleSwayTimeRef.current * 0.8) * 0.008; // Slow horizontal breathing
+    const breathingY = Math.sin(idleSwayTimeRef.current * 1.2) * 0.006; // Slightly faster vertical breathing
 
     // Update rotations
     currentRotationRef.current.x += (targetRotationRef.current.x - currentRotationRef.current.x) * lerpFactor;
     currentRotationRef.current.y += (targetRotationRef.current.y - currentRotationRef.current.y) * lerpFactor;
+
+    // Update position sway (aim sway)
+    currentPositionRef.current.x += (targetPositionRef.current.x - currentPositionRef.current.x) * lerpFactor;
+    currentPositionRef.current.y += (targetPositionRef.current.y - currentPositionRef.current.y) * lerpFactor;
 
     // Update recoil
     recoilOffsetRef.current.x += (recoilTargetRef.current.x - recoilOffsetRef.current.x) * recoilLerpFactor;
@@ -240,10 +261,10 @@ const Weapon3D: React.FC = () => {
     recoilRotationRef.current.z += (recoilRotTargetRef.current.z - recoilRotationRef.current.z) * recoilLerpFactor;
 
     if (weaponConfig) {
-      // Apply position
+      // Apply position with sway, recoil, and breathing
       weaponRef.current.position.set(
-        weaponConfig.position[0] + recoilOffsetRef.current.x,
-        weaponConfig.position[1] + recoilOffsetRef.current.y,
+        weaponConfig.position[0] + recoilOffsetRef.current.x + currentPositionRef.current.x + breathingX,
+        weaponConfig.position[1] + recoilOffsetRef.current.y + currentPositionRef.current.y + breathingY,
         weaponConfig.position[2] + recoilOffsetRef.current.z
       );
 
