@@ -22,14 +22,14 @@ const WEAPON_3D_CONFIGS = {
   [WeaponType.SHOTGUN]: {
     modelPath: '/models/shotgun.glb',
     soundPath: '/sounds/shotgun.wav',
-    scale: [0.08, 0.08, 0.08], // Even smaller since shotgun model is bigger
-    position: [0, -0.3, -1.2], // Slightly higher and closer
-    rotation: [-Math.PI * 0.05, Math.PI * 0.5, 0], // Base rotation
+    scale: [0.048, 0.048, 0.048], // 20% larger (0.04 → 0.048)
+    position: [0, -0.65, -1.2], // Much lower on screen (-0.45 → -0.65)
+    rotation: [-Math.PI * 0.05, Math.PI * 1.0, 0], // Horizontal rotation for down-barrel view (180°)
     fireRate: 800, // Slower fire rate for shotgun
-    muzzlePosition: [0, -0.25, -1.4], // Adjusted muzzle position
+    muzzlePosition: [0, -0.6, -1.4], // Adjusted muzzle position to match new position
     baseRotation: {
-      x: -Math.PI * 0.05, // Same downward tilt
-      y: Math.PI * 1.5, // 270° rotation - same as revolver, should be behind model
+      x: -Math.PI * 0.05, // Back to original slight downward tilt
+      y: Math.PI * 1.0, // 180° horizontal rotation for down-barrel view
     }
   },
   [WeaponType.DYNAMITE]: {
@@ -94,6 +94,7 @@ const Weapon3D: React.FC = () => {
   const dynamiteBasePositionRef = useRef({ x: 0, y: 0, z: 0 });
   const dynamiteBaseRotationRef = useRef({ x: 0, y: 0, z: 0 });
   const dynamiteBaseScaleRef = useRef({ x: 0, y: 0, z: 0 });
+  const throwDirectionRef = useRef({ x: 0, y: 0 });
   
   const { activeWeapon } = useWeapon();
   const { addBulletHole } = useContext(BulletHoleContext) || {};
@@ -316,6 +317,14 @@ const Weapon3D: React.FC = () => {
       trajectoryLineRef.current = undefined;
     }
 
+    // Store throw direction based on mouse position
+    const currentMousePos = currentMousePosRef.current;
+    const screenCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    throwDirectionRef.current = {
+      x: (currentMousePos.x - screenCenter.x) / window.innerWidth,
+      y: -(currentMousePos.y - screenCenter.y) / window.innerHeight
+    };
+
     // Start throw animation
     isThrowingRef.current = true;
     throwStartTimeRef.current = Date.now();
@@ -325,25 +334,43 @@ const Weapon3D: React.FC = () => {
     chargeStartTimeRef.current = 0;
 
     // Calculate explosion timing and position
-    const mousePos = currentMousePosRef.current;
+    const explosionPosition = currentMousePosRef.current;
     const explosionRadius = 150; // Pixel radius for area damage
     const explosionDelay = Math.floor(throwDistance * 300); // Delay based on throw distance
 
     setTimeout(() => {
       // Create explosion effect
       console.log('💥 KABOOM!');
+
+      // Create visual explosion effects
+      const explosionFlash = document.createElement('div');
+      explosionFlash.className = 'explosion-flash';
+      explosionFlash.style.background = `radial-gradient(circle at ${explosionPosition.x}px ${explosionPosition.y}px, rgba(255,200,0,0.8) 0%, rgba(255,100,0,0.4) 30%, transparent 70%)`;
+      document.body.appendChild(explosionFlash);
+
+      const explosionRing = document.createElement('div');
+      explosionRing.className = 'explosion-ring';
+      explosionRing.style.left = `${explosionPosition.x}px`;
+      explosionRing.style.top = `${explosionPosition.y}px`;
+      document.body.appendChild(explosionRing);
+
+      // Clean up explosion elements after animation
+      setTimeout(() => {
+        if (explosionFlash.parentNode) explosionFlash.parentNode.removeChild(explosionFlash);
+        if (explosionRing.parentNode) explosionRing.parentNode.removeChild(explosionRing);
+      }, 500);
       
       // MASSIVE explosion screen shake (much more violent than gunshots)
       document.body.classList.add('explosion-shake');
       setTimeout(() => document.body.classList.remove('explosion-shake'), 400);
 
       // Area damage - shatter nearby elements
-      const elements = document.elementsFromPoint(mousePos.x, mousePos.y);
+      const elements = document.elementsFromPoint(explosionPosition.x, explosionPosition.y);
       elements.forEach(element => {
         const rect = element.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        const distance = Math.sqrt(Math.pow(mousePos.x - centerX, 2) + Math.pow(mousePos.y - centerY, 2));
+        const distance = Math.sqrt(Math.pow(explosionPosition.x - centerX, 2) + Math.pow(explosionPosition.y - centerY, 2));
         
         if (distance <= explosionRadius) {
           // Dispatch shatter event for elements in blast radius
@@ -392,6 +419,14 @@ const Weapon3D: React.FC = () => {
   // Handle mouse down - start firing or charging
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (!is3DWeapon || isFiringRef.current || !weaponConfig) return;
+
+    // Check if click is on weapon wheel or its children - prevent firing
+    const target = event.target as Element;
+    const isOnWeaponWheel = target.closest('.weapon-wheel') !== null;
+    if (isOnWeaponWheel) {
+      console.log('🔄 Click on weapon wheel - preventing weapon firing');
+      return;
+    }
 
     if (activeWeapon === WeaponType.DYNAMITE) {
       // Start dynamite charge

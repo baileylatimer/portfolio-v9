@@ -790,3 +790,43 @@ body.shooting-mode {
 .explosion-shake {
   animation: explosion-shake 400ms ease-in-out;
 }
+
+/* Visual explosion effects - lightweight CSS only */
+@keyframes explosion-flash {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+@keyframes explosion-ring {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 1;
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(8);
+    opacity: 0;
+  }
+}
+
+.explosion-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  animation: explosion-flash 200ms ease-out forwards;
+}
+
+.explosion-ring {
+  position: fixed;
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 200, 0, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  animation: explosion-ring 400ms ease-out forwards;
+}

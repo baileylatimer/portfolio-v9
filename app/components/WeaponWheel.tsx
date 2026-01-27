@@ -16,14 +16,14 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
   
   const { enableShootingMode, disableShootingMode } = useShootingMode();
   const { hasDestruction, repairAll, destroyedWords, destroyedImages } = useDestruction();
-  const [selectedIndex, setSelectedIndex] = useState(1); // Start with DEFAULT (index 1)
+  const [selectedIndex, setSelectedIndex] = useState(0); // Start with DEFAULT (index 0)
   const [isRepairing, setIsRepairing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const repairSoundRef = useRef<HTMLAudioElement | null>(null);
   
-  // Fixed weapon order: SHOTGUN(right), DEFAULT(bottom), REVOLVER(left), DYNAMITE(top)
-  const weaponOrder = [WeaponType.SHOTGUN, WeaponType.DEFAULT, WeaponType.REVOLVER, WeaponType.DYNAMITE];
+  // Fixed weapon order: DEFAULT(bottom), SHOTGUN(right), DYNAMITE(top), REVOLVER(left) - clockwise navigation
+  const weaponOrder = [WeaponType.DEFAULT, WeaponType.SHOTGUN, WeaponType.DYNAMITE, WeaponType.REVOLVER];
 
   // Initialize repair sound
   useEffect(() => {
@@ -189,10 +189,10 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
     ].join(" ");
   };
 
-  // Get segment angles (45-degree offset to match mockup)
+  // Get segment angles (45-degree offset to put DEFAULT at bottom like GTA)
   const getSegmentAngles = (index: number) => {
     const segmentSize = 90; // 90 degrees per segment 
-    const startAngle = index * segmentSize - 45; // Offset by 45 degrees to match mockup
+    const startAngle = index * segmentSize + 45; // Offset by 45 degrees to put index 0 at bottom
     const endAngle = startAngle + segmentSize;
     return { startAngle, endAngle };
   };
@@ -308,7 +308,7 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
 
         {/* Segment dividers */}
         {[0, 1, 2, 3].map((index) => {
-          const angle = (index * 90 - 45) * Math.PI / 180; // 45-degree offset
+          const angle = (index * 90 + 45) * Math.PI / 180; // Match weapon positioning offset
           const innerX = 150 + 70 * Math.cos(angle);
           const innerY = 150 + 70 * Math.sin(angle);
           const outerX = 150 + 145 * Math.cos(angle);
