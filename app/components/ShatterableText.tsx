@@ -108,7 +108,13 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
       });
       
       if (newFlyingWords.length > 0) {
-        setFlyingWords(prev => [...prev, ...newFlyingWords]);
+        setFlyingWords(prev => {
+          // Filter out duplicates to prevent React key errors
+          const existingIds = new Set(prev.map(w => w.id));
+          const uniqueNewWords = newFlyingWords.filter(w => !existingIds.has(w.id));
+          console.log('📝 Adding unique flying words:', uniqueNewWords.map(w => w.id));
+          return [...prev, ...uniqueNewWords];
+        });
         setLocallyDestroyedWords(newDestroyedWords);
       }
     };
@@ -151,12 +157,17 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
     }
   }, [words, destroyWord]); // REMOVED locallyDestroyedWords dependency!
 
-  // EXACT frame-based physics from ShatterableImage
+  // FINAL FIX: Clear ref before scheduling to prevent blocking continuation
   const animateWords = useCallback(() => {
     const animate = () => {
-      let hasFlyingWords = false;
-
+      // Clear the ref at start to prevent blocking next frame scheduling
+      animationFrameRef.current = undefined;
+      
       setFlyingWords(currentWords => {
+        if (currentWords.length === 0) {
+          return currentWords;
+        }
+
         const newWords = currentWords.map(word => {
           if (word.fallStartTime) {
             // EXACT ShatterableImage physics
@@ -170,12 +181,10 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
             const newY = word.y + newVelocityY;
             const newRotation = word.rotation + word.rotationSpeed;
             
-            // Check if word has fallen off screen
-            if (newY > window.innerHeight + 100) {
+            // Check if word has fallen off screen - increase threshold  
+            if (newY > window.innerHeight + 200) {
               return { ...word, scale: 0 }; // Mark as gone
             }
-            
-            hasFlyingWords = true;
             
             return {
               ...word,
@@ -189,18 +198,18 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
           
           return word;
         }).filter(word => word.scale > 0); // Remove words that fell off screen
-        
-        if (hasFlyingWords) {
+
+        // Always schedule next frame if words exist (no guard check)
+        if (newWords.length > 0) {
           animationFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          animationFrameRef.current = undefined;
         }
 
         return newWords;
       });
     };
     
-    animationFrameRef.current = requestAnimationFrame(animate);
+    // Start animation loop
+    animate();
   }, []);
 
   // Create a stable ref for shootWord to avoid re-creating the event listener
