@@ -18,6 +18,8 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
   const { hasDestruction, repairAll, destroyedWords, destroyedImages } = useDestruction();
   const [selectedIndex, setSelectedIndex] = useState(1); // Start with DEFAULT (index 1)
   const [isRepairing, setIsRepairing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const repairSoundRef = useRef<HTMLAudioElement | null>(null);
   
   // Fixed weapon order: SHOTGUN(right), DEFAULT(bottom), REVOLVER(left), DYNAMITE(top)
@@ -29,6 +31,55 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
     repairSoundRef.current.preload = 'auto';
     repairSoundRef.current.volume = 0.7;
   }, []);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = window.innerWidth < 768;
+      setIsMobile(isMobileDevice);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Handle mobile toggle
+  const toggleMobileExpansion = () => {
+    setIsMobileExpanded(!isMobileExpanded);
+  };
+
+  // Calculate positioning based on mobile state
+  const getWheelPosition = () => {
+    if (!isMobile) {
+      // Desktop positioning
+      return {
+        bottom: '120px',
+        left: '40px',
+        right: 'auto',
+        transform: 'none'
+      };
+    } else {
+      // Mobile positioning
+      if (isMobileExpanded) {
+        // Fully expanded - 40px from bottom, centered
+        return {
+          bottom: '40px',
+          left: '50%',
+          right: 'auto',
+          transform: 'translateX(-50%)'
+        };
+      } else {
+        // Collapsed - only 35px visible, centered
+        return {
+          bottom: '-265px', // Hide most of the wheel (300px - 35px = 265px)
+          left: '50%',
+          right: 'auto',
+          transform: 'translateX(-50%)'
+        };
+      }
+    }
+  };
 
   // Handle weapon selection and wire to Revolver 3D model
   const selectWeapon = (weaponType: WeaponType) => {
@@ -158,19 +209,53 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
     };
   };
 
+  const wheelPosition = getWheelPosition();
+
   return (
-    <div 
-      className={`weapon-wheel fixed ${className}`}
-      style={{
-        bottom: '120px',
-        left: '40px',
-        width: '300px',
-        height: '300px',
-        zIndex: 1000,
-        pointerEvents: 'auto',
-        userSelect: 'none'
-      }}
-    >
+    <>
+      {/* Mobile Toggle Button - Only visible on mobile */}
+      {isMobile && (
+        <button
+          onClick={toggleMobileExpansion}
+          className="fixed rounded-full flex items-center justify-center transition-all duration-300 ease-in-out"
+          style={{
+            width: '40px',
+            height: '40px',
+            background: '#1A1917',
+            border: '2px solid rgba(255, 255, 255, 0.2)',
+            bottom: isMobileExpanded ? '348px' : '43px', // 40px + 8px above wheel when collapsed
+            left: '50%',
+            transform: `translateX(-50%) rotate(${isMobileExpanded ? '180deg' : '0deg'})`,
+            zIndex: 1001,
+            pointerEvents: 'auto'
+          }}
+        >
+          {/* Up/Down Arrow Icon */}
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="white" 
+            strokeWidth="2"
+          >
+            <polyline points="18,15 12,9 6,15"/>
+          </svg>
+        </button>
+      )}
+
+      {/* Weapon Wheel */}
+      <div 
+        className={`weapon-wheel fixed ${className} transition-all duration-300 ease-in-out`}
+        style={{
+          ...wheelPosition,
+          width: '300px',
+          height: '300px',
+          zIndex: 1000,
+          pointerEvents: 'auto',
+          userSelect: 'none'
+        }}
+      >
       {/* SVG Donut Wheel */}
       <svg width="300" height="300" className="absolute inset-0">
         <defs>
@@ -395,6 +480,7 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
       </div>
 
     </div>
+    </>
   );
 };
 
