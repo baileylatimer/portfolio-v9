@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { useShootingMode } from '~/contexts/ShootingModeContext';
 import { BulletHoleContext } from '~/contexts/BulletHoleContext';
+import { useSecretSection } from '~/contexts/SecretSectionContext';
 
 const Revolver: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -38,6 +39,7 @@ const Revolver: React.FC = () => {
   
   const { isShootingMode } = useShootingMode();
   const { addBulletHole } = useContext(BulletHoleContext) || {};
+  const { isSecretSectionOpen } = useSecretSection();
 
   // Update refs when state changes
   useEffect(() => {
@@ -158,14 +160,16 @@ const Revolver: React.FC = () => {
       audioRef.current.play().catch(err => console.log('Audio play failed:', err));
     }
 
-    // Trigger screen shake
-    document.body.classList.add('screen-shake');
-    
-    // Remove screen shake class after animation completes
-    setTimeout(() => {
-      document.body.classList.remove('screen-shake');
-    }, 80); // Match animation duration in CSS
-  }, [addBulletHole, triggerRecoil]);
+    // Trigger screen shake - only if secret section is not open
+    if (!isSecretSectionOpen) {
+      document.body.classList.add('screen-shake');
+      
+      // Remove screen shake class after animation completes
+      setTimeout(() => {
+        document.body.classList.remove('screen-shake');
+      }, 80); // Match animation duration in CSS
+    }
+  }, [addBulletHole, triggerRecoil, isSecretSectionOpen]);
 
   // Handle mouse down - start firing
   const handleMouseDown = useCallback((event: MouseEvent) => {

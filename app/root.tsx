@@ -14,6 +14,7 @@ import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
 import { ShootingModeProvider, useShootingMode } from '~/contexts/ShootingModeContext';
 import { DestructionProvider } from '~/contexts/DestructionContext';
 import { WeaponProvider } from '~/contexts/WeaponContext';
+import { SecretSectionProvider, useSecretSection } from '~/contexts/SecretSectionContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
@@ -120,17 +121,13 @@ export const loader: LoaderFunction = async () => {
 
 function AppContent() {
   const { teamMembers, secretAboutData } = useLoaderData<{ teamMembers: TeamMember[], secretAboutData: SecretAboutData }>();
-  const { bulletHoles, addBulletHole, addBurstHoles } = useContext(BulletHoleContext) || {};
-  const { isShootingMode } = useShootingMode();
+  const { bulletHoles } = useContext(BulletHoleContext) || {};
+  const { isSecretSectionOpen, openSecretSection, closeSecretSection } = useSecretSection();
+  const location = useLocation();
   const singleShotAudioRef = useRef<HTMLAudioElement>(null);
   const burstAudioRef = useRef<HTMLAudioElement>(null);
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const mouseDownTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastClickTime = useRef(0);
-  const [isSecretSectionOpen, setIsSecretSectionOpen] = useState(false);
-  const location = useLocation();
 
-  const handleMouseDown = useCallback((e: MouseEvent) => {
+  const handleMouseDown = useCallback(() => {
     // COMPLETELY DISABLE old bullet hole system - only Revolver creates bullet holes now
     return;
   }, []);
@@ -140,7 +137,7 @@ function AppContent() {
     return;
   }, []);
 
-  const handleClick = useCallback((e: MouseEvent) => {
+  const handleClick = useCallback(() => {
     // COMPLETELY DISABLE old bullet hole system - only Revolver creates bullet holes now
     return;
   }, []);
@@ -158,11 +155,6 @@ function AppContent() {
       document.body.removeEventListener('mouseleave', handleMouseUp);
     };
   }, [handleClick, handleMouseDown, handleMouseUp]);
-
-  const openSecretSection = useCallback(() => {
-    console.log("Opening secret section");
-    setIsSecretSectionOpen(true);
-  }, []);
 
   const showFooter = location.pathname !== '/contact';
 
@@ -242,7 +234,7 @@ function AppContent() {
       ))}
       <SecretSection 
         isOpen={isSecretSectionOpen} 
-        onClose={() => setIsSecretSectionOpen(false)} 
+        onClose={closeSecretSection} 
         teamMembers={teamMembers}
         secretAboutData={secretAboutData}
       />
@@ -272,9 +264,11 @@ export default function App() {
           <ShootingModeProvider>
             <DestructionProvider>
               <WeaponProvider>
-                <AppContent />
-                <Weapon3D />
-                <WeaponWheel />
+                <SecretSectionProvider>
+                  <AppContent />
+                  <Weapon3D />
+                  <WeaponWheel />
+                </SecretSectionProvider>
               </WeaponProvider>
             </DestructionProvider>
           </ShootingModeProvider>

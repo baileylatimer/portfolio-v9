@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { useWeapon, WeaponType } from '~/contexts/WeaponContext';
 import { BulletHoleContext } from '~/contexts/BulletHoleContext';
+import { useSecretSection } from '~/contexts/SecretSectionContext';
 
 // Weapon configurations for 3D models
 const WEAPON_3D_CONFIGS = {
@@ -98,6 +99,7 @@ const Weapon3D: React.FC = () => {
   
   const { activeWeapon } = useWeapon();
   const { addBulletHole } = useContext(BulletHoleContext) || {};
+  const { isSecretSectionOpen } = useSecretSection();
 
   // Check if current weapon is a 3D weapon
   const is3DWeapon = activeWeapon === WeaponType.REVOLVER || activeWeapon === WeaponType.SHOTGUN || activeWeapon === WeaponType.DYNAMITE;
@@ -272,12 +274,14 @@ const Weapon3D: React.FC = () => {
       audioRef.current.play().catch(err => console.log('Audio play failed:', err));
     }
 
-    // Screen shake
-    document.body.classList.add('screen-shake');
-    setTimeout(() => {
-      document.body.classList.remove('screen-shake');
-    }, 80);
-  }, [is3DWeapon, weaponConfig, activeWeapon, addBulletHole, triggerRecoil, triggerMuzzleFlash]);
+    // Screen shake - only if secret section is not open
+    if (!isSecretSectionOpen) {
+      document.body.classList.add('screen-shake');
+      setTimeout(() => {
+        document.body.classList.remove('screen-shake');
+      }, 80);
+    }
+  }, [is3DWeapon, weaponConfig, activeWeapon, addBulletHole, triggerRecoil, triggerMuzzleFlash, isSecretSectionOpen]);
 
   // Dynamite charge functions
   const startDynamiteCharge = useCallback((event: MouseEvent) => {
@@ -413,9 +417,11 @@ const Weapon3D: React.FC = () => {
         if (explosionRing.parentNode) explosionRing.parentNode.removeChild(explosionRing);
       }, 500);
       
-      // MASSIVE explosion screen shake (much more violent than gunshots)
-      document.body.classList.add('explosion-shake');
-      setTimeout(() => document.body.classList.remove('explosion-shake'), 400);
+      // MASSIVE explosion screen shake (much more violent than gunshots) - only if secret section is not open
+      if (!isSecretSectionOpen) {
+        document.body.classList.add('explosion-shake');
+        setTimeout(() => document.body.classList.remove('explosion-shake'), 400);
+      }
 
       // Area damage - dispatch shatter event to document for area of effect destruction
       const shatterEvent = new CustomEvent('shatter-image', {
