@@ -1,4 +1,5 @@
 import React from 'react';
+import ShatterableLogo from './ShatterableLogo';
 
 interface ClientLogo {
   _id: string;
@@ -24,9 +25,10 @@ const ClientLogoSection: React.FC<ClientLogoSectionProps> = ({ logos }) => {
       <div className="grid grid-cols-3 md:grid-cols-5 gap-8">
         {sortedLogos.map((logo) => (
           <div key={logo._id} className="flex justify-center items-center">
-            <img
+            <ShatterableLogo
               src={logo.logo.asset.url}
               alt={`${logo.name} logo`}
+              id={`logo-${logo._id}`}
               className="max-w-full h-auto max-h-16 object-contain"
             />
           </div>

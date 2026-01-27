@@ -3,7 +3,7 @@ import { useShootingMode } from '~/contexts/ShootingModeContext';
 import { useDestruction } from '~/contexts/DestructionContext';
 
 interface ShatterableTextProps {
-  text: string;
+  text?: string | null;
   id: string; // Unique identifier for this text block (e.g., "mission", "about", "services")
   className?: string;
   style?: React.CSSProperties;
@@ -49,14 +49,16 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
   locallyDestroyedWordsRef.current = locallyDestroyedWords;
 
   // Memoize words array to prevent unnecessary re-renders that trigger repair useEffect
-  const words = useMemo(() => 
-    text.split(/(\s+)/).map((word, index) => ({
+  const words = useMemo(() => {
+    // Handle null/undefined text
+    if (!text) return [];
+    
+    return text.split(/(\s+)/).map((word, index) => ({
       text: word,
       id: `word-${id}-${index}`,
       isSpace: /^\s+$/.test(word) // Check if it's just whitespace
-    })),
-    [text, id]
-  );
+    }));
+  }, [text, id]);
 
   // Handle word shooting
   const shootWord = useCallback((wordId: string, wordText: string, element: HTMLElement) => {
