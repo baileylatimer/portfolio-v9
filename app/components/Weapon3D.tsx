@@ -226,11 +226,12 @@ const Weapon3D: React.FC = () => {
         pelletPos.x = Math.max(10, Math.min(window.innerWidth - 10, pelletPos.x));
         pelletPos.y = Math.max(10, Math.min(window.innerHeight - 10, pelletPos.y));
         
-        // Dispatch shatter event for each pellet
+        // Dispatch shatter event for each pellet with weapon type
         const shatterEvent = new CustomEvent('shatter-image', {
-          detail: { x: pelletPos.x, y: pelletPos.y },
+          detail: { x: pelletPos.x, y: pelletPos.y, weaponType: WeaponType.SHOTGUN },
           bubbles: true
         });
+        console.log('🔫 SHOTGUN: Dispatching shatter event for pellet', i+1, 'at', pelletPos, 'with weaponType:', WeaponType.SHOTGUN);
         document.dispatchEvent(shatterEvent);
         
         // Create bullet hole for each pellet with small delay to bypass debounce
@@ -246,9 +247,9 @@ const Weapon3D: React.FC = () => {
       }
     } else {
       // Regular single-shot behavior for revolver/other weapons
-      // Dispatch shatter event
+      // Dispatch shatter event with weapon type
       const shatterEvent = new CustomEvent('shatter-image', {
-        detail: { x: shootPos.x, y: shootPos.y },
+        detail: { x: shootPos.x, y: shootPos.y, weaponType: activeWeapon },
         bubbles: true
       });
       document.dispatchEvent(shatterEvent);
@@ -416,23 +417,13 @@ const Weapon3D: React.FC = () => {
       document.body.classList.add('explosion-shake');
       setTimeout(() => document.body.classList.remove('explosion-shake'), 400);
 
-      // Area damage - shatter nearby elements
-      const elements = document.elementsFromPoint(explosionPosition.x, explosionPosition.y);
-      elements.forEach(element => {
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const distance = Math.sqrt(Math.pow(explosionPosition.x - centerX, 2) + Math.pow(explosionPosition.y - centerY, 2));
-        
-        if (distance <= explosionRadius) {
-          // Dispatch shatter event for elements in blast radius
-          const shatterEvent = new CustomEvent('shatter-image', {
-            detail: { x: centerX, y: centerY },
-            bubbles: true
-          });
-          element.dispatchEvent(shatterEvent);
-        }
+      // Area damage - dispatch shatter event to document for area of effect destruction
+      const shatterEvent = new CustomEvent('shatter-image', {
+        detail: { x: explosionPosition.x, y: explosionPosition.y, weaponType: WeaponType.DYNAMITE },
+        bubbles: true
       });
+      console.log('🧨 DYNAMITE: Dispatching shatter event at', explosionPosition, 'with weaponType:', WeaponType.DYNAMITE);
+      document.dispatchEvent(shatterEvent);
 
       // Play explosion sound
       if (audioRef.current) {

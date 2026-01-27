@@ -44,11 +44,11 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
   // Generate unique image ID if none provided
   const imageId = id || `image-${src.split('/').pop()?.split('.')[0] || 'unknown'}`;
 
-  // Award-winning progressive destruction sequence
-  const shatterImage = useCallback(() => {
+  // Award-winning progressive destruction sequence with weapon-specific patterns
+  const shatterImage = useCallback((weaponType?: string) => {
     if (!imageRef.current || !containerRef.current) return;
 
-    console.log('🖼️ Progressive shatter sequence...', { stage, fragmentCount: fragments.length });
+    console.log('🖼️ Progressive shatter sequence...', { stage, fragmentCount: fragments.length, weaponType });
 
     if (stage === 'intact') {
       // FIRST SHOT: Complete shatter sequence
@@ -75,21 +75,38 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
       }, 200);
 
     } else if (stage === 'fragmented') {
-      // SUBSEQUENT SHOTS: Knock off 1-2 visible fragments
       const visibleFragments = fragments.filter(f => f.state === 'visible');
       
       if (visibleFragments.length > 0) {
-        const numToKnockOff = Math.random() < 0.7 ? 1 : 2; // 70% chance of 1, 30% chance of 2
-        const fragmentsToKnockOff: ProgressiveFragment[] = [];
+        let fragmentsToKnockOff: ProgressiveFragment[] = [];
         
-        // Randomly select fragments to knock off
-        for (let i = 0; i < Math.min(numToKnockOff, visibleFragments.length); i++) {
-          const randomIndex = Math.floor(Math.random() * visibleFragments.length);
-          const fragment = visibleFragments.splice(randomIndex, 1)[0]; // Remove from array so we don't pick it again
-          fragmentsToKnockOff.push(fragment);
+        if (weaponType === 'shotgun') {
+          // SHOTGUN: Knock off 3-5 fragments for enhanced destruction
+          const numToKnockOff = 3 + Math.floor(Math.random() * 3); // 3-5 fragments
+          console.log('🔫 SHOTGUN: Enhanced destruction - knocking off', numToKnockOff, 'fragments');
+          
+          for (let i = 0; i < Math.min(numToKnockOff, visibleFragments.length); i++) {
+            const randomIndex = Math.floor(Math.random() * visibleFragments.length);
+            const fragment = visibleFragments.splice(randomIndex, 1)[0];
+            fragmentsToKnockOff.push(fragment);
+          }
+          
+        } else if (weaponType === 'dynamite') {
+          // DYNAMITE: Knock off ALL remaining fragments at once!
+          fragmentsToKnockOff = [...visibleFragments];
+          console.log('🧨 DYNAMITE: TOTAL DESTRUCTION - knocking off ALL', fragmentsToKnockOff.length, 'fragments!');
+          
+        } else {
+          // REVOLVER: Original behavior - 1-2 fragments
+          const numToKnockOff = Math.random() < 0.7 ? 1 : 2;
+          console.log('🔫 REVOLVER: Standard destruction - knocking off', numToKnockOff, 'fragments');
+          
+          for (let i = 0; i < Math.min(numToKnockOff, visibleFragments.length); i++) {
+            const randomIndex = Math.floor(Math.random() * visibleFragments.length);
+            const fragment = visibleFragments.splice(randomIndex, 1)[0];
+            fragmentsToKnockOff.push(fragment);
+          }
         }
-        
-        console.log('🖼️ Knocking off', fragmentsToKnockOff.length, 'fragments. Remaining visible:', visibleFragments.length);
         
         // Start falling animation for selected fragments
         setFragments(currentFragments => {
@@ -103,23 +120,23 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
               const absoluteX = containerRect.left + fragment.x;
               const absoluteY = containerRect.top + fragment.y;
               
+              // Enhanced velocity for different weapons
+              const velocityMultiplier = weaponType === 'shotgun' ? 1.3 : weaponType === 'dynamite' ? 1.6 : 1;
+              
               return {
                 ...fragment,
                 state: 'falling' as const,
                 fallStartTime: Date.now(),
                 x: absoluteX, // Now relative to viewport
                 y: absoluteY, // Now relative to viewport
-                velocityX: (Math.random() - 0.5) * 15, // Dramatic horizontal velocity
-                velocityY: -(Math.random() * 8 + 5), // Strong initial UPWARD velocity
-                rotationSpeed: (Math.random() - 0.5) * 0.8 // Fast spin speed
+                velocityX: (Math.random() - 0.5) * 15 * velocityMultiplier,
+                velocityY: -(Math.random() * 8 + 5) * velocityMultiplier,
+                rotationSpeed: (Math.random() - 0.5) * 0.8 * velocityMultiplier
               };
             }
             return fragment;
           });
         });
-
-        // Animation will be started by useEffect after state update
-        console.log('🖼️ Fragment state updated, animation will start via useEffect');
 
         // Check if all fragments will be gone after this
         const remainingAfterFall = visibleFragments.length;
@@ -282,12 +299,12 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
       });
 
       const rect = containerRef.current!.getBoundingClientRect();
-      const x = e.detail.x;
-      const y = e.detail.y;
+      const { x, y, weaponType } = e.detail;
       
       console.log('🖼️ Hit detection:', {
         clickX: x,
         clickY: y,
+        weaponType,
         rectLeft: rect.left,
         rectRight: rect.right,
         rectTop: rect.top,
@@ -297,8 +314,8 @@ const ShatterableImage: React.FC<ShatterableImageProps> = ({
       
       // Check if click is within image bounds
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        console.log('🖼️ ShatterableImage: HIT! Triggering progressive shatter...', { currentStage: stage });
-        shatterImage();
+        console.log('🖼️ ShatterableImage: HIT! Triggering progressive shatter...', { currentStage: stage, weaponType });
+        shatterImage(weaponType);
         e.stopPropagation(); // Prevent bullet hole on destroyed image
       } else {
         console.log('🖼️ ShatterableImage: MISS - click outside bounds');

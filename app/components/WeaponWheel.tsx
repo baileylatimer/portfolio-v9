@@ -81,18 +81,18 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
     }
   };
 
-  // Handle weapon selection and wire to Revolver 3D model
+  // Handle weapon selection and enable shooting mode for all weapons except DEFAULT
   const selectWeapon = (weaponType: WeaponType) => {
     console.log('🎯 Selecting weapon:', weaponType);
     setActiveWeapon(weaponType);
     
-    // Wire COLT SAA to Revolver 3D model
-    if (weaponType === WeaponType.REVOLVER) {
-      console.log('🔫 Activating Revolver 3D model for COLT SAA');
-      enableShootingMode();
-    } else {
-      console.log('🔫 Deactivating Revolver 3D model');
+    // Enable shooting mode for all weapons except DEFAULT/cursor
+    if (weaponType === WeaponType.DEFAULT) {
+      console.log('🔫 Deactivating shooting mode (cursor/default)');
       disableShootingMode();
+    } else {
+      console.log('🔫 Enabling shooting mode for', weaponType);
+      enableShootingMode();
     }
   };
 

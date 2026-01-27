@@ -60,41 +60,96 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
     }));
   }, [text, id]);
 
-  // Handle word shooting
-  const shootWord = useCallback((wordId: string, wordText: string, element: HTMLElement) => {
-    // Immediately launch word (no cracking effect)
-    const rect = element.getBoundingClientRect();
-    
-    // Capture computed styles for visible flying words
-    const computedStyle = window.getComputedStyle(element);
-    
-    const flyingWord: FlyingWord = {
-      id: wordId,
-      text: wordText,
-      x: rect.left,
-      y: rect.top,
-      width: rect.width,
-      height: rect.height,
-      // Slower velocities for smaller word elements (vs large image fragments)
-      velocityX: (Math.random() - 0.5) * 8,       // Reduced from 15 to 8: ±4
-      velocityY: -(Math.random() * 4 + 3),        // Reduced from (8+5) to (4+3): -3 to -7 UPWARD
-      rotation: 0,
-      rotationSpeed: (Math.random() - 0.5) * 0.4, // Reduced from 0.8 to 0.4: ±0.2
-      fallStartTime: Date.now(),
-      scale: 1,
-      // Capture explicit font styles for visibility
-      fontSize: computedStyle.fontSize,
-      fontFamily: computedStyle.fontFamily,
-      fontWeight: computedStyle.fontWeight,
-      color: computedStyle.color,
-      lineHeight: computedStyle.lineHeight
+  // Handle word shooting with weapon-specific patterns - FIXED: Use refs to prevent stale closures
+  const shootWord = useCallback((wordId: string, wordText: string, element: HTMLElement, weaponType?: string) => {
+    const createFlyingWord = (id: string, text: string, elem: HTMLElement, velocityMultiplier = 1) => {
+      const rect = elem.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(elem);
+      
+      return {
+        id,
+        text,
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+        velocityX: (Math.random() - 0.5) * 8 * velocityMultiplier,
+        velocityY: -(Math.random() * 4 + 3) * velocityMultiplier,
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.4 * velocityMultiplier,
+        fallStartTime: Date.now(),
+        scale: 1,
+        fontSize: computedStyle.fontSize,
+        fontFamily: computedStyle.fontFamily,
+        fontWeight: computedStyle.fontWeight,
+        color: computedStyle.color,
+        lineHeight: computedStyle.lineHeight
+      };
     };
 
-    setFlyingWords(prev => [...prev, flyingWord]);
+    const destroyWords = (wordsToDestroy: string[]) => {
+      const newFlyingWords: FlyingWord[] = [];
+      const currentDestroyedWords = locallyDestroyedWordsRef.current; // Use ref to avoid stale closure
+      const newDestroyedWords = new Set(currentDestroyedWords);
+      
+      wordsToDestroy.forEach(wId => {
+        // Find the word element
+        const wordElement = document.querySelector(`[data-word-id="${wId}"]`) as HTMLElement;
+        if (wordElement && !newDestroyedWords.has(wId)) {
+          const wordText = wordElement.textContent || '';
+          if (wordText.trim()) { // Only destroy non-space words
+            const velocityMultiplier = weaponType === 'shotgun' ? 1.3 : weaponType === 'dynamite' ? 1.5 : 1;
+            newFlyingWords.push(createFlyingWord(wId, wordText, wordElement, velocityMultiplier));
+            newDestroyedWords.add(wId);
+            // Register with global context for repair button
+            destroyWord(wId);
+          }
+        }
+      });
+      
+      if (newFlyingWords.length > 0) {
+        setFlyingWords(prev => [...prev, ...newFlyingWords]);
+        setLocallyDestroyedWords(newDestroyedWords);
+      }
+    };
 
-    // Track locally ONLY - no global context updates to prevent cascading re-renders
-    setLocallyDestroyedWords(prev => new Set([...prev, wordId]));
-  }, []); // No dependencies - completely isolated from global state
+    // Use current words at time of execution, not from closure
+    const currentWords = words; // This is fine since words is memoized and stable
+
+    if (weaponType === 'shotgun') {
+      // SHOTGUN: Destroy 2-3 words including the hit word and nearby words
+      const wordsToDestroy = [wordId];
+      const allWords = currentWords.filter(w => !w.isSpace && !locallyDestroyedWordsRef.current.has(w.id));
+      const currentWordIndex = allWords.findIndex(w => w.id === wordId);
+      
+      if (currentWordIndex !== -1) {
+        const additionalWords = Math.random() < 0.7 ? 1 : 2; // 70% chance for 1 extra, 30% for 2 extra
+        
+        // Add nearby words (before and after)
+        for (let i = 1; i <= additionalWords && wordsToDestroy.length < 3; i++) {
+          if (Math.random() < 0.5 && currentWordIndex - i >= 0) {
+            wordsToDestroy.push(allWords[currentWordIndex - i].id);
+          } else if (currentWordIndex + i < allWords.length) {
+            wordsToDestroy.push(allWords[currentWordIndex + i].id);
+          }
+        }
+      }
+      
+      console.log(`🔫 SHOTGUN: Destroying ${wordsToDestroy.length} words!`);
+      destroyWords(wordsToDestroy);
+      
+    } else if (weaponType === 'dynamite') {
+      // DYNAMITE: Destroy ALL words at once!
+      const allWordIds = currentWords.filter(w => !w.isSpace && !locallyDestroyedWordsRef.current.has(w.id)).map(w => w.id);
+      console.log(`🧨 DYNAMITE: Destroying ALL ${allWordIds.length} words!`);
+      destroyWords(allWordIds);
+      
+    } else {
+      // REVOLVER: Single word destruction (original behavior)
+      console.log(`🔫 REVOLVER: Destroying single word`);
+      destroyWords([wordId]);
+    }
+  }, [words, destroyWord]); // REMOVED locallyDestroyedWords dependency!
 
   // EXACT frame-based physics from ShatterableImage
   const animateWords = useCallback(() => {
@@ -148,24 +203,32 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
     animationFrameRef.current = requestAnimationFrame(animate);
   }, []);
 
-  // Listen for shatter events when in shooting mode
-  useEffect(() => {
-    console.log('📝 ShatterableText useEffect:', {
-      isShootingMode,
-      hasContainer: !!containerRef.current,
-      id
-    });
+  // Create a stable ref for shootWord to avoid re-creating the event listener
+  const shootWordRef = useRef(shootWord);
+  shootWordRef.current = shootWord;
+  
+  // Create a stable ref for isShootingMode to check inside handler without re-creating listener
+  const isShootingModeRef = useRef(isShootingMode);
+  isShootingModeRef.current = isShootingMode;
 
-    if (!isShootingMode || !containerRef.current) {
-      console.log('📝 ShatterableText: NOT attaching listener - isShootingMode:', isShootingMode, 'hasContainer:', !!containerRef.current);
+  // Listen for shatter events - ALWAYS ATTACHED to avoid timing issues!
+  useEffect(() => {
+    if (!containerRef.current) {
+      console.log('📝 ShatterableText: No container, skipping listener attachment for:', id);
       return;
     }
 
-    console.log('📝 ShatterableText: ATTACHING shatter-image listener for:', id);
+    console.log('📝 ShatterableText: PERMANENTLY ATTACHING shatter-image listener for:', id);
 
     const handleShatter = (e: CustomEvent) => {
+      // Check shooting mode INSIDE handler to avoid timing issues
+      if (!isShootingModeRef.current) {
+        console.log('📝 ShatterableText: Ignoring event - shooting mode disabled');
+        return;
+      }
+      
       console.log('📝 ShatterableText RECEIVED event at:', e.detail, 'Component ID:', id);
-      const { x, y } = e.detail;
+      const { x, y, weaponType } = e.detail;
 
       // Use document.elementFromPoint() like the working paintball site
       const element = document.elementFromPoint(x, y);
@@ -175,16 +238,14 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
         const wordId = element.getAttribute('data-word-id');
         const wordText = element.textContent;
         
-        console.log('📝 HIT DETECTED! Word:', wordText, 'ID:', wordId);
+        console.log('📝 HIT DETECTED! Word:', wordText, 'ID:', wordId, 'Weapon:', weaponType);
         
         // Use ref.current to avoid stale closure issues
         if (wordId && wordText && !locallyDestroyedWordsRef.current.has(wordId)) {
-          console.log('📝 SHOOTING WORD!', wordText);
+          console.log('📝 SHOOTING WORD!', wordText, 'with', weaponType);
           
-          // Register with global destruction context (for repair button)
-          destroyWord(wordId);
-          
-          shootWord(wordId, wordText, element as HTMLElement);
+          // Use ref to access current shootWord function to prevent re-renders
+          shootWordRef.current(wordId, wordText, element as HTMLElement, weaponType);
           e.stopPropagation(); // Prevent bullet hole
         } else {
           console.log('📝 Cannot shoot - already destroyed');
@@ -195,16 +256,16 @@ const ShatterableText: React.FC<ShatterableTextProps> = ({
     };
 
     document.addEventListener('shatter-image', handleShatter as EventListener);
-    console.log('📝 ShatterableText: Event listener attached to document');
+    console.log('📝 ShatterableText: PERMANENT event listener attached to document for:', id);
 
     return () => {
-      console.log('📝 ShatterableText: Cleaning up event listener');
+      console.log('📝 ShatterableText: Cleaning up PERMANENT event listener for:', id);
       document.removeEventListener('shatter-image', handleShatter as EventListener);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isShootingMode, shootWord, id]); // Removed locallyDestroyedWords to prevent stale closures
+  }, [id]); // ONLY depend on id - never re-attach listener!
 
   // Start animation when flying words are created
   useEffect(() => {
