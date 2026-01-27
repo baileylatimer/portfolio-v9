@@ -10,10 +10,10 @@ const WEAPON_3D_CONFIGS = {
     modelPath: '/models/revolver.glb',
     soundPath: '/sounds/colt-shot.wav',
     scale: [0.035, 0.035, 0.035], // Made smaller for better proportions
-    position: [0, -0.35, -1.2], // Adjusted position for smaller model
+    position: [0, -0.3675, -1.2], // Lowered by 5% (-0.35 → -0.3675)
     rotation: [-Math.PI * 0.05, Math.PI * 0.5, 0], // Slight downward tilt, 90° turn for first-person view
     fireRate: 325, // ms between shots
-    muzzlePosition: [0, -0.28, -1.35], // Adjusted muzzle position for smaller model
+    muzzlePosition: [0, -0.2975, -1.35], // Adjusted muzzle position to match new height
     baseRotation: {
       x: -Math.PI * 0.05,
       y: Math.PI * 1.5, // 270° for proper first-person view
@@ -23,10 +23,10 @@ const WEAPON_3D_CONFIGS = {
     modelPath: '/models/shotgun.glb',
     soundPath: '/sounds/shotgun.wav',
     scale: [0.048, 0.048, 0.048], // 20% larger (0.04 → 0.048)
-    position: [0, -0.65, -1.2], // Much lower on screen (-0.45 → -0.65)
+    position: [0, -0.5525, -1.2], // Raised by 15% (-0.65 → -0.5525)
     rotation: [-Math.PI * 0.05, Math.PI * 1.0, 0], // Horizontal rotation for down-barrel view (180°)
     fireRate: 800, // Slower fire rate for shotgun
-    muzzlePosition: [0, -0.6, -1.4], // Adjusted muzzle position to match new position
+    muzzlePosition: [0, -0.5025, -1.4], // Adjusted muzzle position to match new height
     baseRotation: {
       x: -Math.PI * 0.05, // Back to original slight downward tilt
       y: Math.PI * 1.0, // 180° horizontal rotation for down-barrel view
@@ -36,11 +36,11 @@ const WEAPON_3D_CONFIGS = {
     modelPath: '/models/dynamite.glb',
     soundPath: '/sounds/dynamite.wav',
     fuseSound: '/sounds/dynamite-fuse.wav',
-    scale: [0.12, 0.12, 0.12], // Good size for handheld dynamite
-    position: [0.15, -0.25, -0.7], // In right hand, ready to throw
+    scale: [1.2, 1.2, 1.2], // 10x larger (0.12 → 1.2)
+    position: [0, -0.55, -0.7], // Lower on screen (-0.25 → -0.55)
     rotation: [-Math.PI * 0.2, Math.PI * 0.3, Math.PI * 0.1], // Angled in hand
     fireRate: 3000, // Long cooldown between throws
-    muzzlePosition: [0.15, -0.1, -0.5], // Where it launches from
+    muzzlePosition: [0, -0.4, -0.5], // Lowered muzzle position (-0.1 → -0.4)
     baseRotation: {
       x: -Math.PI * 0.2, // Tilted downward
       y: Math.PI * 0.3, // Slight angle
