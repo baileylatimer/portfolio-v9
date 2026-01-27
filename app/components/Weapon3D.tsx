@@ -195,21 +195,73 @@ const Weapon3D: React.FC = () => {
 
     console.log(`🔫 ${activeWeapon.toUpperCase()} BANG! Shooting at:`, shootPos);
 
-    // Dispatch shatter event
-    const shatterEvent = new CustomEvent('shatter-image', {
-      detail: { x: shootPos.x, y: shootPos.y },
-      bubbles: true
-    });
-    document.dispatchEvent(shatterEvent);
+    // Shotgun pellet spread logic
+    if (activeWeapon === WeaponType.SHOTGUN) {
+      // Generate 6-9 pellets for realistic buckshot pattern
+      const pelletCount = 6 + Math.floor(Math.random() * 4); // Random 6-9 pellets
+      const spreadRadius = 100; // Maximum spread radius in pixels
+      
+      console.log(`🔫 SHOTGUN: Firing ${pelletCount} pellets!`);
+      
+      for (let i = 0; i < pelletCount; i++) {
+        // Gaussian distribution for more realistic clustering (more hits near center)
+        const gaussianRandom = () => {
+          let u = 0, v = 0;
+          while(u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+          while(v === 0) v = Math.random();
+          return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+        };
+        
+        // Calculate pellet position with Gaussian spread (tighter center clustering)
+        const spreadFactor = 0.3; // Controls how tight the spread is
+        const offsetX = gaussianRandom() * spreadRadius * spreadFactor;
+        const offsetY = gaussianRandom() * spreadRadius * spreadFactor;
+        
+        const pelletPos = {
+          x: shootPos.x + offsetX,
+          y: shootPos.y + offsetY
+        };
+        
+        // Ensure pellets stay within viewport bounds
+        pelletPos.x = Math.max(10, Math.min(window.innerWidth - 10, pelletPos.x));
+        pelletPos.y = Math.max(10, Math.min(window.innerHeight - 10, pelletPos.y));
+        
+        // Dispatch shatter event for each pellet
+        const shatterEvent = new CustomEvent('shatter-image', {
+          detail: { x: pelletPos.x, y: pelletPos.y },
+          bubbles: true
+        });
+        document.dispatchEvent(shatterEvent);
+        
+        // Create bullet hole for each pellet with small delay to bypass debounce
+        if (addBulletHole) {
+          const x = pelletPos.x + window.scrollX;
+          const y = pelletPos.y + window.scrollY;
+          
+          // Add delay to bypass 100ms debounce in BulletHoleContext
+          setTimeout(() => {
+            addBulletHole(x, y, document.body);
+          }, i * 20); // 20ms delay between each pellet
+        }
+      }
+    } else {
+      // Regular single-shot behavior for revolver/other weapons
+      // Dispatch shatter event
+      const shatterEvent = new CustomEvent('shatter-image', {
+        detail: { x: shootPos.x, y: shootPos.y },
+        bubbles: true
+      });
+      document.dispatchEvent(shatterEvent);
 
-    // Create bullet hole
-    if (addBulletHole && shootPos.x && shootPos.y) {
-      const x = shootPos.x + window.scrollX;
-      const y = shootPos.y + window.scrollY;
-      addBulletHole(x, y, document.body);
+      // Create bullet hole
+      if (addBulletHole && shootPos.x && shootPos.y) {
+        const x = shootPos.x + window.scrollX;
+        const y = shootPos.y + window.scrollY;
+        addBulletHole(x, y, document.body);
+      }
     }
 
-    // Trigger effects
+    // Trigger effects (same for all weapons)
     triggerRecoil();
     triggerMuzzleFlash();
 
