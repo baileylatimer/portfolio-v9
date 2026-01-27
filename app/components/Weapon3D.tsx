@@ -285,16 +285,27 @@ const Weapon3D: React.FC = () => {
 
         const weapon = gltf.scene;
         
-        // Configure shadows and materials
+        // Configure shadows and ENHANCED REFLECTIVE materials for studio look
         weapon.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
 
             if (child.material instanceof THREE.MeshPhysicalMaterial) {
-              child.material.metalness = 0.7;
-              child.material.roughness = 0.3;
-              child.material.color.setHex(0x444444);
+              // MAXIMUM metallic reflectivity for studio look
+              child.material.metalness = 0.95; // Nearly pure metal
+              child.material.roughness = 0.05; // Mirror-like surface
+              child.material.reflectivity = 1.0; // Maximum reflection
+              child.material.clearcoat = 1.0; // Clear coat for extra shine
+              child.material.clearcoatRoughness = 0.0; // Perfect clear coat
+              child.material.envMapIntensity = 2.0; // Enhanced environment reflections
+              child.material.color.setHex(0x666666); // Slightly brighter base color
+            } else if (child.material instanceof THREE.MeshStandardMaterial) {
+              // Convert standard materials to reflective
+              child.material.metalness = 0.9;
+              child.material.roughness = 0.1;
+              child.material.envMapIntensity = 1.5;
+              child.material.color.setHex(0x666666);
             }
           }
         });
@@ -371,20 +382,78 @@ const Weapon3D: React.FC = () => {
       rendererRef.current = renderer;
       cameraRef.current = camera;
 
-      // Lighting setup
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      // ULTIMATE STUDIO LIGHTING - Absolutely brilliant and reflective
+      
+      // Ambient light - ULTRA MAXIMUM intensity for brilliant overall illumination
+      const ambientLight = new THREE.AmbientLight(0xffffff, 3.5);
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 5, 5);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
-      scene.add(directionalLight);
+      // Hemisphere light - INSANE bright natural sky/ground lighting
+      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xeeeeee, 2.5);
+      scene.add(hemisphereLight);
 
-      const rimLight = new THREE.DirectionalLight(0x6666ff, 0.3);
-      rimLight.position.set(-5, 2, -5);
-      scene.add(rimLight);
+      // Main directional light - NUCLEAR bright with warm golden tone
+      const mainLight = new THREE.DirectionalLight(0xfff2cc, 6.0);
+      mainLight.position.set(5, 5, 5);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      scene.add(mainLight);
+
+      // Front key light - BLAZING illumination from camera direction
+      const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
+      keyLight.position.set(0, 2, 3);
+      scene.add(keyLight);
+
+      // POWERFUL fill lights from multiple angles
+      const leftFillLight = new THREE.DirectionalLight(0xfff8e1, 2.5);
+      leftFillLight.position.set(-3, 1, 2);
+      scene.add(leftFillLight);
+
+      const rightFillLight = new THREE.DirectionalLight(0xfff8e1, 2.5);
+      rightFillLight.position.set(3, 1, 2);
+      scene.add(rightFillLight);
+
+      // Top-down studio light for maximum shimmering
+      const topLight = new THREE.DirectionalLight(0xffffff, 3.0);
+      topLight.position.set(0, 8, 0);
+      scene.add(topLight);
+
+      // Bottom-up reflection light for studio effect
+      const bottomLight = new THREE.DirectionalLight(0xffffff, 2.0);
+      bottomLight.position.set(0, -5, 2);
+      scene.add(bottomLight);
+
+      // BACK LIGHTING - Multiple lights to eliminate matte back
+      const backLight1 = new THREE.DirectionalLight(0xfff4d6, 3.0);
+      backLight1.position.set(0, 0, -5); // Direct back light
+      scene.add(backLight1);
+
+      const backLight2 = new THREE.DirectionalLight(0xffeecc, 2.0);
+      backLight2.position.set(-2, 1, -4); // Back left
+      scene.add(backLight2);
+
+      const backLight3 = new THREE.DirectionalLight(0xffeecc, 2.0);
+      backLight3.position.set(2, 1, -4); // Back right
+      scene.add(backLight3);
+
+      // Extreme rim lights for dramatic studio shimmer
+      const blueRimLight = new THREE.DirectionalLight(0x99aaff, 1.5);
+      blueRimLight.position.set(-5, 2, -5);
+      scene.add(blueRimLight);
+
+      const goldRimLight = new THREE.DirectionalLight(0xffcc66, 1.5);
+      goldRimLight.position.set(5, 2, -5);
+      scene.add(goldRimLight);
+
+      // Additional warm studio lights
+      const warmLight1 = new THREE.DirectionalLight(0xffd699, 2.0);
+      warmLight1.position.set(-4, 4, 1);
+      scene.add(warmLight1);
+
+      const warmLight2 = new THREE.DirectionalLight(0xffd699, 2.0);
+      warmLight2.position.set(4, 4, 1);
+      scene.add(warmLight2);
 
       // Create muzzle flash effects
       const muzzleLight = new THREE.PointLight(0xff6600, 0, 2);
