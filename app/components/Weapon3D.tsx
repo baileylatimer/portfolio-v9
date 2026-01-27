@@ -9,11 +9,11 @@ const WEAPON_3D_CONFIGS = {
   [WeaponType.REVOLVER]: {
     modelPath: '/models/revolver.glb',
     soundPath: '/sounds/colt-shot.wav',
-    scale: [0.14, 0.14, 0.14],
-    position: [0, -0.5, -1.5],
+    scale: [0.042, 0.042, 0.042], // Reduced by 70% from 0.14 to 0.042
+    position: [0, -0.4, -1.3], // Adjusted position for smaller model
     rotation: [-Math.PI * 0.05, Math.PI * 0.5, 0], // Slight downward tilt, 90° turn for first-person view
     fireRate: 325, // ms between shots
-    muzzlePosition: [0, -0.38, -1.65],
+    muzzlePosition: [0, -0.32, -1.45], // Adjusted muzzle position for smaller model
     baseRotation: {
       x: -Math.PI * 0.05,
       y: Math.PI * 1.5, // 270° for proper first-person view
