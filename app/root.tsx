@@ -13,13 +13,13 @@ import { BulletHoleProvider, BulletHoleContext } from '~/contexts/BulletHoleCont
 import { AsciiModeProvider } from '~/contexts/AsciiModeContext';
 import { ShootingModeProvider, useShootingMode } from '~/contexts/ShootingModeContext';
 import { DestructionProvider } from '~/contexts/DestructionContext';
+import { WeaponProvider } from '~/contexts/WeaponContext';
 import BulletHole from '~/components/BulletHole';
 import Footer from '~/components/footer';
 import Navigation from '~/components/navigation';
 import SecretSection from '~/components/SecretSection';
-import ShootingModeToggle from '~/components/ShootingModeToggle';
-import Revolver from '~/components/Revolver';
-import RepairButton from '~/components/RepairButton';
+import Weapon3D from '~/components/Weapon3D';
+import WeaponWheel from '~/components/WeaponWheel';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 import { sanityClient } from "~/lib/sanity.server";
 import type { PortableTextBlock } from '@portabletext/types';
@@ -271,10 +271,11 @@ export default function App() {
         <AsciiModeProvider>
           <ShootingModeProvider>
             <DestructionProvider>
-              <AppContent />
-              <ShootingModeToggle />
-              <Revolver />
-              <RepairButton />
+              <WeaponProvider>
+                <AppContent />
+                <Weapon3D />
+                <WeaponWheel />
+              </WeaponProvider>
             </DestructionProvider>
           </ShootingModeProvider>
         </AsciiModeProvider>
