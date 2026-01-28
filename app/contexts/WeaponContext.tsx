@@ -88,6 +88,11 @@ interface WeaponContextState {
   isWheelOpen: boolean;
   weaponConfigs: Record<WeaponType, WeaponConfig>;
   
+  // Loading state
+  isWeaponLoading: boolean;
+  loadingProgress: number;
+  loadingWeaponType: WeaponType | null;
+  
   // Actions
   setActiveWeapon: (weapon: WeaponType) => void;
   unlockWeapon: (weapon: WeaponType) => void;
@@ -95,6 +100,10 @@ interface WeaponContextState {
   setWheelOpen: (open: boolean) => void;
   getUnlockedWeapons: () => WeaponConfig[];
   isWeaponUnlocked: (weapon: WeaponType) => boolean;
+  
+  // Loading actions
+  setWeaponLoading: (weaponType: WeaponType, loading: boolean) => void;
+  setLoadingProgress: (progress: number) => void;
 }
 
 // Create context
@@ -109,6 +118,11 @@ export const WeaponProvider: React.FC<WeaponProviderProps> = ({ children }) => {
   const [activeWeapon, setActiveWeapon] = useState<WeaponType>(WeaponType.DEFAULT);
   const [unlockedWeapons, setUnlockedWeapons] = useState<Set<WeaponType>>(new Set());
   const [isWheelOpen, setIsWheelOpen] = useState(false);
+  
+  // Loading state
+  const [isWeaponLoading, setIsWeaponLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingWeaponType, setLoadingWeaponType] = useState<WeaponType | null>(null);
 
   // Initialize unlocked weapons from localStorage
   useEffect(() => {
@@ -189,17 +203,41 @@ export const WeaponProvider: React.FC<WeaponProviderProps> = ({ children }) => {
     }
   };
 
+  // Loading handlers
+  const handleSetWeaponLoading = (weaponType: WeaponType, loading: boolean) => {
+    console.log(`🔄 Setting weapon loading: ${weaponType} = ${loading}`);
+    setIsWeaponLoading(loading);
+    setLoadingWeaponType(loading ? weaponType : null);
+    if (!loading) {
+      setLoadingProgress(0);
+    }
+  };
+
+  const handleSetLoadingProgress = (progress: number) => {
+    setLoadingProgress(Math.round(progress));
+  };
+
   const value: WeaponContextState = {
     activeWeapon,
     unlockedWeapons,
     isWheelOpen,
     weaponConfigs: WEAPON_CONFIGS,
+    
+    // Loading state
+    isWeaponLoading,
+    loadingProgress,
+    loadingWeaponType,
+    
     setActiveWeapon: handleSetActiveWeapon,
     unlockWeapon,
     toggleWeaponWheel,
     setWheelOpen,
     getUnlockedWeapons,
-    isWeaponUnlocked
+    isWeaponUnlocked,
+    
+    // Loading actions
+    setWeaponLoading: handleSetWeaponLoading,
+    setLoadingProgress: handleSetLoadingProgress
   };
 
   return (

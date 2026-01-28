@@ -12,7 +12,10 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
     activeWeapon, 
     setActiveWeapon, 
     weaponConfigs,
-    isWeaponUnlocked
+    isWeaponUnlocked,
+    isWeaponLoading,
+    loadingProgress,
+    loadingWeaponType
   } = useWeapon();
   
   const { enableShootingMode, disableShootingMode } = useShootingMode();
@@ -292,6 +295,26 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
           fill="rgba(60, 60, 60, 0.95)" 
         />
 
+        {/* Loading Progress Ring - Only show when weapon is loading */}
+        {isWeaponLoading && loadingWeaponType === activeWeapon && (
+          <circle
+            cx="150"
+            cy="150"
+            r="67"
+            fill="none"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 67}`}
+            strokeDashoffset={`${2 * Math.PI * 67 * (1 - loadingProgress / 100)}`}
+            transform="rotate(-90 150 150)"
+            style={{
+              transition: 'stroke-dashoffset 0.1s ease',
+              filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.6))'
+            }}
+          />
+        )}
+
         {/* Weapon segments */}
         {weaponOrder.map((weaponType, index) => {
           const { startAngle, endAngle } = getSegmentAngles(index);
@@ -382,7 +405,7 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
           zIndex: 10
         }}
       >
-        {/* Active Weapon Name */}
+        {/* Active Weapon Name or Loading Percentage */}
         <div 
           className="font-bold text-white mb-1"
           style={{ 
@@ -391,7 +414,10 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
             letterSpacing: '1px'
           }}
         >
-          {weaponConfigs[activeWeapon].name}
+          {isWeaponLoading && loadingWeaponType === activeWeapon 
+            ? `${loadingProgress}%`
+            : weaponConfigs[activeWeapon].name
+          }
         </div>
         
         {/* Navigation Controls */}

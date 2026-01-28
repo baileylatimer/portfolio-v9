@@ -110,7 +110,7 @@ const Weapon3D: React.FC = () => {
   const dynamiteBaseScaleRef = useRef({ x: 0, y: 0, z: 0 });
   const throwDirectionRef = useRef({ x: 0, y: 0 });
   
-  const { activeWeapon } = useWeapon();
+  const { activeWeapon, setWeaponLoading, setLoadingProgress } = useWeapon();
   const { addBulletHole } = useContext(BulletHoleContext) || {};
   const { isSecretSectionOpen } = useSecretSection();
 
@@ -655,12 +655,19 @@ const Weapon3D: React.FC = () => {
     if (!weaponConfig || !sceneRef.current) return;
 
     console.log(`🔫 Loading ${weaponType} 3D model...`);
+    
+    // Start loading state
+    setWeaponLoading(weaponType, true);
+    setLoadingProgress(0);
 
     const loader = new GLTFLoader();
     loader.load(
       weaponConfig.modelPath,
       (gltf) => {
         console.log(`🔫 ${weaponType} loaded!`, gltf);
+        
+        // Complete loading state
+        setWeaponLoading(weaponType, false);
 
         // Remove previous weapon
         if (weaponRef.current && sceneRef.current) {
@@ -742,10 +749,14 @@ const Weapon3D: React.FC = () => {
         console.log(`🔫 ${weaponType} ready for action!`);
       },
       (progress) => {
-        console.log(`🔫 Loading ${weaponType}...`, Math.round((progress.loaded / progress.total) * 100) + '%');
+        // Calculate and update loading progress
+        const percent = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
+        setLoadingProgress(percent);
+        console.log(`🔫 Loading ${weaponType}... ${percent}%`);
       },
       (error) => {
         console.error(`🔫 Error loading ${weaponType}:`, error);
+        setWeaponLoading(weaponType, false);
       }
     );
   }, [weaponConfig]);
