@@ -1,15 +1,17 @@
 import React, { createContext, useState, useCallback, useRef } from 'react';
+import { WeaponType } from './WeaponContext';
 
 interface BulletHole {
   id: number;
   x: number;
   y: number;
+  weaponType?: WeaponType;
 }
 
 interface BulletHoleContextType {
   bulletHoles: BulletHole[];
-  addBulletHole: (x: number, y: number, target: HTMLElement) => void;
-  addBurstHoles: (x: number, y: number, target: HTMLElement) => void;
+  addBulletHole: (x: number, y: number, target: HTMLElement, weaponType?: WeaponType) => void;
+  addBurstHoles: (x: number, y: number, target: HTMLElement, weaponType?: WeaponType) => void;
 }
 
 export const BulletHoleContext = createContext<BulletHoleContextType | undefined>(undefined);
@@ -22,7 +24,7 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return !target.closest('.no-bullet-holes');
   };
 
-  const addBulletHole = useCallback((x: number, y: number, target: HTMLElement) => {
+  const addBulletHole = useCallback((x: number, y: number, target: HTMLElement, weaponType?: WeaponType) => {
     if (!shouldAddBulletHole(target)) {
       console.log('Skipping bullet hole for no-bullet-holes element');
       return;
@@ -31,7 +33,7 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const now = Date.now();
     if (now - lastBulletHoleTime.current > 100) { // 100ms debounce
       lastBulletHoleTime.current = now;
-      const newHole = { id: now, x, y };
+      const newHole = { id: now, x, y, weaponType };
       setBulletHoles(prev => [...prev, newHole]);
       console.log('Adding bullet hole:', newHole);
       setTimeout(() => {
@@ -43,7 +45,7 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  const addBurstHoles = useCallback((x: number, y: number, target: HTMLElement) => {
+  const addBurstHoles = useCallback((x: number, y: number, target: HTMLElement, weaponType?: WeaponType) => {
     if (!shouldAddBulletHole(target)) {
       console.log('Skipping burst holes for no-bullet-holes element');
       return;
@@ -55,7 +57,8 @@ export const BulletHoleProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const newHole = {
           id: Date.now() + i,
           x: x - 10 + Math.random() * 20,
-          y: y - 10 + Math.random() * 20
+          y: y - 10 + Math.random() * 20,
+          weaponType
         };
         setBulletHoles(prev => [...prev, newHole]);
         console.log('Adding burst hole:', newHole);

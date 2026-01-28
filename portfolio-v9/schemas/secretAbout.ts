@@ -25,5 +25,14 @@ export default {
       },
       validation: (Rule: any) => Rule.required(),
     },
+    {
+      name: 'armorImage',
+      title: 'Armor Image (Easter Egg)',
+      description: 'Alternate image shown when shot - you in medieval armor!',
+      type: 'image',
+      options: {
+        hotspot: true,
+      },
+    },
   ],
 };

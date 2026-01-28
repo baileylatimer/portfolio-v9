@@ -151,7 +151,6 @@ const SecretTeam: React.FC<SecretTeamProps> = ({ teamMembers }) => {
           )}
           <h3 className="text-xl font-bold mb-2 font-thermal" style={{ color: '#18F710' }}>
             {member.name}
-            {index === 2 && !isWeaponUnlocked(WeaponType.RAYGUN) && ' 🎯'}
           </h3>
           <p className="mb-4 font-thermal" style={{ color: '#18F710' }}>{member.bio}</p>
           <div className="flex space-x-4">

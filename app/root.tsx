@@ -24,6 +24,7 @@ import WeaponWheel from '~/components/WeaponWheel';
 import { useContext, useRef, useCallback, useState, useEffect } from 'react';
 import { sanityClient } from "~/lib/sanity.server";
 import type { PortableTextBlock } from '@portabletext/types';
+import { WeaponType } from '~/contexts/WeaponContext';
 
 import tailwindStyles from "./styles/tailwind.css?url";
 import globalStyles from "./styles/global.css?url";
@@ -67,6 +68,7 @@ interface BulletHole {
   id: number;
   x: number;
   y: number;
+  weaponType?: WeaponType;
 }
 
 interface SanityImage {
@@ -90,6 +92,7 @@ interface SecretAboutData {
   title: string;
   content: PortableTextBlock[];
   image: SanityImage;
+  armorImage?: SanityImage;
   tools: string[];
 }
 
@@ -108,6 +111,7 @@ export const loader: LoaderFunction = async () => {
     title,
     content,
     image,
+    armorImage,
     tools
   }`;
 
@@ -230,7 +234,7 @@ function AppContent() {
         </div>
       </div>
       {bulletHoles?.map((hole: BulletHole) => (
-        <BulletHole key={hole.id} x={hole.x} y={hole.y} />
+        <BulletHole key={hole.id} x={hole.x} y={hole.y} weaponType={hole.weaponType} />
       ))}
       <SecretSection 
         isOpen={isSecretSectionOpen} 

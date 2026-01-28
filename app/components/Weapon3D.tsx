@@ -256,7 +256,7 @@ const Weapon3D: React.FC = () => {
           
           // Add delay to bypass 100ms debounce in BulletHoleContext
           setTimeout(() => {
-            addBulletHole(x, y, document.body);
+            addBulletHole(x, y, document.body, activeWeapon);
           }, i * 20); // 20ms delay between each pellet
         }
       }
@@ -273,7 +273,7 @@ const Weapon3D: React.FC = () => {
       if (addBulletHole && shootPos.x && shootPos.y) {
         const x = shootPos.x + window.scrollX;
         const y = shootPos.y + window.scrollY;
-        addBulletHole(x, y, document.body);
+        addBulletHole(x, y, document.body, activeWeapon);
       }
     }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import SecretTeam from './SecretTeam';
 import SecretAbout from './SecretAbout';
 import { SanityImageSource } from '@sanity/image-url/lib/types/types';
@@ -29,6 +29,36 @@ interface SecretSectionProps {
 }
 
 const SecretSection: React.FC<SecretSectionProps> = ({ isOpen, onClose, teamMembers, secretAboutData }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Handle music play/stop based on isOpen
+  useEffect(() => {
+    if (!audioRef.current) {
+      // Initialize audio
+      audioRef.current = new Audio('/sounds/secret-page.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.3;
+    }
+
+    if (isOpen) {
+      console.log('🎵 Starting secret page music...');
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(err => console.log('Secret music play failed:', err));
+    } else {
+      console.log('🎵 Stopping secret page music...');
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    // Cleanup function when component unmounts
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
