@@ -50,11 +50,11 @@ const WEAPON_3D_CONFIGS = {
   [WeaponType.RAYGUN]: {
     modelPath: '/models/raygun.glb',
     soundPath: '/sounds/raygun.wav',
-    scale: [0.8, 0.8, 0.8], // 20x larger (0.04 → 0.8)
-    position: [0, -0.7, -1.2], // Lower on screen for bottom positioning
+    scale: [0.64, 0.64, 0.64], // Reduced by 20% (0.8 → 0.64)
+    position: [0, -0.77, -1.2], // Lowered by 10% (-0.7 → -0.77)
     rotation: [-Math.PI * 0.05, Math.PI * 1.0, 0], // Down-barrel view (180° horizontal rotation)
     fireRate: 250, // Faster than revolver (sci-fi rapid fire)
-    muzzlePosition: [0, -0.55, -1.4], // Adjusted for new scale and position
+    muzzlePosition: [0, -0.62, -1.4], // Adjusted for new position (-0.55 → -0.62)
     baseRotation: {
       x: -Math.PI * 0.05, // Slight downward tilt
       y: Math.PI * 1.0, // 180° horizontal rotation for down-barrel view
