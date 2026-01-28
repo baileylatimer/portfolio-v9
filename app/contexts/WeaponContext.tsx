@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // Weapon types enum
 export enum WeaponType {
   DEFAULT = 'default',
   REVOLVER = 'revolver',
   SHOTGUN = 'shotgun',
-  DYNAMITE = 'dynamite'
+  DYNAMITE = 'dynamite',
+  RAYGUN = 'raygun'
 }
 
 // Weapon configuration
@@ -66,6 +67,17 @@ export const WEAPON_CONFIGS: Record<WeaponType, WeaponConfig> = {
     damage: 5,
     fireRate: 0.3,
     range: 5
+  },
+  [WeaponType.RAYGUN]: {
+    id: WeaponType.RAYGUN,
+    name: 'RAY GUN',
+    icon: '/images/weapons/weapon-pistol.png', // Using revolver icon temporarily
+    description: 'Sci-fi energy weapon (Easter Egg!)',
+    unlocked: false, // Hidden until unlocked
+    effectType: 'precision',
+    damage: 4,
+    fireRate: 2,
+    range: 5
   }
 };
 
@@ -95,14 +107,58 @@ interface WeaponProviderProps {
 
 export const WeaponProvider: React.FC<WeaponProviderProps> = ({ children }) => {
   const [activeWeapon, setActiveWeapon] = useState<WeaponType>(WeaponType.DEFAULT);
-  const [unlockedWeapons, setUnlockedWeapons] = useState<Set<WeaponType>>(
-    new Set([WeaponType.DEFAULT, WeaponType.REVOLVER, WeaponType.SHOTGUN, WeaponType.DYNAMITE]) // Show all weapons immediately
-  );
+  const [unlockedWeapons, setUnlockedWeapons] = useState<Set<WeaponType>>(new Set());
   const [isWheelOpen, setIsWheelOpen] = useState(false);
+
+  // Initialize unlocked weapons from localStorage
+  useEffect(() => {
+    // Always start with base weapons available
+    const baseWeapons = new Set([WeaponType.DEFAULT, WeaponType.REVOLVER, WeaponType.SHOTGUN, WeaponType.DYNAMITE]);
+    
+    // Check if raygun was previously unlocked
+    const raygunUnlocked = typeof window !== 'undefined' ? localStorage.getItem('raygunUnlocked') === 'true' : false;
+    
+    if (raygunUnlocked) {
+      // Raygun was unlocked, so replace revolver with raygun
+      baseWeapons.delete(WeaponType.REVOLVER);
+      baseWeapons.add(WeaponType.RAYGUN);
+      console.log('🚀 Raygun previously unlocked - loading raygun instead of revolver');
+    }
+    
+    setUnlockedWeapons(baseWeapons);
+    console.log('🔓 Initialized weapons:', Array.from(baseWeapons));
+  }, []);
 
   const unlockWeapon = (weapon: WeaponType) => {
     console.log('🔓 Unlocking weapon:', weapon);
-    setUnlockedWeapons(prev => new Set([...prev, weapon]));
+    
+    // Special handling for raygun - save to separate localStorage flag
+    if (weapon === WeaponType.RAYGUN) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('raygunUnlocked', 'true');
+        console.log('💾 Saved raygun unlock state to localStorage');
+      }
+      
+      setUnlockedWeapons(prev => {
+        const newUnlocked = new Set(prev);
+        
+        // Replace revolver with raygun
+        if (prev.has(WeaponType.REVOLVER)) {
+          newUnlocked.delete(WeaponType.REVOLVER);
+          console.log('🔄 Raygun unlocked! Replacing revolver in weapon wheel.');
+        }
+        newUnlocked.add(WeaponType.RAYGUN);
+        
+        return newUnlocked;
+      });
+
+      // Auto-switch to raygun when unlocked for immediate gratification
+      console.log('✨ Auto-switching to unlocked raygun!');
+      setActiveWeapon(WeaponType.RAYGUN);
+    } else {
+      // Regular weapon unlock
+      setUnlockedWeapons(prev => new Set([...prev, weapon]));
+    }
   };
 
   const toggleWeaponWheel = () => {
