@@ -433,7 +433,7 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
 
         {/* Repair Button - Only show when destruction exists */}
         {hasDestruction && (
-          <div className="mt-2 relative">
+          <div className="mt-4 flex justify-center items-center relative">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -441,7 +441,6 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
               }}
               disabled={isRepairing}
               className={`
-                relative
                 w-8 h-8 rounded-full
                 bg-orange-600 hover:bg-orange-500
                 border border-orange-700 hover:border-orange-600
@@ -451,6 +450,9 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
                 ${hasDestruction && !isRepairing ? 'animate-pulse' : ''}
               `}
               style={{
+                position: 'absolute',
+                top: '7px',
+                left: '-2px',
                 background: '#1A1917',
                 boxShadow: hasDestruction && !isRepairing 
                   ? '0 0 8px rgba(239, 68, 68, 0.6)' 
