@@ -660,14 +660,33 @@ const Weapon3D: React.FC = () => {
     setWeaponLoading(weaponType, true);
     setLoadingProgress(0);
 
+    // Simulated progress animation (since HTTP Content-Length is unreliable)
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      currentProgress += Math.random() * 15 + 5; // Random increment between 5-20%
+      if (currentProgress >= 90) {
+        currentProgress = 90; // Cap at 90% until actual completion
+        clearInterval(progressInterval);
+      }
+      setLoadingProgress(Math.round(currentProgress));
+    }, 200); // Update every 200ms for smooth animation
+
     const loader = new GLTFLoader();
     loader.load(
       weaponConfig.modelPath,
       (gltf) => {
         console.log(`🔫 ${weaponType} loaded!`, gltf);
         
-        // Complete loading state
-        setWeaponLoading(weaponType, false);
+        // Clear any remaining interval
+        clearInterval(progressInterval);
+        
+        // Complete loading at 100%
+        setLoadingProgress(100);
+        
+        // Small delay to show 100% before hiding
+        setTimeout(() => {
+          setWeaponLoading(weaponType, false);
+        }, 300);
 
         // Remove previous weapon
         if (weaponRef.current && sceneRef.current) {
@@ -748,14 +767,10 @@ const Weapon3D: React.FC = () => {
 
         console.log(`🔫 ${weaponType} ready for action!`);
       },
-      (progress) => {
-        // Calculate and update loading progress
-        const percent = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
-        setLoadingProgress(percent);
-        console.log(`🔫 Loading ${weaponType}... ${percent}%`);
-      },
+      undefined, // No progress callback - using simulated progress instead
       (error) => {
         console.error(`🔫 Error loading ${weaponType}:`, error);
+        clearInterval(progressInterval);
         setWeaponLoading(weaponType, false);
       }
     );
