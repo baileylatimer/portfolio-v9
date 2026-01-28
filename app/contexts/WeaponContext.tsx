@@ -71,7 +71,7 @@ export const WEAPON_CONFIGS: Record<WeaponType, WeaponConfig> = {
   [WeaponType.RAYGUN]: {
     id: WeaponType.RAYGUN,
     name: 'RAY GUN',
-    icon: '/images/weapons/weapon-pistol.png', // Using revolver icon temporarily
+    icon: '/images/weapons/weapon-raygun.png', // Official raygun icon
     description: 'Sci-fi energy weapon (Easter Egg!)',
     unlocked: false, // Hidden until unlocked
     effectType: 'precision',

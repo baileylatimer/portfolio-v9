@@ -11,7 +11,8 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
   const { 
     activeWeapon, 
     setActiveWeapon, 
-    weaponConfigs 
+    weaponConfigs,
+    isWeaponUnlocked
   } = useWeapon();
   
   const { enableShootingMode, disableShootingMode } = useShootingMode();
@@ -22,8 +23,15 @@ const WeaponWheel: React.FC<WeaponWheelProps> = ({ className = "" }) => {
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const repairSoundRef = useRef<HTMLAudioElement | null>(null);
   
-  // Fixed weapon order: DEFAULT(bottom), SHOTGUN(right), DYNAMITE(top), REVOLVER(left) - clockwise navigation
-  const weaponOrder = [WeaponType.DEFAULT, WeaponType.SHOTGUN, WeaponType.DYNAMITE, WeaponType.REVOLVER];
+  // Dynamic weapon order: DEFAULT(bottom), SHOTGUN(right), DYNAMITE(top), REVOLVER/RAYGUN(left)
+  // The last slot dynamically shows RAYGUN if unlocked, otherwise REVOLVER
+  const getWeaponOrder = () => {
+    const baseOrder = [WeaponType.DEFAULT, WeaponType.SHOTGUN, WeaponType.DYNAMITE];
+    const lastSlot = isWeaponUnlocked(WeaponType.RAYGUN) ? WeaponType.RAYGUN : WeaponType.REVOLVER;
+    return [...baseOrder, lastSlot];
+  };
+  
+  const weaponOrder = getWeaponOrder();
 
   // Initialize repair sound
   useEffect(() => {
