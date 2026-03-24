@@ -36,6 +36,7 @@ export interface Unit {
   goldCarrying: number;
   selected: boolean;     // player-controlled (possession mechanic)
   deathTimer: number;
+  laneY: number;         // assigned Y position for this unit's lane
 }
 
 export interface Building {
@@ -112,6 +113,7 @@ export interface GameState {
   manualCamera: boolean;
   selectedUnitId: string | null;
   time: number;
+  nightfall: boolean;       // true after 3 minutes — double gold mode
 }
 
 export interface UpgradeState {

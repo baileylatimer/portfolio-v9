@@ -176,14 +176,14 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
 // ─── World Constants ──────────────────────────────────────────────────────────
 
 export const WORLD = {
-  width: 2400,       // total world width in pixels
+  width: 2600,       // total world width — extra room behind enemy saloon
   height: 480,       // canvas height
-  groundY: 340,      // y position of ground surface
+  groundY: 410,      // y position of ground surface — lower, like Stick Wars (~85% from top)
   hudHeight: 120,    // bottom HUD height
   mineX: 80,         // player mine x position
   playerSaloonX: 40, // player saloon x
-  enemySaloonX: 2340,// enemy saloon x
-  enemyMineX: 2300,  // enemy mine x
+  enemySaloonX: 2460,// enemy saloon x (pushed right, ~140px from right edge)
+  enemyMineX: 2500,  // enemy mine x
 };
 
 // ─── Training Times (seconds to produce each unit) ───────────────────────────
@@ -212,15 +212,15 @@ export const SPAWN_INTERVAL = 0.8; // kept for enemy AI compatibility
 // Near player: 200, 380 | Mid-left: 700, 900 | Center: 1100, 1200, 1300 | Mid-right: 1500, 1700 | Near enemy: 2020, 2200
 
 export const GOLD_PILE_POSITIONS: Array<{ x: number; gold: number }> = [
-  { x: 200,  gold: 300 },  // near player base — safe, low yield
-  { x: 380,  gold: 250 },  // near player base — safe, low yield
-  { x: 700,  gold: 400 },  // mid-left — moderate risk
-  { x: 900,  gold: 400 },  // mid-left — moderate risk
-  { x: 1100, gold: 500 },  // center — contested
-  { x: 1200, gold: 600 },  // center — contested, high yield
-  { x: 1300, gold: 500 },  // center — contested
-  { x: 1500, gold: 400 },  // mid-right — enemy territory
-  { x: 1700, gold: 400 },  // mid-right — enemy territory
-  { x: 2020, gold: 250 },  // near enemy base — dangerous
-  { x: 2200, gold: 300 },  // near enemy base — dangerous
+  { x: 200,  gold: 400 },  // near player base — safe, low yield
+  { x: 380,  gold: 350 },  // near player base — safe, low yield
+  { x: 700,  gold: 500 },  // mid-left — moderate risk
+  { x: 900,  gold: 500 },  // mid-left — moderate risk
+  { x: 1100, gold: 600 },  // center — contested
+  { x: 1200, gold: 700 },  // center — contested, high yield
+  { x: 1300, gold: 600 },  // center — contested
+  { x: 1500, gold: 500 },  // mid-right — enemy territory
+  { x: 1700, gold: 500 },  // mid-right — enemy territory
+  { x: 2020, gold: 350 },  // near enemy base — dangerous
+  { x: 2200, gold: 400 },  // near enemy base — dangerous
 ];

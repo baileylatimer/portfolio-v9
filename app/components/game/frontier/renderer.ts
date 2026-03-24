@@ -15,7 +15,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   ctx.clearRect(0, 0, canvasW, canvasH);
 
   // ── Background ──
-  drawBackground(ctx, canvasW, gameH, cam, state.time);
+  drawBackground(ctx, canvasW, gameH, cam, state.time, state.nightfall);
 
   // ── World clip ──
   ctx.save();
@@ -26,11 +26,20 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   // ── Gold piles ──
   state.goldPiles.forEach(p => drawGoldPile(ctx, p, cam));
 
-  // ── Buildings ──
-  state.buildings.forEach(b => drawBuilding(ctx, b, cam));
+  // ── Gold pile behind player saloon (below ground plane) ──
+  const playerSaloonForGold = state.buildings.find(b => b.id === "player_saloon");
+  if (playerSaloonForGold) {
+    drawSaloonGoldPile(ctx, playerSaloonForGold, cam, state.gold);
+  }
 
-  // ── Units ──
-  state.units.forEach(u => drawUnit(ctx, u, cam));
+  // ── Buildings ──
+  state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall));
+
+  // ── Units — skip garrisoned units (they're inside the building) ──
+  state.units.forEach(u => {
+    if (u.state === "garrison") return; // hidden inside saloon
+    drawUnit(ctx, u, cam);
+  });
 
   // ── Projectiles ──
   state.projectiles.forEach(p => drawProjectile(ctx, p, cam));
@@ -63,8 +72,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   // ── Garrison overlay on player saloon ──
   if (state.stance === "garrison") {
     const saloon = state.buildings.find(b => b.id === "player_saloon");
-    if (saloon) drawGarrisonOverlay(ctx, saloon, cam, state.time);
+    const garrisonCount = state.units.filter(u => u.team === "player" && u.state === "garrison").length;
+    if (saloon) drawGarrisonOverlay(ctx, saloon, cam, state.time, garrisonCount);
   }
+
+  // ── Nightfall timer — top-center of game world ──
+  drawNightfallTimer(ctx, state, canvasW);
 
   // ── HUD ──
   drawHUD(ctx, state, canvasW, canvasH, gameH);
@@ -74,45 +87,120 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
 
 // ─── Background ───────────────────────────────────────────────────────────────
 
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number) {
-  // Sky gradient
+function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number, nightfall = false) {
+  // ── Sunset/night transition ──
+  // time 0-150s = full day, 150-180s = sunset transition, 180s+ = night
+  const SUNSET_START = 150;
+  const NIGHTFALL_TIME = 180;
+  const nightT = nightfall ? 1 : Math.max(0, Math.min(1, (time - SUNSET_START) / (NIGHTFALL_TIME - SUNSET_START)));
+
+  // Sky gradient — blends from day orange to deep night blue/purple
   const sky = ctx.createLinearGradient(0, 0, 0, h * 0.65);
-  sky.addColorStop(0, "#1a0a2e");
-  sky.addColorStop(0.4, "#7a3520");
-  sky.addColorStop(1, "#c2713a");
+  if (nightT < 0.01) {
+    sky.addColorStop(0, "#1a0a2e");
+    sky.addColorStop(0.4, "#7a3520");
+    sky.addColorStop(1, "#c2713a");
+  } else if (nightT < 1) {
+    // Sunset blend
+    const lerp = (a: string, b: string, t: number) => {
+      const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+      const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+      const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+      const r = Math.round(ar + (br - ar) * t).toString(16).padStart(2, "0");
+      const g = Math.round(ag + (bg - ag) * t).toString(16).padStart(2, "0");
+      const bl2 = Math.round(ab + (bb - ab) * t).toString(16).padStart(2, "0");
+      return `#${r}${g}${bl2}`;
+    };
+    sky.addColorStop(0, lerp("#1a0a2e", "#050510", nightT));
+    sky.addColorStop(0.4, lerp("#7a3520", "#cc4400", nightT));
+    sky.addColorStop(1, lerp("#c2713a", "#ff6600", nightT));
+  } else {
+    // Full night
+    sky.addColorStop(0, "#050510");
+    sky.addColorStop(0.4, "#0a0520");
+    sky.addColorStop(1, "#1a0a10");
+  }
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h * 0.65);
 
-  // Sun / moon
+  // Stars (only at night)
+  if (nightT > 0.3) {
+    ctx.globalAlpha = (nightT - 0.3) / 0.7;
+    for (let i = 0; i < 40; i++) {
+      const sx = ((i * 173 + 50) % w);
+      const sy = ((i * 97 + 20) % (h * 0.5));
+      const twinkle = 0.5 + 0.5 * Math.sin(time * 2 + i * 1.3);
+      ctx.fillStyle = "#ffffff";
+      ctx.globalAlpha = ((nightT - 0.3) / 0.7) * twinkle * 0.8;
+      ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Sun / moon — sun sets, moon rises
   const sunX = w * 0.75 - (cam * 0.02) % w;
-  ctx.fillStyle = "#FFD060";
-  ctx.beginPath();
-  ctx.arc(sunX, h * 0.15, 28, 0, Math.PI * 2);
-  ctx.fill();
-  // Sun glow
-  const glow = ctx.createRadialGradient(sunX, h * 0.15, 20, sunX, h * 0.15, 70);
-  glow.addColorStop(0, "rgba(255,200,60,0.3)");
-  glow.addColorStop(1, "rgba(255,200,60,0)");
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(sunX, h * 0.15, 70, 0, Math.PI * 2);
-  ctx.fill();
+  if (nightT < 1) {
+    // Sun descends as nightT increases
+    const sunY = h * (0.15 + nightT * 0.5);
+    ctx.fillStyle = nightT > 0.5 ? `rgba(255,100,0,${1 - nightT})` : "#FFD060";
+    ctx.globalAlpha = Math.max(0, 1 - nightT * 1.5);
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Sun glow
+    if (nightT < 0.8) {
+      const glow = ctx.createRadialGradient(sunX, sunY, 20, sunX, sunY, 70);
+      glow.addColorStop(0, `rgba(255,200,60,${0.3 * (1 - nightT)})`);
+      glow.addColorStop(1, "rgba(255,200,60,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 70, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (nightT > 0.5) {
+    // Moon rises
+    const moonAlpha = (nightT - 0.5) / 0.5;
+    const moonY = h * (0.15 + (1 - moonAlpha) * 0.2);
+    ctx.globalAlpha = moonAlpha;
+    ctx.fillStyle = "#E8E8D0";
+    ctx.beginPath();
+    ctx.arc(sunX - 60, moonY, 22, 0, Math.PI * 2);
+    ctx.fill();
+    // Moon glow
+    const moonGlow = ctx.createRadialGradient(sunX - 60, moonY, 15, sunX - 60, moonY, 55);
+    moonGlow.addColorStop(0, "rgba(200,200,180,0.2)");
+    moonGlow.addColorStop(1, "rgba(200,200,180,0)");
+    ctx.fillStyle = moonGlow;
+    ctx.beginPath();
+    ctx.arc(sunX - 60, moonY, 55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 
   // Distant mountains (parallax layer 1 — slow)
-  drawMountains(ctx, w, h, cam * 0.05, "#3d1a0a", 0.55, 5);
-  // Mid mountains (parallax layer 2)
-  drawMountains(ctx, w, h, cam * 0.12, "#5c2a12", 0.62, 7);
+  const mtnColor1 = nightT > 0.5 ? "#1a0a14" : "#3d1a0a";
+  const mtnColor2 = nightT > 0.5 ? "#2a1020" : "#5c2a12";
+  drawMountains(ctx, w, h, cam * 0.05, mtnColor1, 0.55, 5);
+  drawMountains(ctx, w, h, cam * 0.12, mtnColor2, 0.62, 7);
 
-  // Ground
+  // Ground — darker at night
   const groundGrad = ctx.createLinearGradient(0, h * 0.65, 0, h);
-  groundGrad.addColorStop(0, "#8B5E3C");
-  groundGrad.addColorStop(0.3, "#A0714F");
-  groundGrad.addColorStop(1, "#6B4423");
+  if (nightT > 0.5) {
+    groundGrad.addColorStop(0, "#4a3020");
+    groundGrad.addColorStop(0.3, "#3a2010");
+    groundGrad.addColorStop(1, "#2a1008");
+  } else {
+    groundGrad.addColorStop(0, "#8B5E3C");
+    groundGrad.addColorStop(0.3, "#A0714F");
+    groundGrad.addColorStop(1, "#6B4423");
+  }
   ctx.fillStyle = groundGrad;
   ctx.fillRect(0, h * 0.65, w, h * 0.35);
 
   // Ground line
-  ctx.strokeStyle = "#6B4423";
+  ctx.strokeStyle = nightT > 0.5 ? "#3a2010" : "#6B4423";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, W.groundY);
@@ -242,60 +330,169 @@ function drawGoldPile(ctx: CanvasRenderingContext2D, pile: GoldPile, cam: number
   }
 }
 
-// ─── Garrison Overlay ─────────────────────────────────────────────────────────
+// ─── Garrison Overlay — units inside building, shooting from windows & roof ───
 
-function drawGarrisonOverlay(ctx: CanvasRenderingContext2D, saloon: Building, cam: number, time: number) {
+export function drawGarrisonOverlay(
+  ctx: CanvasRenderingContext2D,
+  saloon: Building,
+  cam: number,
+  time: number,
+  garrisonedUnits: number = 3,
+) {
   const sx = saloon.pos.x - cam;
   const sy = saloon.pos.y;
+  const sw = saloon.width; // 80
 
-  // Muzzle flashes from windows (animated)
+  // ── Window silhouettes (units peeking out) ──
+  // Left window: x+8, y+15, 18×14
+  // Right window: x+sw-26, y+15, 18×14
+  const leftWinX = sx + 8 + 9;   // center of left window
+  const rightWinX = sx + sw - 26 + 9; // center of right window
+  const winY = sy + 15;
+
+  // Draw silhouette in left window
+  ctx.fillStyle = "rgba(20,10,5,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(leftWinX, winY + 10, 5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(leftWinX - 4, winY + 4, 8, 8); // body
+
+  // Draw silhouette in right window
+  ctx.fillStyle = "rgba(20,10,5,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(rightWinX, winY + 10, 5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(rightWinX - 4, winY + 4, 8, 8);
+
+  // Roof silhouette (crouching behind parapet) — only if 3+ garrisoned
+  if (garrisonedUnits >= 3) {
+    const roofY = sy - 18;
+    ctx.fillStyle = "rgba(20,10,5,0.8)";
+    ctx.beginPath();
+    ctx.ellipse(sx + sw / 2, roofY + 4, 5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(sx + sw / 2 - 4, roofY + 2, 8, 6);
+  }
+
+  // ── Muzzle flashes from windows ──
   const flash1 = Math.sin(time * 7.3) > 0.6;
   const flash2 = Math.sin(time * 5.1 + 1.2) > 0.7;
   const flash3 = Math.sin(time * 9.0 + 2.4) > 0.65;
 
+  // Left window flash — gun barrel pointing right out of window
   if (flash1) {
     ctx.fillStyle = "#FFD700";
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.95;
+    // Gun barrel
+    ctx.fillRect(sx + sw - 2, sy + 20, 10, 3);
+    // Muzzle flash star
     ctx.beginPath();
-    ctx.arc(sx + saloon.width + 4, sy + 22, 5, 0, Math.PI * 2);
+    ctx.arc(sx + sw + 10, sy + 21, 6, 0, Math.PI * 2);
     ctx.fill();
+    // Flash rays
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1.5;
+    for (let r = 0; r < 5; r++) {
+      const angle = (r / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(sx + sw + 10, sy + 21);
+      ctx.lineTo(sx + sw + 10 + Math.cos(angle) * 9, sy + 21 + Math.sin(angle) * 9);
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   }
+
+  // Right window flash
   if (flash2) {
     ctx.fillStyle = "#FFD700";
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(sx + sw - 2, sy + 36, 10, 3);
     ctx.beginPath();
-    ctx.arc(sx + saloon.width + 4, sy + 38, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-  if (flash3) {
-    ctx.fillStyle = "#FFD700";
-    ctx.globalAlpha = 0.7;
-    ctx.beginPath();
-    ctx.arc(sx + saloon.width / 2, sy - 6, 4, 0, Math.PI * 2);
+    ctx.arc(sx + sw + 10, sy + 37, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
 
-  // "GARRISON" label above saloon
+  // Roof flash — shooting from above
+  if (flash3 && garrisonedUnits >= 3) {
+    ctx.fillStyle = "#FFD700";
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(sx + sw / 2 - 1, sy - 22, 3, 8);
+    ctx.beginPath();
+    ctx.arc(sx + sw / 2, sy - 24, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // ── "GARRISON" label above saloon ──
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 8px monospace";
   ctx.textAlign = "center";
-  ctx.fillText("⚑ GARRISON", sx + saloon.width / 2, sy - 18);
+  ctx.fillText("⚑ GARRISON", sx + sw / 2, sy - 30);
   ctx.textAlign = "left";
 }
 
 // ─── Buildings ────────────────────────────────────────────────────────────────
 
-function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number) {
+// ─── Gold pile behind saloon ──────────────────────────────────────────────────
+
+function drawSaloonGoldPile(ctx: CanvasRenderingContext2D, saloon: Building, cam: number, gold: number) {
+  const sx = saloon.pos.x - cam + saloon.width / 2;
+  const sy = W.groundY + 18; // below the ground line
+
+  // Scale pile size with gold (0g = tiny, 2000g = large)
+  const scale = Math.min(1, gold / 1500);
+  if (scale <= 0.01) return;
+
+  const pileW = 30 + scale * 50;
+  const pileH = 10 + scale * 18;
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + pileH * 0.6, pileW * 0.6, pileH * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pile base
+  ctx.fillStyle = "#8B6914";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy, pileW, pileH, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Gold nuggets on top
+  const nuggetCount = Math.floor(3 + scale * 12);
+  for (let i = 0; i < nuggetCount; i++) {
+    const angle = (i / nuggetCount) * Math.PI * 2;
+    const r = pileW * 0.5 * (0.2 + (i % 4) * 0.2);
+    const nx = sx + Math.cos(angle) * r;
+    const ny = sy + Math.sin(angle) * r * 0.4 - pileH * 0.3;
+    const ns = 2 + (i % 3);
+    ctx.fillStyle = i % 2 === 0 ? "#FFD700" : "#FFC200";
+    ctx.fillRect(nx - ns / 2, ny - ns / 2, ns, ns);
+  }
+
+  // Glint
+  if (scale > 0.3) {
+    ctx.fillStyle = "rgba(255,255,200,0.9)";
+    ctx.fillRect(sx - 2, sy - pileH * 0.5, 2, 2);
+  }
+
+  // Gold amount label
+  ctx.fillStyle = "#FFD700";
+  ctx.font = `bold ${Math.round(8 + scale * 4)}px monospace`;
+  ctx.textAlign = "center";
+  ctx.fillText(`${gold}g`, sx, sy + pileH + 10);
+  ctx.textAlign = "left";
+}
+
+function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, nightfall = false) {
   const sx = b.pos.x - cam;
   const sy = b.pos.y;
 
   if (b.type === "mine") {
     drawMine(ctx, sx, sy, b.team === "enemy");
   } else {
-    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp);
+    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall);
   }
 
   // HP bar
@@ -308,7 +505,7 @@ function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number) {
   }
 }
 
-function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number) {
+function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number, nightfall = false) {
   const w = 80, h = 80;
   const woodColor = isEnemy ? "#5c2020" : COLORS.saloonWood;
   const roofColor = isEnemy ? "#3d1010" : COLORS.saloonRoof;
@@ -347,12 +544,26 @@ function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy
   ctx.fillStyle = roofColor;
   ctx.fillRect(x + w / 2 - 10, y + h - 30, 20, 30);
 
-  // Windows
-  ctx.fillStyle = "#FFD060";
-  ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.003) * 0.1;
+  // Windows — glow brighter at nightfall for player saloon
+  const winGlow = nightfall && !isEnemy ? 1.0 : 0.6 + Math.sin(Date.now() * 0.003) * 0.1;
+  ctx.fillStyle = nightfall && !isEnemy ? "#FFE080" : "#FFD060";
+  ctx.globalAlpha = winGlow;
   ctx.fillRect(x + 8, y + 15, 18, 14);
   ctx.fillRect(x + w - 26, y + 15, 18, 14);
   ctx.globalAlpha = 1;
+  // Nightfall: add warm glow around windows
+  if (nightfall && !isEnemy) {
+    const winGlowGrad1 = ctx.createRadialGradient(x + 17, y + 22, 4, x + 17, y + 22, 22);
+    winGlowGrad1.addColorStop(0, "rgba(255,200,60,0.35)");
+    winGlowGrad1.addColorStop(1, "rgba(255,200,60,0)");
+    ctx.fillStyle = winGlowGrad1;
+    ctx.fillRect(x - 5, y + 5, 44, 40);
+    const winGlowGrad2 = ctx.createRadialGradient(x + w - 17, y + 22, 4, x + w - 17, y + 22, 22);
+    winGlowGrad2.addColorStop(0, "rgba(255,200,60,0.35)");
+    winGlowGrad2.addColorStop(1, "rgba(255,200,60,0)");
+    ctx.fillStyle = winGlowGrad2;
+    ctx.fillRect(x + w - 44, y + 5, 44, 40);
+  }
 
   // Damage cracks
   if (hpFrac < 0.5) {
@@ -611,7 +822,66 @@ function drawMinerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, un
   ctx.fillRect(x - 4, y - 38 + bob, 3, 3);
   ctx.fillRect(x + 1, y - 38 + bob, 3, 3);
 
+  // Gold cart when returning
+  if (unit.state === "returning" && unit.goldCarrying > 0) {
+    drawMinerCart(ctx, x, y, unit.facing, bob);
+  }
+
   void legSwing;
+}
+
+// ─── Miner Gold Cart ──────────────────────────────────────────────────────────
+
+function drawMinerCart(ctx: CanvasRenderingContext2D, x: number, y: number, facing: number, bob: number) {
+  // Cart is behind the miner (opposite to facing direction)
+  const cartX = x - facing * 22;
+  const cartY = y - 4 + bob;
+
+  // Rope connecting miner to cart
+  ctx.strokeStyle = "#8B6914";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - facing * 9, cartY + 2);
+  ctx.lineTo(cartX + facing * 8, cartY + 2);
+  ctx.stroke();
+
+  // Cart body
+  ctx.fillStyle = "#5C3317";
+  ctx.fillRect(cartX - 10, cartY - 10, 20, 12);
+  // Cart rim
+  ctx.strokeStyle = "#3d1f0a";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cartX - 10, cartY - 10, 20, 12);
+
+  // Gold nuggets in cart
+  ctx.fillStyle = "#FFD700";
+  ctx.fillRect(cartX - 7, cartY - 8, 5, 4);
+  ctx.fillStyle = "#FFC200";
+  ctx.fillRect(cartX - 1, cartY - 9, 5, 5);
+  ctx.fillStyle = "#FFD700";
+  ctx.fillRect(cartX + 3, cartY - 7, 4, 3);
+  // Glint
+  ctx.fillStyle = "rgba(255,255,200,0.9)";
+  ctx.fillRect(cartX - 6, cartY - 9, 2, 2);
+
+  // Wheels (2 circles)
+  ctx.fillStyle = "#3d1f0a";
+  ctx.beginPath();
+  ctx.arc(cartX - 6, cartY + 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cartX + 6, cartY + 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+  // Wheel spokes
+  ctx.strokeStyle = "#6B4423";
+  ctx.lineWidth = 1;
+  for (let w = 0; w < 2; w++) {
+    const wx = w === 0 ? cartX - 6 : cartX + 6;
+    ctx.beginPath();
+    ctx.moveTo(wx - 3, cartY + 2); ctx.lineTo(wx + 3, cartY + 2);
+    ctx.moveTo(wx, cartY - 1); ctx.lineTo(wx, cartY + 5);
+    ctx.stroke();
+  }
 }
 
 function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
@@ -960,6 +1230,85 @@ function drawProjectile(ctx: CanvasRenderingContext2D, proj: Projectile, cam: nu
   }
 }
 
+// ─── HUD Gold Pile Icon ───────────────────────────────────────────────────────
+
+function drawHudGoldIcon(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Small pixel-art gold pile: 3 nuggets stacked
+  const cx = x + 12, cy = y + 16;
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 2, 10, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pile base
+  ctx.fillStyle = "#8B6914";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 10, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Nuggets
+  const nuggets = [
+    { x: cx - 4, y: cy - 2, w: 5, h: 4, c: "#FFD700" },
+    { x: cx + 1, y: cy - 3, w: 5, h: 4, c: "#FFC200" },
+    { x: cx - 2, y: cy - 6, w: 4, h: 4, c: "#FFD700" },
+  ];
+  nuggets.forEach(n => {
+    ctx.fillStyle = n.c;
+    ctx.fillRect(n.x, n.y, n.w, n.h);
+  });
+
+  // Glint
+  ctx.fillStyle = "rgba(255,255,200,0.9)";
+  ctx.fillRect(cx - 1, cy - 7, 2, 2);
+}
+
+// ─── Nightfall Timer Overlay (drawn in game world, top-center) ────────────────
+
+export function drawNightfallTimer(ctx: CanvasRenderingContext2D, state: GameState, canvasW: number) {
+  const NIGHTFALL_TIME = 180;
+
+  if (state.nightfall) {
+    // Nightfall active — pulsing banner
+    const pulse = 0.85 + 0.15 * Math.sin(state.time * 3);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = "rgba(5,5,20,0.7)";
+    ctx.fillRect(canvasW / 2 - 110, 6, 220, 20);
+    ctx.strokeStyle = "#4466AA";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(canvasW / 2 - 110, 6, 220, 20);
+    ctx.fillStyle = "#88DDFF";
+    ctx.font = "bold 10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("🌙 NIGHTFALL  ·  2× GOLD", canvasW / 2, 20);
+    ctx.textAlign = "left";
+    ctx.globalAlpha = 1;
+  } else {
+    const remaining = Math.max(0, NIGHTFALL_TIME - state.time);
+    const mins = Math.floor(remaining / 60);
+    const secs = Math.floor(remaining % 60).toString().padStart(2, "0");
+    const urgent = remaining < 30;
+
+    ctx.fillStyle = urgent ? "rgba(40,15,0,0.75)" : "rgba(10,5,0,0.6)";
+    ctx.fillRect(canvasW / 2 - 90, 6, 180, 20);
+    ctx.strokeStyle = urgent ? "#FF8800" : "rgba(139,94,60,0.6)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(canvasW / 2 - 90, 6, 180, 20);
+
+    if (urgent) {
+      const pulse = 0.7 + 0.3 * Math.sin(state.time * 6);
+      ctx.globalAlpha = pulse;
+    }
+    ctx.fillStyle = urgent ? "#FF8800" : "#F4E4C1";
+    ctx.font = urgent ? "bold 10px monospace" : "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`☀ NIGHTFALL IN  ${mins}:${secs}`, canvasW / 2, 20);
+    ctx.textAlign = "left";
+    ctx.globalAlpha = 1;
+  }
+}
+
 // ─── Stance Icons ─────────────────────────────────────────────────────────────
 
 function drawStanceIcons(ctx: CanvasRenderingContext2D, stance: Stance, x: number, y: number) {
@@ -1024,10 +1373,11 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
     ctx.stroke();
   }
 
-  // Gold counter
+  // Gold counter — small gold pile icon + $ amount
+  drawHudGoldIcon(ctx, 16, hudY + 10);
   ctx.fillStyle = COLORS.uiGold;
   ctx.font = "bold 18px monospace";
-  ctx.fillText(`⬡ ${state.gold}g`, 16, hudY + 28);
+  ctx.fillText(`$${state.gold}`, 44, hudY + 28);
 
   // Unit count
   const playerCount = state.units.filter(u => u.team === "player" && u.state !== "dead" && u.state !== "dying").length;
@@ -1036,11 +1386,14 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
   ctx.font = "10px monospace";
   ctx.fillText(`UNITS: ${playerCount}/${MAX_UNITS}${atCap ? " MAX" : ""}`, 16, hudY + 46);
 
-  // Training progress bar
+  // Training progress bar — moved down to avoid overlapping unit count
   if (state.trainingUnit) {
     const pct = state.trainingTime > 0 ? state.trainingProgress / state.trainingTime : 0;
     const barW = 120;
-    const bx = 16, by = hudY + 52;
+    const bx = 16, by = hudY + 58;
+    ctx.fillStyle = COLORS.uiText;
+    ctx.font = "8px monospace";
+    ctx.fillText(`TRAINING: ${state.trainingUnit.toUpperCase()}`, bx, by - 2);
     ctx.fillStyle = "#333";
     ctx.fillRect(bx, by, barW, 8);
     ctx.fillStyle = "#FFD700";
@@ -1048,24 +1401,17 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
     ctx.strokeStyle = COLORS.uiBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, barW, 8);
-    ctx.fillStyle = COLORS.uiText;
-    ctx.font = "8px monospace";
-    ctx.fillText(`TRAINING: ${state.trainingUnit.toUpperCase()}`, bx, by - 2);
     if (state.spawnQueue.length > 0) {
       ctx.fillStyle = "rgba(244,228,193,0.5)";
+      ctx.font = "8px monospace";
       ctx.fillText(`+${state.spawnQueue.length} queued`, bx + barW + 4, by + 7);
     }
   }
 
-  // Stance icons — placed in bottom-left, below training bar, clear of saloon HP
-  drawStanceIcons(ctx, state.stance, 16, hudY + 68);
+  // Stance icons — placed below training bar
+  drawStanceIcons(ctx, state.stance, 16, hudY + 72);
 
-  // Level info
-  ctx.fillStyle = COLORS.uiText;
-  ctx.font = "11px monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(`LEVEL ${state.level + 1}`, canvasW / 2, hudY + 18);
-  ctx.textAlign = "left";
+  // (Nightfall timer is now drawn in the game world area, not here)
 
   // Unit spawn buttons
   const units: Array<{ type: string; label: string; cost: number; color: string; key: string }> = [
@@ -1075,6 +1421,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
     { type: "dynamiter",  label: "DYNAMITE", cost: 600,  color: "#cc2200", key: "4" },
     { type: "marshal",    label: "MARSHAL",  cost: 1200, color: "#6B4423", key: "5" },
   ];
+  // (costs displayed as $ below)
 
   const btnW = 90, btnH = 70, btnGap = 8;
   const totalW = units.length * (btnW + btnGap) - btnGap;
@@ -1101,7 +1448,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
     // Cost
     ctx.fillStyle = canAfford ? COLORS.uiGold : "#666";
     ctx.font = "11px monospace";
-    ctx.fillText(`${u.cost}g`, bx + btnW / 2, by + 32);
+    ctx.fillText(`$${u.cost}`, bx + btnW / 2, by + 32);
 
     // Key hint
     ctx.fillStyle = canAfford ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)";

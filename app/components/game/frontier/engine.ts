@@ -27,11 +27,14 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
     maxGold: pos.gold,
   }));
 
+  // Free starting miner
+  const startingMiner = createFreeMiner(upgrades);
+
   return {
     phase: "BATTLE",
     level,
     gold: lvl.startGold,
-    units: [],
+    units: [startingMiner],
     buildings,
     goldPiles,
     projectiles: [],
@@ -51,6 +54,44 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
     manualCamera: false,
     selectedUnitId: null,
     time: 0,
+    nightfall: false,
+  };
+}
+
+// ─── Lane Y assignment by unit type ──────────────────────────────────────────
+// Miners: bottom lane, melee: mid lane, ranged: upper lane
+function getLaneY(type: UnitType): number {
+  const jitter = (Math.random() - 0.5) * 6; // ±3px variation
+  switch (type) {
+    case "miner":      return WORLD.groundY - 14 + jitter;  // bottom lane
+    case "deputy":     return WORLD.groundY - 32 + jitter;  // mid lane
+    case "marshal":    return WORLD.groundY - 36 + jitter;  // mid lane (bigger unit)
+    case "gunslinger": return WORLD.groundY - 48 + jitter;  // upper lane
+    case "dynamiter":  return WORLD.groundY - 44 + jitter;  // upper lane
+    default:           return WORLD.groundY - 32 + jitter;
+  }
+}
+
+function createFreeMiner(upgrades: GameState["upgrades"]): Unit {
+  const stats = getStats("miner", upgrades);
+  const laneY = getLaneY("miner");
+  return {
+    id: `u_start_miner`,
+    type: "miner",
+    team: "player",
+    pos: { x: WORLD.playerSaloonX + 90, y: laneY },
+    stats: { ...stats },
+    state: "walking",
+    facing: 1,
+    attackCooldown: 0,
+    mineTimer: 0,
+    animFrame: 0,
+    animTimer: 0,
+    targetId: null,
+    goldCarrying: 0,
+    selected: false,
+    deathTimer: 0,
+    laneY,
   };
 }
 
@@ -72,14 +113,15 @@ export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
   const spawnX = isPlayer
     ? WORLD.playerSaloonX + 90
     : WORLD.enemySaloonX - 90;
+  const laneY = getLaneY(type);
 
   return {
     id: uid(),
     type,
     team,
-    pos: { x: spawnX, y: WORLD.groundY - stats.hp * 0 - 32 }, // ground level
+    pos: { x: spawnX, y: laneY },
     stats: { ...stats },
-    state: type === "miner" ? "walking" : "walking",
+    state: "walking",
     facing: isPlayer ? 1 : -1,
     attackCooldown: 0,
     mineTimer: 0,
@@ -89,6 +131,7 @@ export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
     goldCarrying: 0,
     selected: false,
     deathTimer: 0,
+    laneY,
   };
 }
 
@@ -105,25 +148,41 @@ export function updateGame(state: GameState, dt: number): GameState {
   s.particles = s.particles.map(p => ({ ...p }));
   s.floatingTexts = s.floatingTexts.map(t => ({ ...t }));
 
+  // ── Nightfall at 3 minutes — double gold mode ──
+  const NIGHTFALL_TIME = 180; // 3 minutes
+  if (!s.nightfall && s.time >= NIGHTFALL_TIME) {
+    s.nightfall = true;
+    // Announce nightfall with a big floating text near center of screen
+    spawnFloatingText(s, { x: WORLD.width / 2, y: WORLD.groundY - 120 }, "🌙 NIGHTFALL — DOUBLE GOLD!", "#FFD700");
+  }
+
   // ── Passive gold income ──
   s.passiveGoldTimer += dt;
   if (s.passiveGoldTimer >= 1.0) {
     s.passiveGoldTimer -= 1.0;
-    const income = PASSIVE_GOLD_BASE + s.upgrades.saloonRevenue * 2;
+    const baseIncome = PASSIVE_GOLD_BASE + s.upgrades.saloonRevenue * 2;
+    const income = s.nightfall ? baseIncome * 2 : baseIncome;
     s.gold += income;
     // Small floating text near saloon
     const saloon = s.buildings.find(b => b.id === "player_saloon");
     if (saloon) {
-      spawnFloatingText(s, { x: saloon.pos.x + 40, y: saloon.pos.y - 5 }, `+${income}g`, "#FFD700");
+      spawnFloatingText(s, { x: saloon.pos.x + 40, y: saloon.pos.y - 5 }, `+${income}g`, s.nightfall ? "#88DDFF" : "#FFD700");
     }
   }
 
   // ── Training system (replaces old spawn queue) ──
   s.units = processTraining(s, dt);
 
-  // ── Unit AI ──
+  // ── Unit AI — skip possessed unit (controlled by WASD) ──
   s.units.forEach(unit => {
     if (unit.state === "dead") return;
+    if (unit.id === s.selectedUnitId) {
+      // Still tick cooldowns and animation for possessed unit
+      unit.animTimer += dt;
+      if (unit.animTimer > 0.15) { unit.animTimer = 0; unit.animFrame = (unit.animFrame + 1) % 4; }
+      unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
+      return;
+    }
     updateUnit(unit, s, dt);
   });
 
@@ -281,10 +340,23 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
     return;
   }
 
-  // ── DEFENSE: hold a line ~300px ahead of saloon, engage enemies that approach ──
+  // ── Is this a ranged unit? ──
+  const isRanged = unit.type === "gunslinger" || unit.type === "dynamiter";
+  // Ranged units stay this far behind the melee front line
+  const RANGED_OFFSET = 90; // px behind melee
+
+  // ── DEFENSE: hold a line just ahead of the furthest friendly miner ──
   if (stance === "defense") {
     const saloon = s.buildings.find(b => b.id === "player_saloon");
-    const defenseLine = saloon ? saloon.pos.x + saloon.width + 300 : 400;
+    // Find furthest active player miner (not garrisoned, not dead)
+    const activeMinerX = s.units
+      .filter(u => u.team === "player" && u.type === "miner" && u.state !== "dead" && u.state !== "dying" && u.state !== "garrison")
+      .reduce((maxX, u) => Math.max(maxX, u.pos.x), saloon ? saloon.pos.x + saloon.width : 0);
+    // Defense line = 100px ahead of furthest miner (or 300px from saloon if no miners out)
+    const fallbackLine = saloon ? saloon.pos.x + saloon.width + 300 : 400;
+    const meleeLine = Math.max(fallbackLine, activeMinerX + 100);
+    // Ranged units hold behind the melee line
+    const defenseLine = isRanged ? meleeLine - RANGED_OFFSET : meleeLine;
 
     const enemy = findNearestEnemy(unit, s);
     if (enemy) {
@@ -297,17 +369,23 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
           unit.attackCooldown = 1 / unit.stats.attackRate;
         }
       } else if (enemy.pos.x < unit.pos.x + 400) {
-        // Enemy is approaching — move to intercept (but don't go past defense line + 200)
-        const maxAdvance = defenseLine + 200;
-        if (unit.pos.x < maxAdvance) {
-          unit.state = "walking";
-          unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
-          unit.pos.x += unit.facing * unit.stats.speed * dt;
+        // Enemy is approaching — melee intercepts, ranged holds position
+        if (!isRanged) {
+          const maxAdvance = meleeLine + 200;
+          if (unit.pos.x < maxAdvance) {
+            unit.state = "walking";
+            unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
+            unit.pos.x += unit.facing * unit.stats.speed * dt;
+          } else {
+            unit.state = "idle";
+          }
         } else {
+          // Ranged: hold at ranged line, just shoot
           unit.state = "idle";
+          unit.facing = 1;
         }
       } else {
-        // No nearby threat — hold at defense line
+        // No nearby threat — hold at respective line
         if (unit.pos.x < defenseLine - 10) {
           unit.state = "walking";
           unit.facing = 1;
@@ -321,7 +399,7 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
         }
       }
     } else {
-      // No enemies — hold at defense line
+      // No enemies — hold at respective line
       if (unit.pos.x < defenseLine - 10) {
         unit.state = "walking";
         unit.facing = 1;
@@ -338,6 +416,7 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
   }
 
   // ── ATTACK: full aggression, march to enemy base ──
+  // Ranged units trail behind the nearest melee unit in front of them
   const enemy = findNearestEnemy(unit, s);
   if (enemy) {
     const dist = Math.abs(unit.pos.x - enemy.pos.x);
@@ -349,15 +428,49 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
         unit.attackCooldown = 1 / unit.stats.attackRate;
       }
     } else {
-      unit.state = "walking";
-      unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
-      unit.pos.x += unit.facing * unit.stats.speed * dt;
+      if (isRanged) {
+        // Find the furthest-forward friendly melee unit
+        const frontMeleeX = s.units
+          .filter(u => u.team === "player" && (u.type === "deputy" || u.type === "marshal") && u.state !== "dead" && u.state !== "dying")
+          .reduce((maxX, u) => Math.max(maxX, u.pos.x), -1);
+        const targetX = frontMeleeX > 0 ? frontMeleeX - RANGED_OFFSET : unit.pos.x + 1;
+        if (unit.pos.x < targetX - 10) {
+          unit.state = "walking";
+          unit.facing = 1;
+          unit.pos.x += unit.stats.speed * 0.85 * dt; // slightly slower than melee
+        } else if (unit.pos.x > targetX + 10) {
+          unit.state = "walking";
+          unit.facing = -1;
+          unit.pos.x -= unit.stats.speed * dt;
+        } else {
+          unit.state = "idle";
+          unit.facing = 1;
+        }
+      } else {
+        unit.state = "walking";
+        unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
+        unit.pos.x += unit.facing * unit.stats.speed * dt;
+      }
     }
   } else {
     const targetX = WORLD.enemySaloonX;
     unit.facing = 1;
-    unit.state = "walking";
-    unit.pos.x += unit.stats.speed * dt;
+    if (isRanged) {
+      // Trail behind melee when no enemies visible
+      const frontMeleeX = s.units
+        .filter(u => u.team === "player" && (u.type === "deputy" || u.type === "marshal") && u.state !== "dead" && u.state !== "dying")
+        .reduce((maxX, u) => Math.max(maxX, u.pos.x), -1);
+      const trailTarget = frontMeleeX > 0 ? frontMeleeX - RANGED_OFFSET : unit.pos.x + 1;
+      if (unit.pos.x < trailTarget - 10) {
+        unit.state = "walking";
+        unit.pos.x += unit.stats.speed * 0.85 * dt;
+      } else {
+        unit.state = "idle";
+      }
+    } else {
+      unit.state = "walking";
+      unit.pos.x += unit.stats.speed * dt;
+    }
     const enemySaloon = s.buildings.find(b => b.type === "enemy_saloon");
     if (enemySaloon) {
       const dist = Math.abs(unit.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2));
@@ -374,6 +487,23 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
 
 function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
   // Enemy always attacks (no stance system for enemy)
+  const playerSaloon = s.buildings.find(b => b.type === "saloon");
+
+  // ── Always check if we're in range of the player saloon — attack it regardless ──
+  if (playerSaloon) {
+    const saloonDist = Math.abs(unit.pos.x - (playerSaloon.pos.x + playerSaloon.width / 2));
+    if (saloonDist <= unit.stats.range) {
+      unit.state = "attacking";
+      unit.facing = -1;
+      if (unit.attackCooldown <= 0) {
+        playerSaloon.hp -= unit.stats.damage;
+        unit.attackCooldown = 1 / unit.stats.attackRate;
+        spawnFloatingText(s, { x: playerSaloon.pos.x + 40, y: playerSaloon.pos.y }, `-${unit.stats.damage}`, "#ff4444");
+      }
+      return;
+    }
+  }
+
   const enemy = findNearestEnemy(unit, s);
   if (enemy) {
     const dist = Math.abs(unit.pos.x - enemy.pos.x);
@@ -390,18 +520,13 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
       unit.pos.x += unit.facing * unit.stats.speed * dt;
     }
   } else {
+    // No player units visible — march toward player saloon
     unit.facing = -1;
     unit.state = "walking";
     unit.pos.x -= unit.stats.speed * dt;
-    const playerSaloon = s.buildings.find(b => b.type === "saloon");
+    // Clamp: don't walk past the saloon's left edge
     if (playerSaloon) {
-      const dist = Math.abs(unit.pos.x - (playerSaloon.pos.x + playerSaloon.width / 2));
-      if (dist <= unit.stats.range && unit.attackCooldown <= 0) {
-        unit.state = "attacking";
-        playerSaloon.hp -= unit.stats.damage;
-        unit.attackCooldown = 1 / unit.stats.attackRate;
-        spawnFloatingText(s, { x: playerSaloon.pos.x + 40, y: playerSaloon.pos.y }, `-${unit.stats.damage}`, "#ff4444");
-      }
+      unit.pos.x = Math.max(playerSaloon.pos.x, unit.pos.x);
     }
   }
 }
@@ -412,6 +537,44 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
 
   const saloonCenter = saloon.pos.x + saloon.width / 2;
   const isPlayer = unit.team === "player";
+
+  // ── Garrison stance: miners retreat to saloon too ──
+  if (isPlayer && s.stance === "garrison") {
+    const distToSaloon = Math.abs(unit.pos.x - saloonCenter);
+    if (distToSaloon > 30) {
+      unit.state = "walking";
+      unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
+      unit.pos.x += unit.facing * unit.stats.speed * dt;
+    } else {
+      unit.state = "garrison";
+      unit.facing = 1;
+      // Only the FIRST garrisoned miner (lowest id alphabetically) shoots
+      const garrisonedMiners = s.units.filter(
+        u => u.team === "player" && u.type === "miner" && u.state === "garrison"
+      );
+      const isShooter = garrisonedMiners.length === 0 || garrisonedMiners[0].id === unit.id;
+      if (isShooter) {
+        unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
+        const garrisonRange = 200;
+        const nearestEnemy = findNearestEnemy(unit, s);
+        if (nearestEnemy && Math.abs(nearestEnemy.pos.x - unit.pos.x) <= garrisonRange) {
+          if (unit.attackCooldown <= 0) {
+            s.projectiles.push({
+              id: `gm${Date.now()}_${Math.random()}`,
+              pos: { x: saloon.pos.x + saloon.width, y: saloon.pos.y + 30 },
+              vel: { x: 400, y: -5 },
+              team: "player",
+              damage: Math.round(unit.stats.damage * 0.5),
+              type: "bullet", life: 1.5, exploded: false,
+            });
+            unit.attackCooldown = 1 / unit.stats.attackRate;
+          }
+        }
+      }
+    }
+    return;
+  }
+
 
   if (unit.goldCarrying === 0) {
     // Find nearest gold pile with gold remaining
@@ -456,12 +619,12 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
       }
     }
   } else {
-    // Return to saloon with gold
+    // Return to saloon with gold — slower because wheeling a cart (60% speed)
     const dist = Math.abs(unit.pos.x - saloonCenter);
     if (dist > 20) {
       unit.state = "returning";
       unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
-      unit.pos.x += unit.facing * unit.stats.speed * dt;
+      unit.pos.x += unit.facing * unit.stats.speed * 0.6 * dt;
     } else {
       // Deposit gold
       if (unit.team === "player") {
@@ -773,6 +936,7 @@ export function possessedAttack(state: GameState): GameState {
     : Infinity;
 
   const s = { ...state, units: state.units.map(u => ({ ...u })) };
+  const a = s.units.find(u => u.id === state.selectedUnitId)!;
 
   if (target) {
     // Direct damage + set attacker cooldown
@@ -781,15 +945,44 @@ export function possessedAttack(state: GameState): GameState {
     t.stats.hp -= dmg;
     spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 40 }, `-${Math.round(dmg)}`, "#ff4444");
     if (t.stats.hp <= 0) { t.state = "dying"; t.deathTimer = 0; spawnDeathParticles(s, t.pos); }
-    const a = s.units.find(u => u.id === state.selectedUnitId)!;
     a.attackCooldown = 1 / a.stats.attackRate;
     a.state = "attacking";
   } else if (enemySaloon && saloonDist < range) {
     enemySaloon.hp -= attacker.stats.damage;
     spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${attacker.stats.damage}`, "#ff4444");
-    const a = s.units.find(u => u.id === state.selectedUnitId)!;
     a.attackCooldown = 1 / a.stats.attackRate;
     a.state = "attacking";
+  } else {
+    // No target in range — still play attack animation and fire projectile for ranged units
+    a.attackCooldown = 1 / a.stats.attackRate;
+    a.state = "attacking";
+    if (attacker.type === "gunslinger") {
+      // Fire bullet in facing direction — limited range (won't cross the map)
+      s.projectiles.push({
+        id: `pa_${Date.now()}`,
+        pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
+        vel: { x: attacker.facing * 400, y: -15 },
+        team: "player",
+        damage: attacker.stats.damage,
+        type: "bullet",
+        life: 0.6, // ~240px max range at 400px/s
+        exploded: false,
+      });
+    } else if (attacker.type === "dynamiter") {
+      // Lob dynamite forward to max range
+      const throwDist = attacker.facing * 200;
+      s.projectiles.push({
+        id: `pa_${Date.now()}`,
+        pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
+        vel: { x: throwDist * 0.6, y: -250 },
+        team: "player",
+        damage: attacker.stats.damage,
+        type: "dynamite",
+        life: 2.0,
+        exploded: false,
+      });
+    }
+    // Melee types just swing (animation only, no projectile)
   }
 
   return s;
