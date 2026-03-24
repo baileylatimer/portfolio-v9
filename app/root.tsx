@@ -161,6 +161,7 @@ function AppContent() {
   }, [handleClick, handleMouseDown, handleMouseUp]);
 
   const showFooter = location.pathname !== '/contact';
+  const isGameRoute = location.pathname === '/play';
 
   // Initialize GSAP ScrollSmoother
   useEffect(() => {
@@ -227,10 +228,10 @@ function AppContent() {
             }} 
           />
           <div className="relative z-10 flex-grow">
-            <Navigation />
+            {!isGameRoute && <Navigation />}
             <Outlet context={{ openSecretSection }} />
           </div>
-          {showFooter && <Footer />}
+          {!isGameRoute && showFooter && <Footer />}
         </div>
       </div>
       {bulletHoles?.map((hole: BulletHole) => (
@@ -254,6 +255,18 @@ function AppContent() {
   );
 }
 
+function GameOverlays() {
+  const location = useLocation();
+  const isGameRoute = location.pathname === '/play';
+  if (isGameRoute) return null;
+  return (
+    <>
+      <Weapon3D />
+      <WeaponWheel />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <html lang="en" className="h-full">
@@ -270,8 +283,7 @@ export default function App() {
               <WeaponProvider>
                 <SecretSectionProvider>
                   <AppContent />
-                  <Weapon3D />
-                  <WeaponWheel />
+                  <GameOverlays />
                 </SecretSectionProvider>
               </WeaponProvider>
             </DestructionProvider>
