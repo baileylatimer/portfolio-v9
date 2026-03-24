@@ -4,7 +4,7 @@ import type {
   GameState, Unit, Building, Projectile, GoldPile,
   UnitType, Team, Vec2,
 } from "./types";
-import { getStats, WORLD, LEVELS, GOLD_PILE_POSITIONS, TRAIN_TIME, MAX_UNITS, PASSIVE_GOLD_BASE } from "./configs";
+import { getStats, WORLD, LEVELS, AMBUSH_LEVELS, GOLD_PILE_POSITIONS, TRAIN_TIME, MAX_UNITS, PASSIVE_GOLD_BASE } from "./configs";
 import type { Stance } from "./types";
 
 let _idCounter = 0;
@@ -12,14 +12,25 @@ const uid = () => `u${++_idCounter}`;
 
 // ─── Initial State ────────────────────────────────────────────────────────────
 
-export function createInitialState(level: number, upgrades: GameState["upgrades"]): GameState {
-  const lvl = LEVELS[level];
+export function createInitialState(
+  level: number,
+  upgrades: GameState["upgrades"],
+  unlockedUnits: string[] = ["miner", "deputy"],
+): GameState {
+  // level >= 100 → ambush encounter (index = level - 100)
+  const isAmbush = level >= 100;
+  const ambushIndex = isAmbush ? level - 100 : 0;
+  const lvl = isAmbush ? AMBUSH_LEVELS[ambushIndex] : LEVELS[level];
+
   const buildings: Building[] = [
     { id: "player_saloon", type: "saloon",      team: "player", pos: { x: WORLD.playerSaloonX, y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
-    { id: "enemy_saloon",  type: "enemy_saloon", team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
+    // Ambush: enemy has a tipi camp instead of a saloon
+    isAmbush
+      ? { id: "enemy_saloon", type: "tipi",        team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 70 }, hp: 600,  maxHp: 600,  width: 70, height: 70 }
+      : { id: "enemy_saloon", type: "enemy_saloon", team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
   ];
 
-  // Create gold piles spread across the map
+  // All levels get gold piles — ambush levels too (player still needs to mine)
   const goldPiles: GoldPile[] = GOLD_PILE_POSITIONS.map((pos, i) => ({
     id: `pile_${i}`,
     pos: { x: pos.x, y: WORLD.groundY - 8 },
@@ -27,14 +38,14 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
     maxGold: pos.gold,
   }));
 
-  // Free starting miner
-  const startingMiner = createFreeMiner(upgrades);
+  // All levels get a free starting miner
+  const startingUnits: Unit[] = [createFreeMiner(upgrades)];
 
   return {
     phase: "BATTLE",
     level,
     gold: lvl.startGold,
-    units: [startingMiner],
+    units: startingUnits,
     buildings,
     goldPiles,
     projectiles: [],
@@ -46,8 +57,10 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
     trainingTime: 0,
     passiveGoldTimer: 0,
     stance: "defense",
-    enemyGold: lvl.startGold * 0.8,
-    enemySpawnTimer: 3.0,
+    // Regular levels: enemy starts with seed gold to buy units
+    // Ambush levels: enemy wave-spawns (no gold needed)
+    enemyGold: isAmbush ? 0 : Math.round(lvl.startGold * 1.5),
+    enemySpawnTimer: isAmbush ? 4.0 : 3.0, // ambush: slight delay before first wave
     upgradePoints: 0,
     upgrades,
     cameraX: 0,
@@ -55,6 +68,9 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
     selectedUnitId: null,
     time: 0,
     nightfall: false,
+    soundEvents: [],
+    unlockedUnits,
+    isAmbushLevel: isAmbush,
   };
 }
 
@@ -63,12 +79,19 @@ export function createInitialState(level: number, upgrades: GameState["upgrades"
 function getLaneY(type: UnitType): number {
   const jitter = (Math.random() - 0.5) * 6; // ±3px variation
   switch (type) {
-    case "miner":      return WORLD.groundY - 14 + jitter;  // bottom lane
-    case "deputy":     return WORLD.groundY - 32 + jitter;  // mid lane
-    case "marshal":    return WORLD.groundY - 36 + jitter;  // mid lane (bigger unit)
-    case "gunslinger": return WORLD.groundY - 48 + jitter;  // upper lane
-    case "dynamiter":  return WORLD.groundY - 44 + jitter;  // upper lane
-    default:           return WORLD.groundY - 32 + jitter;
+    case "miner":         return WORLD.groundY - 14 + jitter;
+    case "deputy":        return WORLD.groundY - 32 + jitter;
+    case "bounty_hunter": return WORLD.groundY - 36 + jitter;
+    case "marshal":       return WORLD.groundY - 36 + jitter;
+    case "gunslinger":    return WORLD.groundY - 48 + jitter;
+    case "dynamiter":     return WORLD.groundY - 44 + jitter;
+    // Native units
+    case "brave":         return WORLD.groundY - 28 + jitter;
+    case "mounted_brave": return WORLD.groundY - 38 + jitter;
+    case "archer":        return WORLD.groundY - 50 + jitter;
+    case "shaman":        return WORLD.groundY - 46 + jitter;
+    case "chief":         return WORLD.groundY - 40 + jitter;
+    default:              return WORLD.groundY - 32 + jitter;
   }
 }
 
@@ -101,6 +124,7 @@ function createFreeMiner(upgrades: GameState["upgrades"]): Unit {
 const ENEMY_UPGRADES: GameState["upgrades"] = {
   minerSpeed: 0, minerCapacity: 0,
   deputyHp: 0, deputyDamage: 0,
+  bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
   saloonRevenue: 0,
@@ -172,6 +196,15 @@ export function updateGame(state: GameState, dt: number): GameState {
 
   // ── Training system (replaces old spawn queue) ──
   s.units = processTraining(s, dt);
+
+  // ── Auto-deselect if possessed unit died ──
+  if (s.selectedUnitId) {
+    const possessed = s.units.find(u => u.id === s.selectedUnitId);
+    if (!possessed || possessed.state === "dead" || possessed.state === "dying") {
+      s.selectedUnitId = null;
+      s.units = s.units.map(u => ({ ...u, selected: false }));
+    }
+  }
 
   // ── Unit AI — skip possessed unit (controlled by WASD) ──
   s.units.forEach(unit => {
@@ -453,35 +486,44 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
       }
     }
   } else {
-    const targetX = WORLD.enemySaloonX;
+    // No enemy units — march toward enemy saloon and attack it
+    const enemySaloon = s.buildings.find(b => b.id === "enemy_saloon");
     unit.facing = 1;
+
     if (isRanged) {
-      // Trail behind melee when no enemies visible
-      const frontMeleeX = s.units
-        .filter(u => u.team === "player" && (u.type === "deputy" || u.type === "marshal") && u.state !== "dead" && u.state !== "dying")
-        .reduce((maxX, u) => Math.max(maxX, u.pos.x), -1);
-      const trailTarget = frontMeleeX > 0 ? frontMeleeX - RANGED_OFFSET : unit.pos.x + 1;
-      if (unit.pos.x < trailTarget - 10) {
+      // Ranged: stop at max range from saloon, fire from there
+      const rangedStopX = enemySaloon
+        ? enemySaloon.pos.x - unit.stats.range + 20
+        : WORLD.enemySaloonX - unit.stats.range;
+      if (unit.pos.x < rangedStopX - 10) {
         unit.state = "walking";
         unit.pos.x += unit.stats.speed * 0.85 * dt;
       } else {
         unit.state = "idle";
       }
     } else {
-      unit.state = "walking";
-      unit.pos.x += unit.stats.speed * dt;
+      // Melee: walk to saloon but STOP at its left edge — don't walk past
+      const meleeStopX = enemySaloon
+        ? enemySaloon.pos.x - 10
+        : WORLD.enemySaloonX - 10;
+      if (unit.pos.x < meleeStopX) {
+        unit.state = "walking";
+        unit.pos.x = Math.min(unit.pos.x + unit.stats.speed * dt, meleeStopX);
+      } else {
+        unit.state = "idle";
+      }
     }
-    const enemySaloon = s.buildings.find(b => b.type === "enemy_saloon");
+
+    // Attack saloon if in range
     if (enemySaloon) {
       const dist = Math.abs(unit.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2));
-      if (dist <= unit.stats.range && unit.attackCooldown <= 0) {
+      if (dist <= unit.stats.range + 20 && unit.attackCooldown <= 0) {
         unit.state = "attacking";
         enemySaloon.hp -= unit.stats.damage;
         unit.attackCooldown = 1 / unit.stats.attackRate;
         spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${unit.stats.damage}`, "#ff4444");
       }
     }
-    void targetX;
   }
 }
 
@@ -489,7 +531,26 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
   // Enemy always attacks (no stance system for enemy)
   const playerSaloon = s.buildings.find(b => b.type === "saloon");
 
-  // ── Always check if we're in range of the player saloon — attack it regardless ──
+  // ── Player units take priority over the saloon ──
+  const enemy = findNearestEnemy(unit, s);
+  if (enemy) {
+    const dist = Math.hypot(enemy.pos.x - unit.pos.x, (enemy.pos.y - unit.pos.y) * 0.5);
+    if (dist <= unit.stats.range) {
+      unit.state = "attacking";
+      unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
+      if (unit.attackCooldown <= 0) {
+        performAttack(unit, enemy, s);
+        unit.attackCooldown = 1 / unit.stats.attackRate;
+      }
+    } else {
+      unit.state = "walking";
+      unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
+      unit.pos.x += unit.facing * unit.stats.speed * dt;
+    }
+    return;
+  }
+
+  // ── No player units — attack saloon if in range, otherwise march toward it ──
   if (playerSaloon) {
     const saloonDist = Math.abs(unit.pos.x - (playerSaloon.pos.x + playerSaloon.width / 2));
     if (saloonDist <= unit.stats.range) {
@@ -504,30 +565,12 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
     }
   }
 
-  const enemy = findNearestEnemy(unit, s);
-  if (enemy) {
-    const dist = Math.abs(unit.pos.x - enemy.pos.x);
-    if (dist <= unit.stats.range) {
-      unit.state = "attacking";
-      unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
-      if (unit.attackCooldown <= 0) {
-        performAttack(unit, enemy, s);
-        unit.attackCooldown = 1 / unit.stats.attackRate;
-      }
-    } else {
-      unit.state = "walking";
-      unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
-      unit.pos.x += unit.facing * unit.stats.speed * dt;
-    }
-  } else {
-    // No player units visible — march toward player saloon
-    unit.facing = -1;
-    unit.state = "walking";
-    unit.pos.x -= unit.stats.speed * dt;
-    // Clamp: don't walk past the saloon's left edge
-    if (playerSaloon) {
-      unit.pos.x = Math.max(playerSaloon.pos.x, unit.pos.x);
-    }
+  // March toward player saloon
+  unit.facing = -1;
+  unit.state = "walking";
+  unit.pos.x -= unit.stats.speed * dt;
+  if (playerSaloon) {
+    unit.pos.x = Math.max(playerSaloon.pos.x, unit.pos.x);
   }
 }
 
@@ -653,7 +696,8 @@ function findNearestEnemy(unit: Unit, s: GameState): Unit | null {
   let minDist = Infinity;
   for (const other of s.units) {
     if (other.team === unit.team || other.state === "dead" || other.state === "dying") continue;
-    const dist = Math.abs(other.pos.x - unit.pos.x);
+    // Use 2D distance so Y-axis position matters (enables dodging for possessed units)
+    const dist = Math.hypot(other.pos.x - unit.pos.x, (other.pos.y - unit.pos.y) * 0.5);
     if (dist < minDist) { minDist = dist; nearest = other; }
   }
   return nearest;
@@ -668,6 +712,7 @@ function performAttack(attacker: Unit, target: Unit, s: GameState) {
       team: attacker.team, damage: attacker.stats.damage,
       type: "bullet", life: 1.5, exploded: false,
     });
+    s.soundEvents.push("colt-shot");
   } else if (attacker.type === "dynamiter") {
     // Lob dynamite
     const dx = target.pos.x - attacker.pos.x;
@@ -684,12 +729,18 @@ function performAttack(attacker: Unit, target: Unit, s: GameState) {
 }
 
 function applyDamage(unit: Unit, damage: number, s: GameState) {
-  unit.stats.hp -= damage;
+  unit.stats.hp = Math.max(0, unit.stats.hp - damage);
   spawnFloatingText(s, { x: unit.pos.x, y: unit.pos.y - 40 }, `-${damage}`, "#ff4444");
   if (unit.stats.hp <= 0) {
     unit.state = "dying";
     unit.deathTimer = 0;
     spawnDeathParticles(s, unit.pos);
+    // Gold steal: if an enemy miner dies while carrying gold, player gets it
+    if (unit.team === "enemy" && unit.type === "miner" && unit.goldCarrying > 0) {
+      s.gold += unit.goldCarrying;
+      spawnFloatingText(s, { x: unit.pos.x, y: unit.pos.y - 60 }, `+${unit.goldCarrying}g STOLEN!`, "#FFD700");
+      unit.goldCarrying = 0;
+    }
   }
 }
 
@@ -756,46 +807,105 @@ function explodeDynamite(proj: Projectile, s: GameState) {
 // ─── Enemy AI ─────────────────────────────────────────────────────────────────
 
 function updateEnemyAI(s: GameState, dt: number) {
-  const lvl = LEVELS[s.level];
+  const isAmbush = s.level >= 100;
+  const ambushIndex = isAmbush ? s.level - 100 : 0;
+  const lvl = isAmbush ? AMBUSH_LEVELS[ambushIndex] : LEVELS[s.level];
+
   s.enemySpawnTimer -= dt;
+  if (s.enemySpawnTimer > 0) return;
 
-  if (s.enemySpawnTimer <= 0) {
-    s.enemySpawnTimer = 2.5 - lvl.enemyAggression * 1.5;
+  // ── AMBUSH MODE: phased wave-spawn Native units ──
+  if (isAmbush) {
+    // Three phases based on elapsed time:
+    // Phase 1 (0–30s):  trickle — only braves, slow spawns
+    // Phase 2 (30–70s): escalate — braves + archers + mounted
+    // Phase 3 (70s+):   full assault — everything including shaman + chief
+    const phase = s.time < 30 ? 1 : s.time < 70 ? 2 : 3;
 
-    // Decide what to spawn based on budget and unit caps
+    // Spawn interval gets shorter each phase
+    s.enemySpawnTimer = phase === 1 ? 6.0 : phase === 2 ? 4.0 : 2.5;
+
+    // Count living enemy units
+    const livingEnemies = s.units.filter(u => u.team === "enemy" && u.state !== "dead" && u.state !== "dying");
     const enemyUnitCounts: Partial<Record<UnitType, number>> = {};
-    for (const u of s.units.filter(u => u.team === "enemy")) {
+    for (const u of livingEnemies) {
       enemyUnitCounts[u.type] = (enemyUnitCounts[u.type] || 0) + 1;
     }
 
-    // Always try to have miners
-    const maxMiners = lvl.enemyUnits.miner || 0;
-    const currentMiners = enemyUnitCounts.miner || 0;
-    if (currentMiners < maxMiners && s.enemyGold >= 150) {
-      const unit = spawnUnit(s, "miner", "enemy");
-      s.units.push(unit);
-      s.enemyGold -= 150;
-      return;
-    }
+    // Phase-gated unit types
+    const phaseTypes: Record<number, UnitType[]> = {
+      1: ["brave"],
+      2: ["brave", "archer", "mounted_brave"],
+      3: ["brave", "archer", "mounted_brave", "shaman", "chief"],
+    };
+    const allowedTypes = phaseTypes[phase];
 
-    // Spawn combat units based on budget
-    const combatTypes: UnitType[] = ["deputy", "gunslinger", "dynamiter", "marshal"];
-    const combatCosts: Record<string, number> = { deputy: 200, gunslinger: 400, dynamiter: 600, marshal: 1200 };
-    const available = combatTypes.filter(t => {
+    // Filter to types that are allowed this phase AND under their cap
+    const available = allowedTypes.filter(t => {
       const max = lvl.enemyUnits[t] || 0;
       const current = enemyUnitCounts[t] || 0;
-      const cost = combatCosts[t] || 999;
-      return max > current && s.enemyGold >= cost;
+      return max > current;
     });
 
-    if (available.length > 0 && Math.random() < lvl.enemyAggression) {
-      const type = available[Math.floor(Math.random() * available.length)];
-      const cost = combatCosts[type] || 999;
-      if (s.enemyGold >= cost) {
-        const unit = spawnUnit(s, type, "enemy");
-        s.units.push(unit);
-        s.enemyGold -= cost;
-      }
+    if (available.length === 0) return; // all caps reached for this phase
+
+    // Weighted random within allowed types
+    const weights: Partial<Record<UnitType, number>> = {
+      brave: 5, archer: 3, mounted_brave: 3, shaman: 2, chief: 1,
+    };
+    const pool: UnitType[] = [];
+    for (const t of available) {
+      const w = weights[t] ?? 1;
+      for (let i = 0; i < w; i++) pool.push(t);
+    }
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    const unit = spawnUnit(s, type, "enemy");
+    s.units.push(unit);
+
+    // Phase 3: occasionally spawn a pair of braves for pressure
+    if (phase === 3 && type === "brave" && Math.random() < 0.4) {
+      const extra = spawnUnit(s, "brave", "enemy");
+      extra.pos.y += (Math.random() - 0.5) * 20;
+      s.units.push(extra);
+    }
+    return;
+  }
+
+  // ── REGULAR MODE: budget-based spawning ──
+  s.enemySpawnTimer = 2.5 - lvl.enemyAggression * 1.5;
+
+  const enemyUnitCounts: Partial<Record<UnitType, number>> = {};
+  for (const u of s.units.filter(u => u.team === "enemy")) {
+    enemyUnitCounts[u.type] = (enemyUnitCounts[u.type] || 0) + 1;
+  }
+
+  // Always try to have miners
+  const maxMiners = lvl.enemyUnits.miner || 0;
+  const currentMiners = enemyUnitCounts.miner || 0;
+  if (currentMiners < maxMiners && s.enemyGold >= 150) {
+    const unit = spawnUnit(s, "miner", "enemy");
+    s.units.push(unit);
+    s.enemyGold -= 150;
+    return;
+  }
+
+  // Spawn combat units based on budget
+  const combatTypes: UnitType[] = ["deputy", "bounty_hunter", "gunslinger", "dynamiter", "marshal"];
+  const combatCosts: Record<string, number> = { deputy: 200, bounty_hunter: 500, gunslinger: 400, dynamiter: 600, marshal: 1200 };
+  const available = combatTypes.filter(t => {
+    const max = lvl.enemyUnits[t] || 0;
+    const current = enemyUnitCounts[t] || 0;
+    const cost = combatCosts[t] || 999;
+    return max > current && s.enemyGold >= cost;
+  });
+
+  if (available.length > 0 && Math.random() < lvl.enemyAggression) {
+    const type = available[Math.floor(Math.random() * available.length)];
+    const cost = combatCosts[type] || 999;
+    if (s.enemyGold >= cost) {
+      const unit = spawnUnit(s, type, "enemy");
+      s.units.push(unit);
+      s.enemyGold -= cost;
     }
   }
 }
@@ -850,6 +960,8 @@ function spawnFloatingText(s: GameState, pos: Vec2, text: string, color: string)
 // ─── Queue Unit ───────────────────────────────────────────────────────────────
 
 export function queueUnit(state: GameState, type: UnitType): GameState {
+  // Block if unit not yet unlocked
+  if (!state.unlockedUnits.includes(type)) return state;
   const cost = state.upgrades ? getStats(type, state.upgrades).cost : 999;
   if (state.gold < cost) return state;
   // Don't queue if already at max units + full queue (prevent infinite gold drain)
@@ -889,17 +1001,19 @@ export function selectUnit(state: GameState, worldX: number, worldY: number): Ga
 
 // ─── Move Possessed Unit ──────────────────────────────────────────────────────
 
-// Min Y a unit can reach (top of walking lane — about 60px above ground)
-const POSSESSED_MIN_Y = WORLD.groundY - 70;
-const POSSESSED_MAX_Y = WORLD.groundY - 10;
+// Y range for possessed unit — wide enough to dodge attacks
+const POSSESSED_MIN_Y = WORLD.groundY - 120;
+const POSSESSED_MAX_Y = WORLD.groundY - 8;
 
 export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: number): GameState {
   if (!state.selectedUnitId) return state;
-  const speed = 180;
+  const speed = 200;
   return {
     ...state,
     units: state.units.map(u => {
       if (u.id !== state.selectedUnitId) return u;
+      // Never move a dead or dying unit
+      if (u.state === "dead" || u.state === "dying") return u;
       const nx = Math.max(0, Math.min(WORLD.width, u.pos.x + dx * speed * dt));
       const ny = Math.max(POSSESSED_MIN_Y, Math.min(POSSESSED_MAX_Y, u.pos.y + dy * speed * dt));
       return {

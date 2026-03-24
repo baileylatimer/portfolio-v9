@@ -1,6 +1,7 @@
 // ─── Frontier Wars — Core Types ───────────────────────────────────────────────
 
-export type UnitType = "miner" | "deputy" | "gunslinger" | "dynamiter" | "marshal";
+export type UnitType = "miner" | "deputy" | "bounty_hunter" | "gunslinger" | "dynamiter" | "marshal"
+  | "brave" | "archer" | "shaman" | "chief" | "mounted_brave";
 export type Team = "player" | "enemy";
 export type GamePhase = "MENU" | "CAMPAIGN_MAP" | "BATTLE" | "UPGRADE" | "VICTORY" | "DEFEAT";
 export type UnitState = "idle" | "walking" | "mining" | "returning" | "attacking" | "garrison" | "dying" | "dead";
@@ -41,7 +42,7 @@ export interface Unit {
 
 export interface Building {
   id: string;
-  type: "mine" | "saloon" | "enemy_saloon";
+  type: "mine" | "saloon" | "enemy_saloon" | "tipi";
   team: Team;
   pos: Vec2;
   hp: number;
@@ -113,7 +114,10 @@ export interface GameState {
   manualCamera: boolean;
   selectedUnitId: string | null;
   time: number;
-  nightfall: boolean;       // true after 3 minutes — double gold mode
+  nightfall: boolean;
+  soundEvents: string[]; // sound IDs to play this frame (consumed by FrontierWars)
+  unlockedUnits: string[]; // unit types the player can currently spawn
+  isAmbushLevel: boolean;  // true → hide enemy gold, no miner economy
 }
 
 export interface UpgradeState {
@@ -121,6 +125,8 @@ export interface UpgradeState {
   minerCapacity: number;    // 0-3
   deputyHp: number;         // 0-3
   deputyDamage: number;     // 0-3
+  bountyHp: number;         // 0-3
+  bountyDamage: number;     // 0-3
   gunslingerRange: number;  // 0-3
   gunslingerRate: number;   // 0-3
   dynamiterRadius: number;  // 0-3
@@ -137,6 +143,10 @@ export interface LevelConfig {
   enemyUnits: Partial<Record<UnitType, number>>; // max of each type
   mapX: Vec2;               // position on campaign map
   unlocks: UnitType[];      // units unlocked after this level
+  isAmbush?: boolean;       // Native ambush encounter — no mining, wave spawns
+  ambushTier?: 1 | 2 | 3;  // 1=scouts, 2=war party, 3=last stand
+  lore?: string[];          // multi-line lore text for briefing screen
+  enemyLabel?: string;      // label shown on enemy structure in HUD
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
