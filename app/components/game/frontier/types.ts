@@ -64,6 +64,10 @@ export interface Unit {
   selected: boolean;     // player-controlled (possession mechanic)
   deathTimer: number;
   laneY: number;         // assigned Y position for this unit's lane
+  // Possession magazine/reload system
+  magazine: number;      // shots/hits remaining before reload
+  maxMagazine: number;   // full magazine size (set when possessed)
+  reloadTimer: number;   // countdown to reload complete (0 = ready)
 }
 
 export interface Building {
@@ -149,6 +153,7 @@ export interface GameState {
   aiStrategy: AiStrategy;  // current level's AI strategy
   enemyGarrisoned: boolean; // enemy has retreated to garrison
   biome: Biome;             // visual biome for this level's background
+  levelName: string;        // display name of the current level
 }
 
 export interface UpgradeState {
@@ -164,6 +169,7 @@ export interface UpgradeState {
   marshalHp: number;        // 0-3
   saloonRevenue: number;    // 0-4 → 2/4/6/8/10 gold/sec
   saloonHp: number;         // 0-3 → +300 HP/level, grows saloon visually
+  barracks: number;         // 0-3 → +8% HP / +5% damage per level for all combat units
 }
 
 export interface LevelConfig {

@@ -33,7 +33,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   }
 
   // ── Buildings ──
-  state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall, state.upgrades));
+  state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall, state.upgrades, state.level));
 
   // ── Units — depth-sorted by Y (higher Y = lower on screen = drawn last = in front) ──
   // This is the painter's algorithm: units closer to the camera (lower on screen) render on top
@@ -77,6 +77,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
     const garrisonCount = state.units.filter(u => u.team === "player" && u.state === "garrison").length;
     if (saloon) drawGarrisonOverlay(ctx, saloon, cam, state.time, garrisonCount);
   }
+
+  // ── Level name — top-left of game world ──
+  drawLevelName(ctx, state);
 
   // ── Nightfall timer — top-center of game world ──
   drawNightfallTimer(ctx, state, canvasW);
@@ -577,18 +580,22 @@ function drawSaloonGoldPile(ctx: CanvasRenderingContext2D, saloon: Building, cam
   ctx.textAlign = "left";
 }
 
-function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, nightfall = false, upgrades?: import("./types").UpgradeState) {
+function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, nightfall = false, upgrades?: import("./types").UpgradeState, level = 0) {
   const sx = b.pos.x - cam;
   const sy = b.pos.y;
 
   if (b.type === "mine") {
     drawMine(ctx, sx, sy, b.team === "enemy");
   } else if (b.type === "tipi") {
-    drawTipi(ctx, sx, sy, b.hp / b.maxHp);
+    // Ambush tier: level 100=tier1, 101=tier2, 102=tier3
+    const ambushTier = level >= 100 ? Math.min(3, level - 100 + 1) : 1;
+    drawTipi(ctx, sx, sy, b.hp / b.maxHp, ambushTier);
   } else {
     const revTier = (!b.team || b.team === "player") ? (upgrades?.saloonRevenue ?? 0) : 0;
     const hpTier  = (!b.team || b.team === "player") ? (upgrades?.saloonHp ?? 0) : 0;
-    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall, revTier, hpTier);
+    // Enemy saloon scales with campaign level: 0-1=tier0, 2-3=tier1, 4-5=tier2, 6-7=tier3
+    const enemyTier = b.team === "enemy" ? Math.min(3, Math.floor(level / 2)) : 0;
+    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall, revTier, hpTier, enemyTier);
   }
 
   // HP bar
@@ -601,17 +608,24 @@ function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, n
   }
 }
 
-function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number, nightfall = false, revenueTier = 0, hpTier = 0) {
+function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number, nightfall = false, revenueTier = 0, hpTier = 0, enemyTier = 0) {
   // HP tier grows the saloon: tier 0=80px, tier 1=95px, tier 2=110px, tier 3=130px
   const hpHeightBonus = isEnemy ? 0 : hpTier * 17;
-  const w = 80, h = 80 + hpHeightBonus;
+  // Enemy saloon grows with tier: tier0=80, tier1=90, tier2=105, tier3=120
+  const enemyHeightBonus = isEnemy ? enemyTier * 13 : 0;
+  const w = 80, h = 80 + hpHeightBonus + enemyHeightBonus;
   // Shift y up so the building grows upward (base stays on ground)
-  const yAdj = y - hpHeightBonus;
+  const yAdj = y - hpHeightBonus - enemyHeightBonus;
 
-  const woodColor = isEnemy ? "#5c2020" : COLORS.saloonWood;
-  const roofColor = isEnemy ? "#3d1010" : COLORS.saloonRoof;
+  // Enemy wood/roof darken with tier
+  const enemyWoodColors = ["#5c2020", "#4a1818", "#3a1010", "#2a0808"];
+  const enemyRoofColors = ["#3d1010", "#2d0808", "#1d0404", "#0d0000"];
+  const woodColor = isEnemy ? enemyWoodColors[enemyTier] : COLORS.saloonWood;
+  const roofColor = isEnemy ? enemyRoofColors[enemyTier] : COLORS.saloonRoof;
   // Revenue tier changes trim color: plain → gold trim → bright gold → glowing gold
-  const trimColor = isEnemy ? "#8B2020"
+  // Enemy trim darkens with tier
+  const enemyTrimColors = ["#8B2020", "#aa2020", "#cc2020", "#cc0000"];
+  const trimColor = isEnemy ? enemyTrimColors[enemyTier]
     : revenueTier >= 3 ? "#FFD700"
     : revenueTier >= 2 ? "#D4A800"
     : revenueTier >= 1 ? "#B8860B"
@@ -717,13 +731,80 @@ function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy
     ctx.fillRect(x + w - 6, yAdj - 4, 10, 5);
   }
 
+  // ── Enemy tier 1+: iron bars on windows ──
+  if (isEnemy && enemyTier >= 1) {
+    ctx.strokeStyle = "#555";
+    ctx.lineWidth = 1.5;
+    // Left window bars
+    for (let b2 = 0; b2 < 3; b2++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 8 + b2 * 6, yAdj + 15);
+      ctx.lineTo(x + 8 + b2 * 6, yAdj + 29);
+      ctx.stroke();
+    }
+    // Right window bars
+    for (let b2 = 0; b2 < 3; b2++) {
+      ctx.beginPath();
+      ctx.moveTo(x + w - 26 + b2 * 6, yAdj + 15);
+      ctx.lineTo(x + w - 26 + b2 * 6, yAdj + 29);
+      ctx.stroke();
+    }
+  }
+
+  // ── Enemy tier 2+: sandbag barricade at base ──
+  if (isEnemy && enemyTier >= 2) {
+    ctx.fillStyle = "#6B5014";
+    ctx.fillRect(x - 8, yAdj + h - 8, w + 16, 8);
+    ctx.fillStyle = "#8B6914";
+    for (let b2 = 0; b2 < 6; b2++) {
+      ctx.beginPath();
+      ctx.ellipse(x - 4 + b2 * 15, yAdj + h - 4, 7, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Skull on door
+    ctx.fillStyle = "#cc0000";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("☠", x + w / 2, yAdj + h - 10);
+    ctx.textAlign = "left";
+  }
+
+  // ── Enemy tier 3: dark aura + watchtower ──
+  if (isEnemy && enemyTier >= 3) {
+    // Dark aura
+    const aura = ctx.createRadialGradient(x + w / 2, yAdj + h / 2, 10, x + w / 2, yAdj + h / 2, 70);
+    aura.addColorStop(0, "rgba(180,0,0,0.12)");
+    aura.addColorStop(1, "rgba(180,0,0,0)");
+    ctx.fillStyle = aura;
+    ctx.fillRect(x - 40, yAdj - 40, w + 80, h + 80);
+    // Watchtower
+    const towerY = yAdj - 30;
+    ctx.fillStyle = woodColor;
+    ctx.fillRect(x + w / 2 - 10, towerY, 20, 30);
+    ctx.fillStyle = roofColor;
+    ctx.fillRect(x + w / 2 - 12, towerY - 5, 24, 7);
+    // Skull flag
+    ctx.strokeStyle = "#cc0000";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 + 8, towerY - 5);
+    ctx.lineTo(x + w / 2 + 8, towerY - 20);
+    ctx.stroke();
+    ctx.fillStyle = "#cc0000";
+    ctx.font = "8px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("☠", x + w / 2 + 14, towerY - 12);
+    ctx.textAlign = "left";
+  }
+
   // Sign
-  ctx.fillStyle = isEnemy ? "#8B2020" : "#6B4423";
+  ctx.fillStyle = isEnemy ? trimColor : "#6B4423";
   ctx.fillRect(x + 10, yAdj - 14, w - 20, 12);
   ctx.fillStyle = isEnemy ? "#ffaaaa" : COLORS.uiText;
   ctx.font = "bold 7px monospace";
   ctx.textAlign = "center";
-  ctx.fillText(isEnemy ? "OUTLAW HQ" : "YOUR SALOON", x + w / 2, yAdj - 5);
+  const enemySignLabels = ["OUTLAW HQ", "OUTLAW HQ", "BANDIT FORT", "CARTEL KEEP"];
+  ctx.fillText(isEnemy ? enemySignLabels[enemyTier] : "YOUR SALOON", x + w / 2, yAdj - 5);
   // Revenue tier 3+: gold stars on sign
   if (!isEnemy && revenueTier >= 3) {
     ctx.fillStyle = "#FFD700";
@@ -769,22 +850,40 @@ function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy
   }
 }
 
-function drawTipi(ctx: CanvasRenderingContext2D, x: number, y: number, hpFrac: number) {
-  const w = 70;
+function drawTipi(ctx: CanvasRenderingContext2D, x: number, y: number, hpFrac: number, tier = 1) {
+  // Tier scales the tipi: tier1=small, tier2=war camp, tier3=great camp
+  const scale = tier === 1 ? 1.0 : tier === 2 ? 1.2 : 1.45;
+  const w = Math.round(70 * scale);
   const cx = x + w / 2;
+  // Shift y up so base stays on ground
+  const yOff = Math.round((scale - 1) * 68);
+  const yy = y - yOff;
+
+  const bw = Math.round(30 * scale); // half-width of base
+  const ht = Math.round(68 * scale); // height of cone
 
   // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
-  ctx.ellipse(cx, y + 70, 28, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, yy + ht, Math.round(28 * scale), Math.round(8 * scale), 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Main tipi cone — hide (animal skin color)
-  ctx.fillStyle = "#C8A878";
+  // Tier 3: dark aura (great camp)
+  if (tier >= 3) {
+    const aura = ctx.createRadialGradient(cx, yy + ht / 2, 10, cx, yy + ht / 2, 60);
+    aura.addColorStop(0, "rgba(180,0,0,0.1)");
+    aura.addColorStop(1, "rgba(180,0,0,0)");
+    ctx.fillStyle = aura;
+    ctx.fillRect(cx - 70, yy - 30, 140, ht + 60);
+  }
+
+  // Main tipi cone — hide color darkens with tier
+  const hideColors = ["#C8A878", "#B89060", "#A07848"];
+  ctx.fillStyle = hideColors[tier - 1];
   ctx.beginPath();
-  ctx.moveTo(cx, y);           // apex
-  ctx.lineTo(cx - 30, y + 68); // bottom left
-  ctx.lineTo(cx + 30, y + 68); // bottom right
+  ctx.moveTo(cx, yy);
+  ctx.lineTo(cx - bw, yy + ht);
+  ctx.lineTo(cx + bw, yy + ht);
   ctx.closePath();
   ctx.fill();
 
@@ -792,25 +891,31 @@ function drawTipi(ctx: CanvasRenderingContext2D, x: number, y: number, hpFrac: n
   ctx.strokeStyle = "#8B6914";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx, y + 4);
-  ctx.lineTo(cx, y + 68);
+  ctx.moveTo(cx, yy + 4);
+  ctx.lineTo(cx, yy + ht);
   ctx.stroke();
 
-  // Decorative bands (geometric patterns)
+  // Decorative bands — more elaborate per tier
   ctx.strokeStyle = "#8B2020";
   ctx.lineWidth = 2;
   // Upper band
   ctx.beginPath();
-  ctx.moveTo(cx - 8, y + 18);
-  ctx.lineTo(cx + 8, y + 18);
+  ctx.moveTo(cx - Math.round(8 * scale), yy + Math.round(18 * scale));
+  ctx.lineTo(cx + Math.round(8 * scale), yy + Math.round(18 * scale));
   ctx.stroke();
   // Mid band with triangles
   ctx.fillStyle = "#8B2020";
-  for (let i = -2; i <= 2; i++) {
+  const triCount = tier === 1 ? 5 : tier === 2 ? 7 : 9;
+  const triSpacing = Math.round(8 * scale);
+  const triOffset = Math.round(triCount / 2) * triSpacing;
+  for (let i = 0; i < triCount; i++) {
+    const tx = cx - triOffset + i * triSpacing;
+    const ty = yy + Math.round(32 * scale);
+    const ts = Math.round(4 * scale);
     ctx.beginPath();
-    ctx.moveTo(cx + i * 8, y + 32);
-    ctx.lineTo(cx + i * 8 - 4, y + 40);
-    ctx.lineTo(cx + i * 8 + 4, y + 40);
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - ts, ty + ts * 2);
+    ctx.lineTo(tx + ts, ty + ts * 2);
     ctx.closePath();
     ctx.fill();
   }
@@ -818,25 +923,57 @@ function drawTipi(ctx: CanvasRenderingContext2D, x: number, y: number, hpFrac: n
   ctx.strokeStyle = "#4A6FA5";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(cx - 22, y + 52);
-  ctx.lineTo(cx + 22, y + 52);
+  ctx.moveTo(cx - Math.round(22 * scale), yy + Math.round(52 * scale));
+  ctx.lineTo(cx + Math.round(22 * scale), yy + Math.round(52 * scale));
   ctx.stroke();
 
+  // Tier 2+: war paint stripes
+  if (tier >= 2) {
+    ctx.strokeStyle = "#cc4400";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - Math.round(15 * scale), yy + Math.round(24 * scale));
+    ctx.lineTo(cx - Math.round(5 * scale), yy + Math.round(44 * scale));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.round(15 * scale), yy + Math.round(24 * scale));
+    ctx.lineTo(cx + Math.round(5 * scale), yy + Math.round(44 * scale));
+    ctx.stroke();
+  }
+
   // Smoke hole poles sticking out top
+  const poleCount = tier === 1 ? 3 : tier === 2 ? 4 : 5;
   ctx.strokeStyle = "#5C3317";
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - 6, y + 2);
-  ctx.lineTo(cx - 14, y - 18);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + 6, y + 2);
-  ctx.lineTo(cx + 14, y - 18);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx, y + 2);
-  ctx.lineTo(cx + 2, y - 22);
-  ctx.stroke();
+  const poleAngles = [-0.4, 0, 0.4, -0.7, 0.7];
+  for (let i = 0; i < poleCount; i++) {
+    const ang = poleAngles[i];
+    ctx.beginPath();
+    ctx.moveTo(cx + ang * 10, yy + 2);
+    ctx.lineTo(cx + ang * 20, yy - Math.round(18 * scale));
+    ctx.stroke();
+  }
+
+  // Tier 3: totem pole to the left
+  if (tier >= 3) {
+    const tx = x - 14;
+    const ty = yy + ht - 50;
+    ctx.fillStyle = "#5C3317";
+    ctx.fillRect(tx, ty, 8, 50);
+    // Totem faces
+    ctx.fillStyle = "#cc4400";
+    ctx.fillRect(tx - 2, ty + 4, 12, 10);
+    ctx.fillStyle = "#8B2020";
+    ctx.fillRect(tx - 2, ty + 20, 12, 10);
+    ctx.fillStyle = "#cc4400";
+    ctx.fillRect(tx - 2, ty + 36, 12, 10);
+    // Eyes
+    ctx.fillStyle = "#FFD700";
+    ctx.fillRect(tx, ty + 6, 2, 2);
+    ctx.fillRect(tx + 6, ty + 6, 2, 2);
+    ctx.fillRect(tx, ty + 22, 2, 2);
+    ctx.fillRect(tx + 6, ty + 22, 2, 2);
+  }
 
   // Smoke from top
   ctx.fillStyle = "rgba(180,180,180,0.3)";
@@ -1055,6 +1192,48 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number, upgrad
     ctx.beginPath();
     ctx.ellipse(sx, sy + 2, 16, 5, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    // ── Magazine / reload indicator above possessed unit ──
+    if (unit.maxMagazine > 0) {
+      const dotSize = 5;
+      const dotGap = 3;
+      const totalW = unit.maxMagazine * (dotSize + dotGap) - dotGap;
+      const dotX = sx - totalW / 2;
+      const dotY = sy - 56;
+
+      if (unit.reloadTimer > 0) {
+        // Reload bar — shows reload progress
+        const cfg = { gunslinger: 1.4, dynamiter: 2.0, deputy: 0.9, bounty_hunter: 0.9, marshal: 1.1, miner: 1.0 } as Record<string, number>;
+        const reloadTime = cfg[unit.type] ?? 1.0;
+        const pct = 1 - unit.reloadTimer / reloadTime;
+        const barW = totalW + 4;
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(sx - barW / 2, dotY - 2, barW, 7);
+        ctx.fillStyle = "#FFD700";
+        ctx.fillRect(sx - barW / 2, dotY - 2, barW * pct, 7);
+        ctx.strokeStyle = "#FFD700";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - barW / 2, dotY - 2, barW, 7);
+        ctx.fillStyle = "#FFD700";
+        ctx.font = "6px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("RELOAD", sx, dotY + 10);
+        ctx.textAlign = "left";
+      } else {
+        // Ammo dots — filled = loaded, empty = spent
+        for (let i = 0; i < unit.maxMagazine; i++) {
+          const dx = dotX + i * (dotSize + dotGap);
+          const loaded = i < unit.magazine;
+          ctx.fillStyle = loaded ? "#FFD700" : "rgba(255,215,0,0.2)";
+          ctx.strokeStyle = "#FFD700";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(dx + dotSize / 2, dotY, dotSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
   }
 }
 
@@ -2235,6 +2414,23 @@ function drawHudGoldIcon(ctx: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 // ─── Nightfall Timer Overlay (drawn in game world, top-center) ────────────────
+
+// ─── Level Name Banner (top-left of game world) ──────────────────────────────
+
+function drawLevelName(ctx: CanvasRenderingContext2D, state: GameState) {
+  if (!state.levelName) return;
+  const isAmbush = state.isAmbushLevel;
+  const label = isAmbush ? `⚔ AMBUSH: ${state.levelName.toUpperCase()}` : `⚔ ${state.levelName.toUpperCase()}`;
+  ctx.fillStyle = "rgba(10,5,0,0.65)";
+  ctx.fillRect(8, 8, 200, 20);
+  ctx.strokeStyle = "rgba(139,94,60,0.5)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8, 8, 200, 20);
+  ctx.fillStyle = isAmbush ? "#cc8800" : "#F4E4C1";
+  ctx.font = "bold 9px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(label, 14, 22);
+}
 
 export function drawNightfallTimer(ctx: CanvasRenderingContext2D, state: GameState, canvasW: number) {
   const NIGHTFALL_TIME = 180;

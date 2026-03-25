@@ -15,7 +15,7 @@ const DEFAULT_UPGRADES: UpgradeState = {
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
-  saloonRevenue: 0, saloonHp: 0,
+  saloonRevenue: 0, saloonHp: 0, barracks: 0,
 };
 
 // ─── Save / Load (localStorage) ──────────────────────────────────────────────
@@ -675,7 +675,8 @@ const UPGRADE_UNIT_MAP: Record<string, { unit: string; tier: (u: UpgradeState) =
   dynamiterRadius: { unit: "dynamiter",  tier: u => u.dynamiterRadius },
   marshalHp:       { unit: "marshal",    tier: u => u.marshalHp },
   saloonRevenue:   { unit: "saloon",     tier: u => u.saloonRevenue },
-  saloonHp:        { unit: "saloon",     tier: u => u.saloonHp },
+  saloonHp:        { unit: "saloon_hp",  tier: u => u.saloonHp },
+  barracks:        { unit: "deputy",     tier: u => u.barracks },
 };
 
 function UnitPreview({ unitType, tier }: { unitType: string; tier: number }) {
@@ -721,6 +722,58 @@ function drawUpgradePreview(ctx: CanvasRenderingContext2D, unitType: string, tie
       ctx.font = "bold 7px monospace";
       ctx.textAlign = "center";
       ctx.fillText("★★★", cx, 18);
+      ctx.textAlign = "left";
+    }
+    return;
+  }
+
+  // ── Saloon HP (fortification) ──
+  if (unitType === "saloon_hp") {
+    // Fortified saloon: thicker walls, reinforced beams, watchtower per tier
+    ctx.fillStyle = "#4a2810";
+    ctx.fillRect(6, 18, 48, 44);
+    ctx.fillStyle = "#3d1f0a";
+    ctx.fillRect(4, 8, 52, 12);
+    // Reinforced beams
+    ctx.fillStyle = "#2a1008";
+    ctx.fillRect(6, 18, 4, 44);
+    ctx.fillRect(50, 18, 4, 44);
+    // Windows
+    ctx.fillStyle = "#FFD060";
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(12, 24, 10, 8);
+    ctx.fillRect(38, 24, 10, 8);
+    ctx.globalAlpha = 1;
+    // HP bar indicator
+    ctx.fillStyle = "#4CAF50";
+    const hpW = Math.round(40 * (tier / 3));
+    ctx.fillRect(10, 66, 40, 4);
+    ctx.fillStyle = "#2a8a30";
+    ctx.fillRect(10, 66, hpW, 4);
+    // Tier upgrades
+    if (tier >= 1) {
+      // Iron reinforcement strips
+      ctx.fillStyle = "#888";
+      ctx.fillRect(4, 30, 52, 2);
+      ctx.fillRect(4, 44, 52, 2);
+    }
+    if (tier >= 2) {
+      // Sandbag barricade at base
+      ctx.fillStyle = "#8B6914";
+      ctx.fillRect(4, 58, 52, 4);
+      ctx.fillStyle = "#a07830";
+      for (let i = 0; i < 5; i++) ctx.fillRect(5 + i * 10, 56, 9, 4);
+    }
+    if (tier >= 3) {
+      // Watchtower on top
+      ctx.fillStyle = "#3d1f0a";
+      ctx.fillRect(20, 2, 20, 8);
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(28, 0, 4, 4); // flag
+      ctx.fillStyle = "#FFD700";
+      ctx.font = "bold 6px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("⚔", cx, 7);
       ctx.textAlign = "left";
     }
     return;
@@ -1600,22 +1653,6 @@ export default function FrontierWars() {
     }
   };
 
-  // ── Start battle (regular level by index) ──
-  const startBattle = useCallback((level: number) => {
-    stateRef.current = createInitialState(level, upgrades, unlockedUnits, difficulty); // eslint-disable-line react-hooks/exhaustive-deps
-    setScreen("battle");
-    lastTimeRef.current = performance.now();
-    animFrameRef.current = requestAnimationFrame(gameLoop);
-    stopBgMusic();
-    try {
-      const music = new Audio("/sounds/secret-page.mp3");
-      music.volume = 0.25;
-      music.loop = true;
-      music.play().catch(() => {});
-      bgMusicRef.current = music;
-    } catch (e) { void e; }
-  }, [upgrades, unlockedUnits, difficulty, gameLoop]);
-
   // ── Start battle from a CampaignEntry (regular or ambush) ──
   const startBattleFromEntry = useCallback((entry: CampaignEntry) => {
     // Ambush levels encoded as 100+index so engine can distinguish them
@@ -2082,7 +2119,7 @@ export default function FrontierWars() {
                 pausedRef.current = false;
                 setPaused(false);
                 cancelAnimationFrame(animFrameRef.current);
-                startBattle(currentLevel);
+                startBattleFromEntry(currentEntry);
               }}
               onSave={handleSave}
               onQuitToMenu={() => {

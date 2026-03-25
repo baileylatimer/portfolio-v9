@@ -156,6 +156,12 @@ export function getStats(type: UnitType, upgrades: UpgradeState): UnitStats {
       base.maxHp = base.hp;
       break;
   }
+  // Barracks: +8% HP / +5% damage for all combat units (not miners)
+  if (type !== "miner" && upgrades.barracks > 0) {
+    base.hp = Math.round(base.hp * (1 + upgrades.barracks * 0.08));
+    base.maxHp = base.hp;
+    base.damage = Math.round(base.damage * (1 + upgrades.barracks * 0.05));
+  }
   return base;
 }
 
@@ -376,6 +382,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
   { key: "dynamiterRadius",  label: "Bigger Blast",        description: "+25% explosion radius per level", cost: 2, maxLevel: 3 },
   { key: "marshalHp",        label: "Marshal Fortitude",   description: "+100 HP per level",               cost: 2, maxLevel: 3 },
   { key: "saloonHp",         label: "Saloon Fortification", description: "+300 max HP per level (1500→2400)", cost: 1, maxLevel: 3 },
+  { key: "barracks",         label: "War Room",             description: "+8% HP & +5% damage for all combat units per level", cost: 2, maxLevel: 3 },
 ];
 
 // ─── Upgrade Points Per Level ─────────────────────────────────────────────────
