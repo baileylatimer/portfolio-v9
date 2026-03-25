@@ -40,7 +40,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   const sortedUnits = [...state.units].sort((a, b) => a.pos.y - b.pos.y);
   sortedUnits.forEach(u => {
     if (u.state === "garrison") return; // hidden inside saloon
-    drawUnit(ctx, u, cam);
+    drawUnit(ctx, u, cam, state.upgrades);
   });
 
   // ── Projectiles ──
@@ -803,7 +803,7 @@ function drawDeadUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number) {
   ctx.restore();
 }
 
-function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number) {
+function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number, upgrades?: import("./types").UpgradeState) {
   // Dead units: draw blood pool + fallen body
   if (unit.state === "dead") {
     drawDeadUnit(ctx, unit, cam);
@@ -822,13 +822,21 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number) {
   }
 
   const isEnemy = unit.team === "enemy";
+  // Compute upgrade tier for player units (enemy always tier 0)
+  const depTier   = (!isEnemy && upgrades) ? Math.max(upgrades.deputyHp,   upgrades.deputyDamage)   : 0;
+  const minTier   = (!isEnemy && upgrades) ? Math.max(upgrades.minerSpeed,  upgrades.minerCapacity)  : 0;
+  const gunTier   = (!isEnemy && upgrades) ? Math.max(upgrades.gunslingerRange, upgrades.gunslingerRate) : 0;
+  const dynTier   = (!isEnemy && upgrades) ? upgrades.dynamiterRadius : 0;
+  const marTier   = (!isEnemy && upgrades) ? upgrades.marshalHp : 0;
+  const btyTier   = (!isEnemy && upgrades) ? Math.max(upgrades.bountyHp, upgrades.bountyDamage) : 0;
+
   switch (unit.type) {
-    case "miner":         drawMinerSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "deputy":        drawDeputySprite(ctx, sx, sy, unit, isEnemy); break;
-    case "gunslinger":    drawGunslingerSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "dynamiter":     drawDynamiterSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "bounty_hunter": drawBountyHunterSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "marshal":       drawMarshalSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "miner":         drawMinerSprite(ctx, sx, sy, unit, isEnemy, minTier); break;
+    case "deputy":        drawDeputySprite(ctx, sx, sy, unit, isEnemy, depTier); break;
+    case "gunslinger":    drawGunslingerSprite(ctx, sx, sy, unit, isEnemy, gunTier); break;
+    case "dynamiter":     drawDynamiterSprite(ctx, sx, sy, unit, isEnemy, dynTier); break;
+    case "bounty_hunter": drawBountyHunterSprite(ctx, sx, sy, unit, isEnemy, btyTier); break;
+    case "marshal":       drawMarshalSprite(ctx, sx, sy, unit, isEnemy, marTier); break;
     // Native faction
     case "brave":         drawBraveSprite(ctx, sx, sy, unit); break;
     case "archer":        drawArcherSprite(ctx, sx, sy, unit); break;
@@ -882,7 +890,7 @@ const E = {
   boot:   "#0a0505",   // near-black boots
 };
 
-function drawMinerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawMinerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" || unit.state === "returning" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
   const mining = unit.state === "mining";
   const armAngle = mining ? Math.sin(unit.animFrame * 2) * 0.8 : 0;
@@ -940,10 +948,26 @@ function drawMinerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, un
   ctx.fillStyle = isEnemy ? E.skin : COLORS.playerSkin;
   ctx.fillRect(x - 7, y - 42 + bob, 14, 12);
 
-  // Hard hat (enemy gets red, player gets gold)
-  ctx.fillStyle = isEnemy ? "#8B2020" : "#FFD700";
+  // Hard hat — tier 0: plain gold, tier 1: gold + headlamp, tier 2+: gold + headlamp + nugget belt
+  ctx.fillStyle = isEnemy ? "#8B2020" : (tier >= 1 ? "#FFD700" : "#c8a000");
   ctx.fillRect(x - 9, y - 44 + bob, 18, 5);
   ctx.fillRect(x - 7, y - 48 + bob, 14, 6);
+  if (!isEnemy && tier >= 1) {
+    // Headlamp
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(x + 5, y - 46 + bob, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,150,0.5)";
+    ctx.beginPath();
+    ctx.arc(x + 5, y - 46 + bob, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (!isEnemy && tier >= 2) {
+    // Gold nuggets on belt
+    ctx.fillStyle = "#FFD700";
+    for (let i = 0; i < 4; i++) ctx.fillRect(x - 8 + i * 5, y - 16 + bob, 3, 3);
+  }
 
   // Eyes
   ctx.fillStyle = "#2a1a0a";
@@ -1012,7 +1036,7 @@ function drawMinerCart(ctx: CanvasRenderingContext2D, x: number, y: number, faci
   }
 }
 
-function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
 
   // Drive swing from attackCooldown regardless of state — so animation persists
@@ -1037,19 +1061,42 @@ function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, u
   ctx.fillRect(x - 8, y - 4 + bob, 7, 6);
   ctx.fillRect(x + 1, y - 4 + bob, 7, 6);
 
-  // Body (vest)
+  // Body (vest) — tier 2+: gold trim on vest
   ctx.fillStyle = isEnemy ? E.cloth : COLORS.playerCloth;
   ctx.fillRect(x - 9, y - 30 + bob, 18, 16);
-  // Badge (enemy has skull, player has star)
-  ctx.fillStyle = isEnemy ? E.badge : COLORS.playerBadge;
+  if (!isEnemy && tier >= 2) {
+    // Gold trim on vest edges
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 9, y - 30 + bob, 18, 16);
+  }
+  // Badge — tier 0: plain silver, tier 1: silver star, tier 2: gold star, tier 3: gold star + glow
+  const badgeColor = isEnemy ? E.badge : (tier >= 2 ? "#FFD700" : tier >= 1 ? "#C0C0C0" : "#888");
+  ctx.fillStyle = badgeColor;
   ctx.beginPath();
   ctx.arc(x, y - 24 + bob, 4, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = isEnemy ? "#ffaaaa" : "#8B6914";
+  if (!isEnemy && tier >= 3) {
+    // Badge glow
+    ctx.fillStyle = "rgba(255,215,0,0.3)";
+    ctx.beginPath();
+    ctx.arc(x, y - 24 + bob, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = isEnemy ? "#ffaaaa" : (tier >= 1 ? "#1a0a00" : "#8B6914");
   ctx.font = "5px monospace";
   ctx.textAlign = "center";
   ctx.fillText(isEnemy ? "✕" : "★", x, y - 22 + bob);
   ctx.textAlign = "left";
+  // Tier 3: bandolier
+  if (!isEnemy && tier >= 3) {
+    ctx.strokeStyle = "#8B6914";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 9, y - 30 + bob);
+    ctx.lineTo(x + 5, y - 14 + bob);
+    ctx.stroke();
+  }
 
   // Left arm (idle / back-swing)
   ctx.fillStyle = isEnemy ? E.skin : COLORS.playerSkin;
@@ -1091,13 +1138,21 @@ function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, u
   ctx.fillStyle = isEnemy ? E.skin : COLORS.playerSkin;
   ctx.fillRect(x - 7, y - 42 + bob, 14, 12);
 
-  // Sheriff hat
-  ctx.fillStyle = isEnemy ? E.hat : COLORS.playerHat;
+  // Sheriff hat — tier 0: plain, tier 1: silver band, tier 2: red plume, tier 3: gold hat
+  const hatFill = isEnemy ? E.hat : (tier >= 3 ? "#8B6914" : COLORS.playerHat);
+  ctx.fillStyle = hatFill;
   ctx.fillRect(x - 10, y - 44 + bob, 20, 4);
   ctx.fillRect(x - 7, y - 52 + bob, 14, 10);
   // Hat band
-  ctx.fillStyle = isEnemy ? E.hatBand : "#8B6914";
+  ctx.fillStyle = isEnemy ? E.hatBand : (tier >= 2 ? "#cc2200" : tier >= 1 ? "#C0C0C0" : "#8B6914");
   ctx.fillRect(x - 7, y - 46 + bob, 14, 2);
+  // Tier 2+: red plume
+  if (!isEnemy && tier >= 2) {
+    ctx.fillStyle = "#cc2200";
+    ctx.beginPath();
+    ctx.ellipse(x + 4, y - 56 + bob, 3, 8, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Eyes
   ctx.fillStyle = "#2a1a0a";
@@ -1105,7 +1160,7 @@ function drawDeputySprite(ctx: CanvasRenderingContext2D, x: number, y: number, u
   ctx.fillRect(x + 1, y - 38 + bob, 3, 3);
 }
 
-function drawGunslingerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawGunslingerSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
   const shooting = unit.state === "attacking";
 
@@ -1123,12 +1178,32 @@ function drawGunslingerSprite(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.fillRect(x - 8, y - 4 + bob, 7, 6);
   ctx.fillRect(x + 1, y - 4 + bob, 7, 6);
 
-  // Duster coat (enemy gets dark red, player gets tan)
-  ctx.fillStyle = isEnemy ? "#6B1414" : "#8B6914";
+  // Duster coat — tier 2+: gold trim
+  ctx.fillStyle = isEnemy ? "#6B1414" : (tier >= 2 ? "#a07830" : "#8B6914");
   ctx.fillRect(x - 10, y - 32 + bob, 20, 18);
   ctx.fillStyle = isEnemy ? "#4a0e0e" : "#6B4914";
   ctx.fillRect(x - 10, y - 14 + bob, 5, 14);
   ctx.fillRect(x + 5, y - 14 + bob, 5, 14);
+  if (!isEnemy && tier >= 2) {
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 10, y - 32 + bob, 20, 18);
+  }
+  // Tier 1+: dual holsters
+  if (!isEnemy && tier >= 1) {
+    ctx.fillStyle = "#3d1f0a";
+    ctx.fillRect(x - 10, y - 16 + bob, 5, 8);
+    ctx.fillRect(x + 5, y - 16 + bob, 5, 8);
+    ctx.fillStyle = "#555";
+    ctx.fillRect(x - 9, y - 14 + bob, 3, 6);
+    ctx.fillRect(x + 6, y - 14 + bob, 3, 6);
+  }
+  // Tier 3+: gold spurs
+  if (!isEnemy && tier >= 3) {
+    ctx.fillStyle = "#FFD700";
+    ctx.fillRect(x - 10, y - 2 + bob, 5, 2);
+    ctx.fillRect(x + 5, y - 2 + bob, 5, 2);
+  }
 
   // Arms + gun
   ctx.fillStyle = isEnemy ? E.skin : COLORS.playerSkin;
@@ -1168,7 +1243,7 @@ function drawGunslingerSprite(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.fillRect(x - 7, y - 36 + bob, 14, 4);
 }
 
-function drawDynamiterSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawDynamiterSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
   const throwing = unit.state === "attacking";
 
@@ -1187,17 +1262,23 @@ function drawDynamiterSprite(ctx: CanvasRenderingContext2D, x: number, y: number
   ctx.fillStyle = isEnemy ? "#5c1010" : "#5c3317";
   ctx.fillRect(x - 11, y - 32 + bob, 22, 18);
 
-  // Bandolier
-  ctx.strokeStyle = "#8B6914";
+  // Bandolier — tier 2+: gold bandolier
+  ctx.strokeStyle = (!isEnemy && tier >= 2) ? "#FFD700" : "#8B6914";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x - 11, y - 32 + bob);
   ctx.lineTo(x + 5, y - 14 + bob);
   ctx.stroke();
-  // TNT sticks on bandolier
-  for (let i = 0; i < 3; i++) {
+  // TNT sticks — more sticks at higher tiers
+  const tntCount = isEnemy ? 3 : 2 + tier;
+  for (let i = 0; i < tntCount; i++) {
     ctx.fillStyle = "#cc2200";
     ctx.fillRect(x - 8 + i * 5, y - 28 + bob, 4, 8);
+    // Tier 2+: lit fuse glow
+    if (!isEnemy && tier >= 2) {
+      ctx.fillStyle = "#FFD700";
+      ctx.fillRect(x - 7 + i * 5, y - 32 + bob, 2, 5);
+    }
   }
 
   // Arms
@@ -1233,7 +1314,7 @@ function drawDynamiterSprite(ctx: CanvasRenderingContext2D, x: number, y: number
   ctx.fillRect(x + 1, y - 42 + bob, 3, 3);
 }
 
-function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.2) * 1.5 : 0;
 
   // Drive swing from attackCooldown regardless of state
@@ -1255,23 +1336,50 @@ function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.fillRect(x - 11, y - 4 + bob, 10, 7);
   ctx.fillRect(x + 1, y - 4 + bob, 10, 7);
 
-  // Long duster coat
+  // Long duster coat — tier 2+: gold trim
   ctx.fillStyle = isEnemy ? "#3a1010" : "#4a3020";
   ctx.fillRect(x - 14, y - 38 + bob, 28, 24);
   // Coat tails
   ctx.fillRect(x - 14, y - 14 + bob, 8, 14);
   ctx.fillRect(x + 6, y - 14 + bob, 8, 14);
+  if (!isEnemy && tier >= 2) {
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 14, y - 38 + bob, 28, 24);
+  }
+  // Tier 3: red cape
+  if (!isEnemy && tier >= 3) {
+    ctx.fillStyle = "#cc2200";
+    ctx.beginPath();
+    ctx.moveTo(x - 14, y - 38 + bob);
+    ctx.lineTo(x - 22, y - 10 + bob);
+    ctx.lineTo(x - 14, y - 14 + bob);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  // Chest plate / vest
-  ctx.fillStyle = isEnemy ? "#6B1414" : "#6B4423";
+  // Chest plate / vest — tier 1+: silver plate, tier 2+: gold plate
+  ctx.fillStyle = isEnemy ? "#6B1414" : (tier >= 2 ? "#8B6914" : tier >= 1 ? "#5a5a5a" : "#6B4423");
   ctx.fillRect(x - 10, y - 36 + bob, 20, 18);
+  if (!isEnemy && tier >= 1) {
+    // Chest plate overlay
+    ctx.fillStyle = tier >= 2 ? "#FFD700" : "#C0C0C0";
+    ctx.fillRect(x - 8, y - 36 + bob, 16, 14);
+  }
 
-  // Big badge (enemy skull, player star)
-  ctx.fillStyle = isEnemy ? E.badge : "#FFD700";
+  // Big badge — tier 0: silver, tier 1+: gold
+  const marshalBadgeColor = isEnemy ? E.badge : (tier >= 1 ? "#FFD700" : "#C0C0C0");
+  ctx.fillStyle = marshalBadgeColor;
   ctx.beginPath();
   ctx.arc(x, y - 28 + bob, 6, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = isEnemy ? "#ffaaaa" : "#8B6914";
+  if (!isEnemy && tier >= 2) {
+    ctx.fillStyle = "rgba(255,215,0,0.3)";
+    ctx.beginPath();
+    ctx.arc(x, y - 28 + bob, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = isEnemy ? "#ffaaaa" : "#1a0a00";
   ctx.font = "7px monospace";
   ctx.textAlign = "center";
   ctx.fillText(isEnemy ? "✕" : "★", x, y - 25 + bob);
@@ -1310,12 +1418,21 @@ function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.fillStyle = isEnemy ? E.skin : COLORS.playerSkin;
   ctx.fillRect(x - 9, y - 52 + bob, 18, 14);
 
-  // Big marshal hat
-  ctx.fillStyle = isEnemy ? E.hat : "#1a0a00";
+  // Big marshal hat — tier 3: gold hat
+  ctx.fillStyle = isEnemy ? E.hat : (tier >= 3 ? "#8B6914" : "#1a0a00");
   ctx.fillRect(x - 14, y - 54 + bob, 28, 5);
   ctx.fillRect(x - 10, y - 66 + bob, 20, 14);
-  ctx.fillStyle = isEnemy ? E.hatBand : "#8B6914";
+  // Hat band — tier 1: silver, tier 2: red, tier 3: gold
+  ctx.fillStyle = isEnemy ? E.hatBand : (tier >= 3 ? "#FFD700" : tier >= 2 ? "#cc2200" : tier >= 1 ? "#C0C0C0" : "#8B6914");
   ctx.fillRect(x - 10, y - 56 + bob, 20, 2);
+  // Tier 1+: plume
+  if (!isEnemy && tier >= 1) {
+    const plumeColor = tier >= 3 ? "#FFD700" : tier >= 2 ? "#cc2200" : "#C0C0C0";
+    ctx.fillStyle = plumeColor;
+    ctx.beginPath();
+    ctx.ellipse(x + 6, y - 70 + bob, 4, 10, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Mustache
   ctx.fillStyle = "#3d2b1f";
@@ -1329,7 +1446,7 @@ function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, 
 
 // ─── Bounty Hunter Sprite (Django-inspired) ───────────────────────────────────
 
-function drawBountyHunterSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+function drawBountyHunterSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false, tier = 0) {
   const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.2) * 2 : 0;
   const attackPeriod = 1 / unit.stats.attackRate;
   const swingPhase = unit.attackCooldown > 0 ? Math.min(1, unit.attackCooldown / attackPeriod) : 0;
@@ -1413,14 +1530,26 @@ function drawBountyHunterSprite(ctx: CanvasRenderingContext2D, x: number, y: num
   ctx.lineTo(x + 1, y - 43 + bob);
   ctx.stroke();
 
-  // Wanted poster badge on chest
-  ctx.fillStyle = isEnemy ? "#8B2020" : "#8B6914";
+  // Wanted poster badge — tier 1+: gold badge, tier 2+: glowing
+  ctx.fillStyle = isEnemy ? "#8B2020" : (tier >= 1 ? "#8B6914" : "#5a4010");
   ctx.fillRect(x - 3, y - 30 + bob, 6, 8);
-  ctx.fillStyle = isEnemy ? "#ffaaaa" : "#FFD700";
+  if (!isEnemy && tier >= 2) {
+    ctx.fillStyle = "rgba(255,215,0,0.25)";
+    ctx.fillRect(x - 6, y - 33 + bob, 12, 14);
+  }
+  ctx.fillStyle = isEnemy ? "#ffaaaa" : (tier >= 1 ? "#FFD700" : "#c8a000");
   ctx.font = "5px monospace";
   ctx.textAlign = "center";
   ctx.fillText("$", x, y - 24 + bob);
   ctx.textAlign = "left";
+  // Tier 3: gold chain
+  if (!isEnemy && tier >= 3) {
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y - 26 + bob, 8, Math.PI * 0.2, Math.PI * 0.8);
+    ctx.stroke();
+  }
 }
 
 // ─── Native Unit Sprites ──────────────────────────────────────────────────────
