@@ -4,7 +4,7 @@ import type {
   GameState, Unit, Building, Projectile, GoldPile,
   UnitType, Team, Vec2, Difficulty, AiStrategy,
 } from "./types";
-import { getStats, WORLD, LEVELS, AMBUSH_LEVELS, GOLD_PILE_POSITIONS, TRAIN_TIME, MAX_UNITS, PASSIVE_GOLD_BASE, DIFFICULTY_DEFS } from "./configs";
+import { getStats, WORLD, LEVELS, AMBUSH_LEVELS, GOLD_PILE_POSITIONS, TRAIN_TIME, MAX_UNITS, PASSIVE_GOLD_BASE, DIFFICULTY_DEFS, getUpgradePoints } from "./configs";
 import type { Stance } from "./types";
 
 let _idCounter = 0;
@@ -24,8 +24,9 @@ export function createInitialState(
   const lvl = isAmbush ? AMBUSH_LEVELS[ambushIndex] : LEVELS[level];
   const diff = DIFFICULTY_DEFS[difficulty];
 
-  // Determine AI strategy for this level
+  // Determine AI strategy and biome for this level
   const aiStrategy: AiStrategy = (!isAmbush && lvl.aiStrategy) ? lvl.aiStrategy : "balanced";
+  const biome = lvl.biome ?? "desert";
 
   const buildings: Building[] = [
     { id: "player_saloon", type: "saloon",      team: "player", pos: { x: WORLD.playerSaloonX, y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
@@ -63,6 +64,7 @@ export function createInitialState(
     trainingTime: 0,
     passiveGoldTimer: 0,
     stance: "defense",
+    garrisonExitTimer: 0,
     enemyGold,
     enemySpawnTimer: isAmbush ? 4.0 : 3.0,
     upgradePoints: 0,
@@ -78,6 +80,7 @@ export function createInitialState(
     difficulty,
     aiStrategy,
     enemyGarrisoned: false,
+    biome,
   };
 }
 
@@ -182,6 +185,8 @@ export function updateGame(state: GameState, dt: number): GameState {
 
   const s = { ...state };
   s.time += dt;
+  // Tick down garrison exit timer — miners are held back until this reaches 0
+  if (s.garrisonExitTimer > 0) s.garrisonExitTimer = Math.max(0, s.garrisonExitTimer - dt);
   s.units = s.units.map(u => ({ ...u }));
   s.goldPiles = s.goldPiles.map(p => ({ ...p }));
   s.projectiles = s.projectiles.map(p => ({ ...p }));
@@ -285,7 +290,7 @@ export function updateGame(state: GameState, dt: number): GameState {
   if (playerSaloon && playerSaloon.hp <= 0) s.phase = "DEFEAT";
   if (enemySaloon && enemySaloon.hp <= 0) {
     s.phase = "VICTORY";
-    s.upgradePoints += 2;
+    s.upgradePoints += getUpgradePoints(s.level >= 100 ? s.level - 100 : s.level, s.isAmbushLevel);
   }
 
   return s;
@@ -649,9 +654,15 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
   const isPlayer = unit.team === "player";
 
   // ── Garrison stance: miners retreat to saloon too ──
+  // garrisonExitTimer > 0 means combat units just left — miners wait for them to clear first
   if (isPlayer && s.stance === "garrison") {
     const distToSaloon = Math.abs(unit.pos.x - saloonCenter);
     if (distToSaloon > 30) {
+      // If the garrison exit timer is still counting down, miners hold position
+      if (s.garrisonExitTimer > 0) {
+        unit.state = "idle";
+        return;
+      }
       unit.state = "walking";
       unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
       unit.pos.x += unit.facing * unit.stats.speed * dt;
@@ -914,9 +925,14 @@ function updateEnemyMinerGarrison(unit: Unit, s: GameState, dt: number) {
   const saloonCenter = enemySaloon.pos.x + enemySaloon.width / 2;
   const dist = Math.abs(unit.pos.x - saloonCenter);
   if (dist > 30) {
-    unit.state = "walking";
+    // If carrying gold, keep cart + move at slow return speed (punishable)
+    // If empty, walk at normal speed
+    const fleeSpeed = unit.goldCarrying > 0
+      ? unit.stats.speed * 0.6   // same slow speed as normal gold return — can be chased
+      : unit.stats.speed;
+    unit.state = unit.goldCarrying > 0 ? "returning" : "walking";
     unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
-    unit.pos.x += unit.facing * unit.stats.speed * 1.3 * dt; // run faster when fleeing
+    unit.pos.x += unit.facing * fleeSpeed * dt;
   } else {
     unit.state = "garrison";
     unit.facing = -1;
@@ -1282,7 +1298,15 @@ export function queueUnit(state: GameState, type: UnitType): GameState {
 // ─── Set Stance ───────────────────────────────────────────────────────────────
 
 export function setStance(state: GameState, stance: Stance): GameState {
-  return { ...state, stance };
+  // When leaving garrison, give miners a 2.5s head-start delay so combat units
+  // exit first and don't leave miners exposed at the front
+  const wasGarrison = state.stance === "garrison";
+  const leavingGarrison = wasGarrison && stance !== "garrison";
+  return {
+    ...state,
+    stance,
+    garrisonExitTimer: leavingGarrison ? 2.5 : state.garrisonExitTimer,
+  };
 }
 
 // ─── Select Unit (possession) ─────────────────────────────────────────────────
@@ -1318,7 +1342,8 @@ export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: 
       // Never move a dead or dying unit
       if (u.state === "dead" || u.state === "dying") return u;
       // Use the unit's own speed + 10% boost (not a hardcoded 200)
-      const speed = u.stats.speed * 1.1;
+      // +15% speed bonus on top of the already-bumped base speeds
+      const speed = u.stats.speed * 1.15;
       const nx = Math.max(0, Math.min(WORLD.width, u.pos.x + dx * speed * dt));
       const ny = Math.max(POSSESSED_MIN_Y, Math.min(POSSESSED_MAX_Y, u.pos.y + dy * speed * dt));
       return {

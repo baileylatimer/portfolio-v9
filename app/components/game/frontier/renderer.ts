@@ -1,9 +1,9 @@
 // ─── Frontier Wars — Canvas 2D Renderer ───────────────────────────────────────
 
-import type { GameState, Unit, Building, Projectile, GoldPile } from "./types";
+import type { GameState, Unit, Building, Projectile, GoldPile, Biome } from "./types";
 import type { Stance } from "./types";
 import { COLORS } from "./types";
-import { WORLD as W, MAX_UNITS } from "./configs";
+import { WORLD as W, MAX_UNITS, BIOME_PALETTES } from "./configs";
 
 // ─── Main Render ──────────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   ctx.clearRect(0, 0, canvasW, canvasH);
 
   // ── Background ──
-  drawBackground(ctx, canvasW, gameH, cam, state.time, state.nightfall);
+  drawBackground(ctx, canvasW, gameH, cam, state.time, state.nightfall, state.biome ?? "desert");
 
   // ── World clip ──
   ctx.save();
@@ -89,38 +89,40 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
 
 // ─── Background ───────────────────────────────────────────────────────────────
 
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number, nightfall = false) {
+function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number, nightfall = false, biome: Biome = "desert") {
+  const pal = BIOME_PALETTES[biome];
+
   // ── Sunset/night transition ──
   // time 0-150s = full day, 150-180s = sunset transition, 180s+ = night
   const SUNSET_START = 150;
   const NIGHTFALL_TIME = 180;
   const nightT = nightfall ? 1 : Math.max(0, Math.min(1, (time - SUNSET_START) / (NIGHTFALL_TIME - SUNSET_START)));
 
-  // Sky gradient — blends from day orange to deep night blue/purple
+  // Hex color lerp helper
+  const lerp = (a: string, b: string, t: number) => {
+    const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+    const r = Math.round(ar + (br - ar) * t).toString(16).padStart(2, "0");
+    const g = Math.round(ag + (bg - ag) * t).toString(16).padStart(2, "0");
+    const bl2 = Math.round(ab + (bb - ab) * t).toString(16).padStart(2, "0");
+    return `#${r}${g}${bl2}`;
+  };
+
+  // Sky gradient — blends from biome day palette to biome night palette
   const sky = ctx.createLinearGradient(0, 0, 0, h * 0.65);
   if (nightT < 0.01) {
-    sky.addColorStop(0, "#1a0a2e");
-    sky.addColorStop(0.4, "#7a3520");
-    sky.addColorStop(1, "#c2713a");
+    sky.addColorStop(0, pal.skyTop);
+    sky.addColorStop(0.4, pal.skyMid);
+    sky.addColorStop(1, pal.skyBottom);
   } else if (nightT < 1) {
-    // Sunset blend
-    const lerp = (a: string, b: string, t: number) => {
-      const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
-      const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
-      const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
-      const r = Math.round(ar + (br - ar) * t).toString(16).padStart(2, "0");
-      const g = Math.round(ag + (bg - ag) * t).toString(16).padStart(2, "0");
-      const bl2 = Math.round(ab + (bb - ab) * t).toString(16).padStart(2, "0");
-      return `#${r}${g}${bl2}`;
-    };
-    sky.addColorStop(0, lerp("#1a0a2e", "#050510", nightT));
-    sky.addColorStop(0.4, lerp("#7a3520", "#cc4400", nightT));
-    sky.addColorStop(1, lerp("#c2713a", "#ff6600", nightT));
+    sky.addColorStop(0, lerp(pal.skyTop, pal.nightSkyTop, nightT));
+    sky.addColorStop(0.4, lerp(pal.skyMid, pal.nightSkyMid, nightT));
+    sky.addColorStop(1, lerp(pal.skyBottom, pal.nightSkyBottom, nightT));
   } else {
-    // Full night
-    sky.addColorStop(0, "#050510");
-    sky.addColorStop(0.4, "#0a0520");
-    sky.addColorStop(1, "#1a0a10");
+    sky.addColorStop(0, pal.nightSkyTop);
+    sky.addColorStop(0.4, pal.nightSkyMid);
+    sky.addColorStop(1, pal.nightSkyBottom);
   }
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h * 0.65);
@@ -189,39 +191,120 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam
     ctx.globalAlpha = 1;
   }
 
-  // Distant mountains (parallax layer 1 — slow)
-  const mtnColor1 = nightT > 0.5 ? "#1a0a14" : "#3d1a0a";
-  const mtnColor2 = nightT > 0.5 ? "#2a1020" : "#5c2a12";
+  // Distant mountains (parallax layer 1 — slow) — use biome mountain colors
+  const mtnColor1 = nightT > 0.5 ? lerp(pal.mtnFar, "#0a0a0a", 0.5) : pal.mtnFar;
+  const mtnColor2 = nightT > 0.5 ? lerp(pal.mtnNear, "#0a0a0a", 0.4) : pal.mtnNear;
   drawMountains(ctx, w, h, cam * 0.05, mtnColor1, 0.55, 5);
   drawMountains(ctx, w, h, cam * 0.12, mtnColor2, 0.62, 7);
 
-  // Ground — darker at night
+  // Ground — blends between biome day and night ground colors
   const groundGrad = ctx.createLinearGradient(0, h * 0.65, 0, h);
   if (nightT > 0.5) {
-    groundGrad.addColorStop(0, "#4a3020");
-    groundGrad.addColorStop(0.3, "#3a2010");
-    groundGrad.addColorStop(1, "#2a1008");
+    groundGrad.addColorStop(0, lerp(pal.groundTop, pal.nightGroundTop, nightT));
+    groundGrad.addColorStop(0.3, lerp(pal.groundMid, pal.nightGroundMid, nightT));
+    groundGrad.addColorStop(1, lerp(pal.groundBottom, pal.nightGroundBottom, nightT));
   } else {
-    groundGrad.addColorStop(0, "#8B5E3C");
-    groundGrad.addColorStop(0.3, "#A0714F");
-    groundGrad.addColorStop(1, "#6B4423");
+    groundGrad.addColorStop(0, pal.groundTop);
+    groundGrad.addColorStop(0.3, pal.groundMid);
+    groundGrad.addColorStop(1, pal.groundBottom);
   }
   ctx.fillStyle = groundGrad;
   ctx.fillRect(0, h * 0.65, w, h * 0.35);
 
   // Ground line
-  ctx.strokeStyle = nightT > 0.5 ? "#3a2010" : "#6B4423";
+  ctx.strokeStyle = nightT > 0.5 ? lerp(pal.groundBottom, "#0a0a0a", 0.3) : pal.groundBottom;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, W.groundY);
   ctx.lineTo(w, W.groundY);
   ctx.stroke();
 
-  // Cacti (parallax layer 3)
-  drawCacti(ctx, w, h, cam * 0.3);
+  // Vegetation (parallax layer 3) — biome-specific
+  if (biome === "snow") {
+    drawSnowTrees(ctx, w, h, cam * 0.3);
+  } else if (biome === "forest" || biome === "river") {
+    drawTrees(ctx, w, h, cam * 0.3);
+  } else if (biome === "prairie") {
+    drawGrassTufts(ctx, w, h, cam * 0.3);
+  } else if (biome !== "volcanic" && biome !== "industrial") {
+    drawCacti(ctx, w, h, cam * 0.3);
+  }
 
-  // Dust particles
-  drawDust(ctx, w, h, cam, time);
+  // Dust particles — biome-tinted
+  drawDust(ctx, w, h, cam, time, pal.dustColor);
+}
+
+// ─── Biome Vegetation ─────────────────────────────────────────────────────────
+
+function drawSnowTrees(ctx: CanvasRenderingContext2D, w: number, h: number, offset: number) {
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const baseX = (i * 280 + 60) % (w + 200);
+    const x = ((baseX - offset % (w + 200)) + w + 200) % (w + 200) - 100;
+    const scale = 0.6 + Math.sin(i * 2.1) * 0.25;
+    const treeH = 55 * scale;
+    const tx = x;
+    const ty = W.groundY;
+    // Trunk
+    ctx.fillStyle = "#5a4a3a";
+    ctx.fillRect(tx - 4 * scale, ty - treeH * 0.35, 8 * scale, treeH * 0.35);
+    // Three tiers of pine
+    ctx.fillStyle = "#2a4a2a";
+    ctx.beginPath();
+    ctx.moveTo(tx, ty - treeH); ctx.lineTo(tx - 18 * scale, ty - treeH * 0.55); ctx.lineTo(tx + 18 * scale, ty - treeH * 0.55); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(tx, ty - treeH * 0.7); ctx.lineTo(tx - 22 * scale, ty - treeH * 0.3); ctx.lineTo(tx + 22 * scale, ty - treeH * 0.3); ctx.closePath(); ctx.fill();
+    // Snow caps
+    ctx.fillStyle = "rgba(220,235,245,0.85)";
+    ctx.beginPath();
+    ctx.moveTo(tx, ty - treeH); ctx.lineTo(tx - 8 * scale, ty - treeH * 0.75); ctx.lineTo(tx + 8 * scale, ty - treeH * 0.75); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(tx, ty - treeH * 0.7); ctx.lineTo(tx - 10 * scale, ty - treeH * 0.5); ctx.lineTo(tx + 10 * scale, ty - treeH * 0.5); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawTrees(ctx: CanvasRenderingContext2D, w: number, h: number, offset: number) {
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const baseX = (i * 320 + 80) % (w + 200);
+    const x = ((baseX - offset % (w + 200)) + w + 200) % (w + 200) - 100;
+    const scale = 0.7 + Math.sin(i * 1.7) * 0.2;
+    const treeH = 60 * scale;
+    const tx = x;
+    const ty = W.groundY;
+    // Trunk
+    ctx.fillStyle = "#3a2a1a";
+    ctx.fillRect(tx - 5 * scale, ty - treeH * 0.4, 10 * scale, treeH * 0.4);
+    // Canopy
+    ctx.fillStyle = "#2a5a1a";
+    ctx.beginPath();
+    ctx.arc(tx, ty - treeH * 0.7, 22 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a7a2a";
+    ctx.beginPath();
+    ctx.arc(tx - 8 * scale, ty - treeH * 0.8, 14 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawGrassTufts(ctx: CanvasRenderingContext2D, w: number, h: number, offset: number) {
+  const count = 20;
+  for (let i = 0; i < count; i++) {
+    const baseX = (i * 160 + 30) % (w + 100);
+    const x = ((baseX - offset % (w + 100)) + w + 100) % (w + 100) - 50;
+    const scale = 0.5 + Math.sin(i * 2.3) * 0.2;
+    const ty = W.groundY;
+    ctx.strokeStyle = "#6a8a20";
+    ctx.lineWidth = 2 * scale;
+    for (let j = 0; j < 5; j++) {
+      const bx = x + (j - 2) * 5 * scale;
+      const angle = -Math.PI / 2 + (j - 2) * 0.25;
+      ctx.beginPath();
+      ctx.moveTo(bx, ty);
+      ctx.lineTo(bx + Math.cos(angle) * 14 * scale, ty + Math.sin(angle) * 14 * scale);
+      ctx.stroke();
+    }
+  }
 }
 
 function drawMountains(ctx: CanvasRenderingContext2D, w: number, h: number, offset: number, color: string, yFrac: number, count: number) {
@@ -268,8 +351,8 @@ function drawCactus(ctx: CanvasRenderingContext2D, x: number, groundY: number, s
   ctx.fillRect(x + 12 * scale, groundY - h * 0.5 - 10 * scale, 6 * scale, 12 * scale);
 }
 
-function drawDust(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number) {
-  ctx.fillStyle = "rgba(180,120,60,0.15)";
+function drawDust(ctx: CanvasRenderingContext2D, w: number, h: number, cam: number, time: number, dustColor = "rgba(180,120,60,0.15)") {
+  ctx.fillStyle = dustColor;
   for (let i = 0; i < 8; i++) {
     const x = ((i * 317 + time * 20 - cam * 0.1) % (w + 100)) - 50;
     const y = W.groundY - 10 + Math.sin(i * 1.3 + time) * 8;
