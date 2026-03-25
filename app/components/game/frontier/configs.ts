@@ -1,6 +1,56 @@
 // ─── Frontier Wars — Unit & Level Configs ─────────────────────────────────────
 
-import type { UnitStats, UnitType, LevelConfig, UpgradeState } from "./types";
+import type { UnitStats, UnitType, LevelConfig, UpgradeState, Difficulty } from "./types";
+
+// ─── Difficulty Multipliers ───────────────────────────────────────────────────
+
+export interface DifficultyMult {
+  label: string;
+  description: string;
+  skulls: number;           // 1-4 for UI display
+  enemyHp: number;          // multiplier on enemy unit HP
+  enemyDamage: number;      // multiplier on enemy unit damage
+  enemyStartGold: number;   // multiplier on enemy starting gold
+  enemySpawnSpeed: number;  // multiplier on spawn timer (lower = faster)
+  enemyAggression: number;  // additive bonus to aggression
+  playerStartGold: number;  // multiplier on player starting gold
+  passiveGold: number;      // multiplier on passive gold income
+}
+
+export const DIFFICULTY_DEFS: Record<Difficulty, DifficultyMult> = {
+  tenderfoot: {
+    label: "TENDERFOOT",
+    description: "For greenhorns just off the stagecoach. Enemy is slow and underfunded.",
+    skulls: 1,
+    enemyHp: 0.75, enemyDamage: 0.75, enemyStartGold: 0.6,
+    enemySpawnSpeed: 0.65, enemyAggression: -0.12,
+    playerStartGold: 1.4, passiveGold: 1.3,
+  },
+  gunslinger: {
+    label: "GUNSLINGER",
+    description: "A fair fight. The current balanced experience.",
+    skulls: 2,
+    enemyHp: 1.0, enemyDamage: 1.0, enemyStartGold: 1.0,
+    enemySpawnSpeed: 1.0, enemyAggression: 0,
+    playerStartGold: 1.0, passiveGold: 1.0,
+  },
+  outlaw: {
+    label: "OUTLAW",
+    description: "They're meaner, faster, and better funded. Bring your best.",
+    skulls: 3,
+    enemyHp: 1.35, enemyDamage: 1.25, enemyStartGold: 1.6,
+    enemySpawnSpeed: 1.35, enemyAggression: 0.15,
+    playerStartGold: 0.85, passiveGold: 0.8,
+  },
+  legend: {
+    label: "LEGEND OF THE WEST",
+    description: "Only the deadliest survive. No mercy, no quarter.",
+    skulls: 4,
+    enemyHp: 1.7, enemyDamage: 1.55, enemyStartGold: 2.2,
+    enemySpawnSpeed: 1.7, enemyAggression: 0.28,
+    playerStartGold: 0.65, passiveGold: 0.55,
+  },
+};
 
 // ─── Base Unit Stats ──────────────────────────────────────────────────────────
 
@@ -194,7 +244,7 @@ export const CAMPAIGN_SEQUENCE: CampaignEntry[] = [
 
 export const LEVELS: LevelConfig[] = [
   {
-    // Level 0 — enemy has miner + deputy only; no new unlocks (you already start with both)
+    // Level 0 — economy-first: enemy spams miners, slow military buildup
     name: "Dusty Gulch",
     subtitle: "The Outlaw Gang moves in. Drive them out.",
     startGold: 500,
@@ -202,10 +252,11 @@ export const LEVELS: LevelConfig[] = [
     enemyBudget: 1500,
     enemyUnits: { miner: 3, deputy: 5 },
     mapX: { x: 120, y: 280 },
-    unlocks: [], // miner + deputy already unlocked at start
+    unlocks: [],
+    aiStrategy: "economy_first",
   },
   {
-    // Level 1 — first time you face Gunslingers; beat them to unlock them
+    // Level 1 — rush: fast early aggression with deputies + gunslingers
     name: "Rattlesnake Ridge",
     subtitle: "They've hired guns. Watch your flanks.",
     startGold: 600,
@@ -213,10 +264,11 @@ export const LEVELS: LevelConfig[] = [
     enemyBudget: 2200,
     enemyUnits: { miner: 4, deputy: 6, gunslinger: 3 },
     mapX: { x: 220, y: 240 },
-    unlocks: ["gunslinger"], // beat gunslingers → unlock gunslingers
+    unlocks: ["gunslinger"],
+    aiStrategy: "rush",
   },
   {
-    // Level 2 — first time you face Bounty Hunters; beat them to unlock them
+    // Level 2 — turtle: slow build then massive wave
     name: "Dead Man's Pass",
     subtitle: "Fast and relentless. Don't let them reach your saloon.",
     startGold: 700,
@@ -224,9 +276,11 @@ export const LEVELS: LevelConfig[] = [
     enemyBudget: 3000,
     enemyUnits: { miner: 3, deputy: 8, bounty_hunter: 3, gunslinger: 4 },
     mapX: { x: 310, y: 200 },
-    unlocks: ["bounty_hunter"], // beat bounty hunters → unlock bounty hunters
+    unlocks: ["bounty_hunter"],
+    aiStrategy: "turtle",
   },
   {
+    // Level 3 — economy war: 6 miners, races for gold supremacy
     name: "Goldfield",
     subtitle: "Rich territory. Your miners earn double — but so do theirs.",
     startGold: 800,
@@ -235,9 +289,10 @@ export const LEVELS: LevelConfig[] = [
     enemyUnits: { miner: 6, deputy: 6, bounty_hunter: 4, gunslinger: 5 },
     mapX: { x: 400, y: 230 },
     unlocks: [],
+    aiStrategy: "economy_war",
   },
   {
-    // Level 4 — first time you face Dynamiters; beat them to unlock them
+    // Level 4 — siege: dynamiters + gunslingers from range, avoids melee
     name: "Tombstone",
     subtitle: "They've got dynamite. Keep your units spread out.",
     startGold: 750,
@@ -245,10 +300,11 @@ export const LEVELS: LevelConfig[] = [
     enemyBudget: 4500,
     enemyUnits: { miner: 4, deputy: 6, bounty_hunter: 3, gunslinger: 4, dynamiter: 3 },
     mapX: { x: 490, y: 260 },
-    unlocks: ["dynamiter"], // beat dynamiters → unlock dynamiters
+    unlocks: ["dynamiter"],
+    aiStrategy: "siege",
   },
   {
-    // Level 5 — first time you face Marshals; beat them to unlock them
+    // Level 5 — balanced: smart mix of all units, adapts mid-game
     name: "Iron Valley",
     subtitle: "The Railroad Baron sends his enforcers.",
     startGold: 900,
@@ -256,9 +312,11 @@ export const LEVELS: LevelConfig[] = [
     enemyBudget: 5500,
     enemyUnits: { miner: 5, deputy: 8, bounty_hunter: 4, gunslinger: 5, dynamiter: 3, marshal: 2 },
     mapX: { x: 580, y: 210 },
-    unlocks: ["marshal"], // beat marshals → unlock marshals
+    unlocks: ["marshal"],
+    aiStrategy: "balanced",
   },
   {
+    // Level 6 — swarm: floods with cheap units constantly
     name: "Devil's Canyon",
     subtitle: "Every outlaw in the territory. Hold the line.",
     startGold: 1000,
@@ -267,8 +325,10 @@ export const LEVELS: LevelConfig[] = [
     enemyUnits: { miner: 6, deputy: 10, bounty_hunter: 5, gunslinger: 6, dynamiter: 4, marshal: 3 },
     mapX: { x: 660, y: 240 },
     unlocks: [],
+    aiStrategy: "swarm",
   },
   {
+    // Level 7 — adaptive: analyzes player comp and counters it
     name: "The Last Stand",
     subtitle: "The Cartel's final push. This ends today.",
     startGold: 1200,
@@ -277,6 +337,7 @@ export const LEVELS: LevelConfig[] = [
     enemyUnits: { miner: 8, deputy: 12, bounty_hunter: 6, gunslinger: 8, dynamiter: 6, marshal: 5 },
     mapX: { x: 760, y: 270 },
     unlocks: [],
+    aiStrategy: "adaptive",
   },
 ];
 

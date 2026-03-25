@@ -1,10 +1,10 @@
 // ─── Frontier Wars — Main Game Component ──────────────────────────────────────
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { GameState, UnitType, UpgradeState } from "./types";
+import type { GameState, UnitType, UpgradeState, Difficulty } from "./types";
 import { createInitialState, updateGame, queueUnit, selectUnit, setStance, movePossessedUnit, possessedAttack } from "./engine";
 import { render } from "./renderer";
-import { WORLD, LEVELS, AMBUSH_LEVELS, CAMPAIGN_SEQUENCE, UPGRADE_DEFS } from "./configs";
+import { WORLD, LEVELS, AMBUSH_LEVELS, CAMPAIGN_SEQUENCE, UPGRADE_DEFS, DIFFICULTY_DEFS } from "./configs";
 import type { CampaignEntry } from "./configs";
 
 // ─── Default Upgrades ─────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ interface SaveData {
   upgradePoints: number;
   unlockedUnits: string[];
   savedAt: number; // Unix ms timestamp
+  difficulty?: Difficulty;
 }
 
 function saveGame(data: SaveData): void {
@@ -1445,12 +1446,13 @@ export default function FrontierWars() {
   // currentEntry = the entry currently being played (used for "Try Again" on defeat)
   const [currentEntry, setCurrentEntry] = useState<CampaignEntry>(CAMPAIGN_SEQUENCE[0]);
 
-  const [screen, setScreen] = useState<"menu" | "campaign" | "briefing" | "battle" | "upgrade" | "victory" | "defeat">("menu");
+  const [screen, setScreen] = useState<"menu" | "difficulty" | "campaign" | "briefing" | "battle" | "upgrade" | "victory" | "defeat">("menu");
   const [currentLevel, setCurrentLevel] = useState(0);
   const [completedLevels, setCompletedLevels] = useState<number[]>([]);
   const [upgrades, setUpgrades] = useState<UpgradeState>(DEFAULT_UPGRADES);
   const [upgradePoints, setUpgradePoints] = useState(0);
   const [unlockedUnits, setUnlockedUnits] = useState<string[]>(["miner", "deputy"]);
+  const [difficulty, setDifficulty] = useState<Difficulty>("gunslinger");
   const [hudGold, setHudGold] = useState(0);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false); // sync ref for game loop
@@ -1579,7 +1581,7 @@ export default function FrontierWars() {
 
   // ── Start battle (regular level by index) ──
   const startBattle = useCallback((level: number) => {
-    stateRef.current = createInitialState(level, upgrades, unlockedUnits);
+    stateRef.current = createInitialState(level, upgrades, unlockedUnits, difficulty);
     setScreen("battle");
     lastTimeRef.current = performance.now();
     animFrameRef.current = requestAnimationFrame(gameLoop);
@@ -1597,7 +1599,7 @@ export default function FrontierWars() {
   const startBattleFromEntry = useCallback((entry: CampaignEntry) => {
     // Ambush levels encoded as 100+index so engine can distinguish them
     const engineLevel = entry.kind === "ambush" ? 100 + entry.index : entry.index;
-    stateRef.current = createInitialState(engineLevel, upgrades, unlockedUnits);
+    stateRef.current = createInitialState(engineLevel, upgrades, unlockedUnits, difficulty);
     if (entry.kind !== "ambush") setCurrentLevel(entry.index);
     setCurrentEntry(entry); // track for "Try Again" on defeat
     setScreen("battle");
@@ -1762,9 +1764,10 @@ export default function FrontierWars() {
       upgradePoints,
       unlockedUnits,
       savedAt: Date.now(),
+      difficulty,
     });
     setSaveExists(true);
-  }, [campaignStep, currentLevel, completedLevels, upgrades, upgradePoints, unlockedUnits]);
+  }, [campaignStep, currentLevel, completedLevels, upgrades, upgradePoints, unlockedUnits, difficulty]);
 
   const handleLoad = useCallback(() => {
     const data = loadGame();
@@ -1775,6 +1778,7 @@ export default function FrontierWars() {
     setUpgrades(data.upgrades);
     setUpgradePoints(data.upgradePoints);
     setUnlockedUnits(data.unlockedUnits ?? ["miner", "deputy"]);
+    if (data.difficulty) setDifficulty(data.difficulty);
     // Set briefingEntry to the saved campaign step so the next battle is correct
     const entry = CAMPAIGN_SEQUENCE[data.campaignStep] ?? CAMPAIGN_SEQUENCE[0];
     setBriefingEntry(entry);
@@ -1854,7 +1858,7 @@ export default function FrontierWars() {
             </div>
 
             <button
-              onClick={() => setScreen("campaign")}
+              onClick={() => setScreen("difficulty")}
               className="border-2 px-14 py-4 text-2xl tracking-widest font-bold transition-all duration-200 hover:scale-105"
               style={{ borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace",
                 boxShadow: "0 0 30px rgba(255,215,0,0.3)" }}
@@ -1893,6 +1897,97 @@ export default function FrontierWars() {
                 ← BACK TO SITE
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DIFFICULTY SELECT ── */}
+      {screen === "difficulty" && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ background: "radial-gradient(ellipse at center, #2a1a0a 0%, #1a0a00 60%, #0a0500 100%)", fontFamily: "monospace" }}
+        >
+          {/* Parchment card */}
+          <div
+            className="relative flex flex-col items-center px-12 py-10"
+            style={{
+              background: "linear-gradient(160deg, #c8a96e 0%, #b8924a 40%, #a07830 100%)",
+              border: "3px solid #6B4423",
+              boxShadow: "0 0 0 6px rgba(107,68,35,0.3), 0 20px 60px rgba(0,0,0,0.8)",
+              minWidth: 520,
+              clipPath: "polygon(0 2%, 3% 0, 97% 0, 100% 2%, 100% 98%, 97% 100%, 3% 100%, 0 98%)",
+            }}
+          >
+            <div className="text-xs tracking-widest mb-1 opacity-60" style={{ color: "#3d1f0a" }}>── FRONTIER WARS ──</div>
+            <h2 className="text-3xl font-bold tracking-widest mb-2" style={{ color: "#1a0a00" }}>SELECT DIFFICULTY</h2>
+            <div className="text-xs tracking-widest mb-8 opacity-50" style={{ color: "#3d1f0a" }}>
+              Choose your challenge, partner
+            </div>
+
+            <div className="flex flex-col gap-3 w-full">
+              {(["tenderfoot", "gunslinger", "outlaw", "legend"] as Difficulty[]).map((d) => {
+                const def = DIFFICULTY_DEFS[d];
+                const isSelected = difficulty === d;
+                const skullColors = ["#8B6914", "#c8a000", "#cc4400", "#cc0000"];
+                const dIdx = ["tenderfoot", "gunslinger", "outlaw", "legend"].indexOf(d);
+                const skullColor = skullColors[dIdx];
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d)}
+                    className="flex items-center gap-4 px-5 py-4 text-left transition-all duration-150"
+                    style={{
+                      background: isSelected ? "rgba(107,68,35,0.4)" : "rgba(107,68,35,0.1)",
+                      border: `2px solid ${isSelected ? "#6B4423" : "rgba(107,68,35,0.3)"}`,
+                      outline: isSelected ? "2px solid #FFD700" : "none",
+                      outlineOffset: -2,
+                      fontFamily: "monospace",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(107,68,35,0.3)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isSelected ? "rgba(107,68,35,0.4)" : "rgba(107,68,35,0.1)"; }}
+                  >
+                    {/* Skulls */}
+                    <div className="flex gap-0.5 flex-shrink-0 w-16 justify-center">
+                      {Array.from({ length: def.skulls }).map((_, i) => (
+                        <span key={i} style={{ color: skullColor, fontSize: 16 }}>💀</span>
+                      ))}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1">
+                      <div className="font-bold tracking-widest text-sm" style={{ color: isSelected ? "#FFD700" : "#1a0a00" }}>
+                        {def.label}
+                      </div>
+                      <div className="text-xs mt-0.5 opacity-70" style={{ color: "#3d1f0a" }}>
+                        {def.description}
+                      </div>
+                    </div>
+                    {/* Selected indicator */}
+                    {isSelected && (
+                      <div className="text-lg flex-shrink-0" style={{ color: "#FFD700" }}>★</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setScreen("campaign")}
+              className="mt-8 border-2 px-12 py-3 text-lg tracking-widest font-bold transition-all duration-200 hover:scale-105"
+              style={{
+                borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace",
+                boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+              }}
+            >
+              RIDE OUT →
+            </button>
+
+            <button
+              onClick={() => setScreen("menu")}
+              className="mt-3 text-xs tracking-widest opacity-40 hover:opacity-70 transition-opacity"
+              style={{ color: "#3d1f0a", fontFamily: "monospace" }}
+            >
+              ← BACK
+            </button>
           </div>
         </div>
       )}

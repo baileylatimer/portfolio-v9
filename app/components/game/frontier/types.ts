@@ -7,6 +7,20 @@ export type GamePhase = "MENU" | "CAMPAIGN_MAP" | "BATTLE" | "UPGRADE" | "VICTOR
 export type UnitState = "idle" | "walking" | "mining" | "returning" | "attacking" | "garrison" | "dying" | "dead";
 export type Stance = "defense" | "garrison" | "attack";
 
+// ─── Difficulty ───────────────────────────────────────────────────────────────
+export type Difficulty = "tenderfoot" | "gunslinger" | "outlaw" | "legend";
+
+// ─── AI Strategy (per level) ──────────────────────────────────────────────────
+export type AiStrategy =
+  | "economy_first"  // heavy miner spam, slow military
+  | "rush"           // fast early aggression
+  | "turtle"         // slow build then massive wave
+  | "economy_war"    // races for gold supremacy
+  | "siege"          // ranged-heavy, avoids melee
+  | "balanced"       // smart mix, adapts mid-game
+  | "swarm"          // floods with cheap units
+  | "adaptive";      // analyzes player comp and counters
+
 export interface Vec2 { x: number; y: number; }
 
 export interface UnitStats {
@@ -118,6 +132,9 @@ export interface GameState {
   soundEvents: string[]; // sound IDs to play this frame (consumed by FrontierWars)
   unlockedUnits: string[]; // unit types the player can currently spawn
   isAmbushLevel: boolean;  // true → hide enemy gold, no miner economy
+  difficulty: Difficulty;  // selected difficulty
+  aiStrategy: AiStrategy;  // current level's AI strategy
+  enemyGarrisoned: boolean; // enemy has retreated to garrison
 }
 
 export interface UpgradeState {
@@ -147,6 +164,7 @@ export interface LevelConfig {
   ambushTier?: 1 | 2 | 3;  // 1=scouts, 2=war party, 3=last stand
   lore?: string[];          // multi-line lore text for briefing screen
   enemyLabel?: string;      // label shown on enemy structure in HUD
+  aiStrategy?: AiStrategy;  // AI behavior pattern for this level
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
