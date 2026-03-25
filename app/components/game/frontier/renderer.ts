@@ -33,7 +33,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   }
 
   // ── Buildings ──
-  state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall));
+  state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall, state.upgrades));
 
   // ── Units — depth-sorted by Y (higher Y = lower on screen = drawn last = in front) ──
   // This is the painter's algorithm: units closer to the camera (lower on screen) render on top
@@ -577,7 +577,7 @@ function drawSaloonGoldPile(ctx: CanvasRenderingContext2D, saloon: Building, cam
   ctx.textAlign = "left";
 }
 
-function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, nightfall = false) {
+function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, nightfall = false, upgrades?: import("./types").UpgradeState) {
   const sx = b.pos.x - cam;
   const sy = b.pos.y;
 
@@ -586,7 +586,9 @@ function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, n
   } else if (b.type === "tipi") {
     drawTipi(ctx, sx, sy, b.hp / b.maxHp);
   } else {
-    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall);
+    const revTier = (!b.team || b.team === "player") ? (upgrades?.saloonRevenue ?? 0) : 0;
+    const hpTier  = (!b.team || b.team === "player") ? (upgrades?.saloonHp ?? 0) : 0;
+    drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall, revTier, hpTier);
   }
 
   // HP bar
@@ -599,64 +601,160 @@ function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, n
   }
 }
 
-function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number, nightfall = false) {
-  const w = 80, h = 80;
+function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean, hpFrac: number, nightfall = false, revenueTier = 0, hpTier = 0) {
+  // HP tier grows the saloon: tier 0=80px, tier 1=95px, tier 2=110px, tier 3=130px
+  const hpHeightBonus = isEnemy ? 0 : hpTier * 17;
+  const w = 80, h = 80 + hpHeightBonus;
+  // Shift y up so the building grows upward (base stays on ground)
+  const yAdj = y - hpHeightBonus;
+
   const woodColor = isEnemy ? "#5c2020" : COLORS.saloonWood;
   const roofColor = isEnemy ? "#3d1010" : COLORS.saloonRoof;
-  const trimColor = isEnemy ? "#8B2020" : "#A0714F";
+  // Revenue tier changes trim color: plain → gold trim → bright gold → glowing gold
+  const trimColor = isEnemy ? "#8B2020"
+    : revenueTier >= 3 ? "#FFD700"
+    : revenueTier >= 2 ? "#D4A800"
+    : revenueTier >= 1 ? "#B8860B"
+    : "#A0714F";
+
+  // ── Revenue tier 4: golden aura glow behind building ──
+  if (!isEnemy && revenueTier >= 4) {
+    const aura = ctx.createRadialGradient(x + w / 2, yAdj + h / 2, 20, x + w / 2, yAdj + h / 2, 80);
+    aura.addColorStop(0, "rgba(255,215,0,0.18)");
+    aura.addColorStop(1, "rgba(255,215,0,0)");
+    ctx.fillStyle = aura;
+    ctx.fillRect(x - 40, yAdj - 40, w + 80, h + 80);
+  }
 
   // Main building
   ctx.fillStyle = woodColor;
-  ctx.fillRect(x, y, w, h);
+  ctx.fillRect(x, yAdj, w, h);
+
+  // Revenue tier 3+: gold-plated facade overlay
+  if (!isEnemy && revenueTier >= 3) {
+    ctx.fillStyle = "rgba(255,215,0,0.12)";
+    ctx.fillRect(x, yAdj, w, h);
+  }
 
   // Wood planks (horizontal lines)
   ctx.strokeStyle = roofColor;
   ctx.lineWidth = 1;
   for (let i = 1; i < 5; i++) {
     ctx.beginPath();
-    ctx.moveTo(x, y + i * (h / 5));
-    ctx.lineTo(x + w, y + i * (h / 5));
+    ctx.moveTo(x, yAdj + i * (h / 5));
+    ctx.lineTo(x + w, yAdj + i * (h / 5));
     ctx.stroke();
+  }
+
+  // HP tier 2+: second story balcony
+  if (!isEnemy && hpTier >= 2) {
+    const balconyY = yAdj + Math.floor(h * 0.45);
+    ctx.fillStyle = COLORS.saloonRoof;
+    ctx.fillRect(x - 8, balconyY - 4, w + 16, 6);
+    // Balcony railing posts
+    ctx.fillStyle = "#A0714F";
+    for (let p = 0; p < 5; p++) {
+      ctx.fillRect(x - 6 + p * 22, balconyY - 10, 4, 10);
+    }
+    // Balcony window
+    ctx.fillStyle = nightfall && !isEnemy ? "#FFE080" : "#FFD060";
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(x + w / 2 - 8, balconyY - 18, 16, 12);
+    ctx.globalAlpha = 1;
+  }
+
+  // HP tier 3: watchtower on top
+  if (!isEnemy && hpTier >= 3) {
+    const towerY = yAdj - 28;
+    ctx.fillStyle = COLORS.saloonWood;
+    ctx.fillRect(x + w / 2 - 12, towerY, 24, 28);
+    ctx.fillStyle = COLORS.saloonRoof;
+    ctx.fillRect(x + w / 2 - 14, towerY - 6, 28, 8);
+    // Tower window
+    ctx.fillStyle = nightfall ? "#FFE080" : "#FFD060";
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(x + w / 2 - 5, towerY + 6, 10, 8);
+    ctx.globalAlpha = 1;
+    // Tower flag
+    ctx.strokeStyle = "#cc2200";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 + 10, towerY - 6);
+    ctx.lineTo(x + w / 2 + 10, towerY - 22);
+    ctx.stroke();
+    ctx.fillStyle = "#cc2200";
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 + 10, towerY - 22);
+    ctx.lineTo(x + w / 2 + 22, towerY - 17);
+    ctx.lineTo(x + w / 2 + 10, towerY - 12);
+    ctx.closePath();
+    ctx.fill();
   }
 
   // Roof (false front)
   ctx.fillStyle = roofColor;
-  ctx.fillRect(x - 5, y - 20, w + 10, 22);
+  ctx.fillRect(x - 5, yAdj - 20, w + 10, 22);
   ctx.fillStyle = trimColor;
-  ctx.fillRect(x - 5, y - 22, w + 10, 4);
+  ctx.fillRect(x - 5, yAdj - 22, w + 10, 4);
+
+  // Revenue tier 1+: gold trim on roof edge
+  if (!isEnemy && revenueTier >= 1) {
+    ctx.fillStyle = trimColor;
+    ctx.fillRect(x - 5, yAdj - 24, w + 10, 3);
+    // Small decorative notches
+    for (let n = 0; n < 5; n++) {
+      ctx.fillRect(x - 3 + n * 18, yAdj - 28, 6, 5);
+    }
+  }
+
+  // Revenue tier 2+: gold pillars on sides
+  if (!isEnemy && revenueTier >= 2) {
+    ctx.fillStyle = trimColor;
+    ctx.fillRect(x - 2, yAdj, 6, h);
+    ctx.fillRect(x + w - 4, yAdj, 6, h);
+    // Pillar caps
+    ctx.fillRect(x - 4, yAdj - 4, 10, 5);
+    ctx.fillRect(x + w - 6, yAdj - 4, 10, 5);
+  }
 
   // Sign
   ctx.fillStyle = isEnemy ? "#8B2020" : "#6B4423";
-  ctx.fillRect(x + 10, y - 14, w - 20, 12);
+  ctx.fillRect(x + 10, yAdj - 14, w - 20, 12);
   ctx.fillStyle = isEnemy ? "#ffaaaa" : COLORS.uiText;
   ctx.font = "bold 7px monospace";
   ctx.textAlign = "center";
-  ctx.fillText(isEnemy ? "OUTLAW HQ" : "YOUR SALOON", x + w / 2, y - 5);
+  ctx.fillText(isEnemy ? "OUTLAW HQ" : "YOUR SALOON", x + w / 2, yAdj - 5);
+  // Revenue tier 3+: gold stars on sign
+  if (!isEnemy && revenueTier >= 3) {
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "5px monospace";
+    ctx.fillText("★ ★ ★", x + w / 2, yAdj - 16);
+  }
   ctx.textAlign = "left";
 
   // Door
   ctx.fillStyle = roofColor;
-  ctx.fillRect(x + w / 2 - 10, y + h - 30, 20, 30);
+  ctx.fillRect(x + w / 2 - 10, yAdj + h - 30, 20, 30);
 
   // Windows — glow brighter at nightfall for player saloon
   const winGlow = nightfall && !isEnemy ? 1.0 : 0.6 + Math.sin(Date.now() * 0.003) * 0.1;
   ctx.fillStyle = nightfall && !isEnemy ? "#FFE080" : "#FFD060";
   ctx.globalAlpha = winGlow;
-  ctx.fillRect(x + 8, y + 15, 18, 14);
-  ctx.fillRect(x + w - 26, y + 15, 18, 14);
+  ctx.fillRect(x + 8, yAdj + 15, 18, 14);
+  ctx.fillRect(x + w - 26, yAdj + 15, 18, 14);
   ctx.globalAlpha = 1;
   // Nightfall: add warm glow around windows
   if (nightfall && !isEnemy) {
-    const winGlowGrad1 = ctx.createRadialGradient(x + 17, y + 22, 4, x + 17, y + 22, 22);
+    const winGlowGrad1 = ctx.createRadialGradient(x + 17, yAdj + 22, 4, x + 17, yAdj + 22, 22);
     winGlowGrad1.addColorStop(0, "rgba(255,200,60,0.35)");
     winGlowGrad1.addColorStop(1, "rgba(255,200,60,0)");
     ctx.fillStyle = winGlowGrad1;
-    ctx.fillRect(x - 5, y + 5, 44, 40);
-    const winGlowGrad2 = ctx.createRadialGradient(x + w - 17, y + 22, 4, x + w - 17, y + 22, 22);
+    ctx.fillRect(x - 5, yAdj + 5, 44, 40);
+    const winGlowGrad2 = ctx.createRadialGradient(x + w - 17, yAdj + 22, 4, x + w - 17, yAdj + 22, 22);
     winGlowGrad2.addColorStop(0, "rgba(255,200,60,0.35)");
     winGlowGrad2.addColorStop(1, "rgba(255,200,60,0)");
     ctx.fillStyle = winGlowGrad2;
-    ctx.fillRect(x + w - 44, y + 5, 44, 40);
+    ctx.fillRect(x + w - 44, yAdj + 5, 44, 40);
   }
 
   // Damage cracks
@@ -664,9 +762,9 @@ function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy
     ctx.strokeStyle = "#2a1008";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x + 20, y + 10);
-    ctx.lineTo(x + 30, y + 35);
-    ctx.lineTo(x + 15, y + 50);
+    ctx.moveTo(x + 20, yAdj + 10);
+    ctx.lineTo(x + 30, yAdj + 35);
+    ctx.lineTo(x + 15, yAdj + 50);
     ctx.stroke();
   }
 }

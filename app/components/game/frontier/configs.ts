@@ -375,6 +375,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
   { key: "gunslingerRate",   label: "Quick Draw",          description: "+0.4 attacks/sec per level",      cost: 2, maxLevel: 3 },
   { key: "dynamiterRadius",  label: "Bigger Blast",        description: "+25% explosion radius per level", cost: 2, maxLevel: 3 },
   { key: "marshalHp",        label: "Marshal Fortitude",   description: "+100 HP per level",               cost: 2, maxLevel: 3 },
+  { key: "saloonHp",         label: "Saloon Fortification", description: "+300 max HP per level (1500→2400)", cost: 1, maxLevel: 3 },
 ];
 
 // ─── Upgrade Points Per Level ─────────────────────────────────────────────────

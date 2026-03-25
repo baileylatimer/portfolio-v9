@@ -31,11 +31,13 @@ export function createInitialState(
   const aiStrategy: AiStrategy = (!isAmbush && lvl.aiStrategy) ? lvl.aiStrategy : "balanced";
   const biome = lvl.biome ?? "desert";
 
+  // Saloon HP scales with saloonHp upgrade: 1500 base + 300 per tier
+  const saloonBaseHp = 1500 + (upgrades.saloonHp ?? 0) * 300;
   const buildings: Building[] = [
-    { id: "player_saloon", type: "saloon",      team: "player", pos: { x: WORLD.playerSaloonX, y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
+    { id: "player_saloon", type: "saloon",      team: "player", pos: { x: WORLD.playerSaloonX, y: WORLD.groundY - 80 }, hp: saloonBaseHp, maxHp: saloonBaseHp, width: 80, height: 80 },
     isAmbush
-      ? { id: "enemy_saloon", type: "tipi",        team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 70 }, hp: 600,  maxHp: 600,  width: 70, height: 70 }
-      : { id: "enemy_saloon", type: "enemy_saloon", team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 80 }, hp: 1000, maxHp: 1000, width: 80, height: 80 },
+      ? { id: "enemy_saloon", type: "tipi",        team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 70 }, hp: 800,  maxHp: 800,  width: 70, height: 70 }
+      : { id: "enemy_saloon", type: "enemy_saloon", team: "enemy",  pos: { x: WORLD.enemySaloonX,  y: WORLD.groundY - 80 }, hp: 1500, maxHp: 1500, width: 80, height: 80 },
   ];
 
   const goldPiles: GoldPile[] = GOLD_PILE_POSITIONS.map((pos, i) => ({
@@ -140,7 +142,7 @@ const ENEMY_UPGRADES: GameState["upgrades"] = {
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
-  saloonRevenue: 0,
+  saloonRevenue: 0, saloonHp: 0,
 };
 
 export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
@@ -258,6 +260,23 @@ export function updateGame(state: GameState, dt: number): GameState {
             }
           }
         }
+      }
+      // ── Possessed unit auto-garrison: if in garrison stance and inside saloon bounds, garrison + deselect ──
+      if (s.stance === "garrison" && unit.type !== "miner") {
+        const saloon = s.buildings.find(b => b.id === "player_saloon");
+        if (saloon) {
+          const saloonCenter = saloon.pos.x + saloon.width / 2;
+          if (Math.abs(unit.pos.x - saloonCenter) <= 30) {
+            unit.state = "garrison";
+            unit.facing = 1;
+            s.selectedUnitId = null;
+            unit.selected = false;
+          }
+        }
+      }
+      // ── Force "returning" state when possessed miner is carrying gold (WASD overrides state) ──
+      if (unit.type === "miner" && unit.goldCarrying > 0 && unit.state !== "idle") {
+        unit.state = "returning";
       }
       return;
     }
@@ -755,11 +774,20 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
       return;
     }
 
-    const dist = Math.abs(unit.pos.x - targetPile.pos.x);
-    if (dist > 18) {
+    // 2D proximity check — miner must be close on BOTH X and Y before mining
+    const dx2d = unit.pos.x - targetPile.pos.x;
+    const dy2d = unit.pos.y - targetPile.pos.y;
+    const dist2d = Math.hypot(dx2d, dy2d);
+    if (dist2d > 25) {
       unit.state = "walking";
       unit.facing = targetPile.pos.x > unit.pos.x ? 1 : -1;
       unit.pos.x += unit.facing * unit.stats.speed * dt;
+      // Also walk toward the pile's Y position
+      const dyToPile = targetPile.pos.y - unit.pos.y;
+      if (Math.abs(dyToPile) > 4) {
+        unit.pos.y += Math.sign(dyToPile) * unit.stats.speed * 0.5 * dt;
+        unit.pos.y = Math.max(WORLD.groundY - 120, Math.min(WORLD.groundY - 4, unit.pos.y));
+      }
       unit.targetId = targetPile.id;
     } else {
       // Mine the pile
@@ -927,15 +955,15 @@ function explodeDynamite(proj: Projectile, s: GameState) {
 // ─── Possessed Miner Auto-Mine ────────────────────────────────────────────────
 
 function updatePossessedMiner(unit: Unit, s: GameState, dt: number) {
-  // Find nearest gold pile within mining range
+  // Find nearest gold pile within mining range — use 2D distance
   let targetPile: GoldPile | null = null;
   let minDist = Infinity;
   for (const pile of s.goldPiles) {
     if (pile.gold <= 0) continue;
-    const dist = Math.abs(pile.pos.x - unit.pos.x);
+    const dist = Math.hypot(pile.pos.x - unit.pos.x, pile.pos.y - unit.pos.y);
     if (dist < minDist) { minDist = dist; targetPile = pile; }
   }
-  if (!targetPile || minDist > 18) return; // not close enough to any pile
+  if (!targetPile || minDist > 25) return; // not close enough to any pile (2D check)
 
   // Mine it — 35% faster than normal (possessed bonus)
   unit.state = "mining";
