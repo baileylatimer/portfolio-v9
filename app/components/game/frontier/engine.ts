@@ -36,7 +36,7 @@ export function createInitialState(
 
   const goldPiles: GoldPile[] = GOLD_PILE_POSITIONS.map((pos, i) => ({
     id: `pile_${i}`,
-    pos: { x: pos.x, y: WORLD.groundY - 8 },
+    pos: { x: pos.x, y: WORLD.groundY - 8 + (pos.yOffset ?? 0) },
     gold: pos.gold,
     maxGold: pos.gold,
   }));
@@ -932,9 +932,12 @@ function updateEnemyAI(s: GameState, dt: number) {
   const lvl = isAmbush ? AMBUSH_LEVELS[ambushIndex] : LEVELS[s.level];
   const diff = DIFFICULTY_DEFS[s.difficulty];
 
-  // ── Garrison check: retreat when overwhelmed ──
+  // ── Garrison + emergency defense check ──
   if (!isAmbush) {
     const midpoint = WORLD.width / 2;
+    const enemySaloonBuilding = s.buildings.find(b => b.id === "enemy_saloon");
+    const enemySaloonX = enemySaloonBuilding ? enemySaloonBuilding.pos.x + enemySaloonBuilding.width / 2 : WORLD.enemySaloonX;
+
     const playerCombatPastMid = s.units.filter(u =>
       u.team === "player" && u.state !== "dead" && u.state !== "dying" &&
       u.type !== "miner" && u.pos.x > midpoint
@@ -943,12 +946,30 @@ function updateEnemyAI(s: GameState, dt: number) {
       u.team === "enemy" && u.state !== "dead" && u.state !== "dying" && u.type !== "miner"
     ).length;
 
-    // Trigger garrison: player has 3+ combat units past midpoint and enemy has <2 combat units
-    if (playerCombatPastMid >= 3 && enemyCombatAlive < 2) {
+    // ── Emergency defense: any player unit within 350px of enemy saloon ──
+    const playerUnitsNearBase = s.units.filter(u =>
+      u.team === "player" && u.state !== "dead" && u.state !== "dying" &&
+      Math.abs(u.pos.x - enemySaloonX) < 350
+    );
+    const playerRaidingBase = playerUnitsNearBase.length > 0;
+
+    // Trigger garrison:
+    // 1. Classic: 3+ player combat units past midpoint AND enemy has <2 combat units
+    // 2. Emergency: any player unit within 350px of enemy saloon AND enemy outnumbered there
+    const playerNearBaseCount = playerUnitsNearBase.length;
+    const enemyCombatNearBase = s.units.filter(u =>
+      u.team === "enemy" && u.state !== "dead" && u.state !== "dying" && u.type !== "miner" &&
+      Math.abs(u.pos.x - enemySaloonX) < 400
+    ).length;
+
+    if (
+      (playerCombatPastMid >= 3 && enemyCombatAlive < 2) ||
+      (playerRaidingBase && playerNearBaseCount > enemyCombatNearBase)
+    ) {
       s.enemyGarrisoned = true;
     }
-    // Un-garrison: enemy has rebuilt 3+ combat units
-    if (s.enemyGarrisoned && enemyCombatAlive >= 3) {
+    // Un-garrison: enemy has rebuilt 3+ combat units AND no player units near base
+    if (s.enemyGarrisoned && enemyCombatAlive >= 3 && !playerRaidingBase) {
       s.enemyGarrisoned = false;
     }
 
@@ -956,6 +977,28 @@ function updateEnemyAI(s: GameState, dt: number) {
     for (const unit of s.units) {
       if (unit.team === "enemy" && unit.type === "miner" && unit.state !== "dead" && unit.state !== "dying") {
         updateEnemyMinerGarrison(unit, s, dt);
+      }
+    }
+
+    // ── Emergency spawn: player is raiding the base — bypass normal spawn timer ──
+    // Spawn the cheapest available combat unit immediately (human panic response)
+    if (playerRaidingBase && s.enemySpawnTimer > 0.3) {
+      const combatCostsEmergency: Record<string, number> = {
+        deputy: 200, bounty_hunter: 500, gunslinger: 400, dynamiter: 600, marshal: 1200,
+      };
+      const emergencyOrder: UnitType[] = ["deputy", "gunslinger", "bounty_hunter", "dynamiter", "marshal"];
+      for (const type of emergencyOrder) {
+        const max = lvl.enemyUnits[type] || 0;
+        const current = s.units.filter(u => u.team === "enemy" && u.type === type && u.state !== "dead" && u.state !== "dying").length;
+        const cost = combatCostsEmergency[type] || 999;
+        if (current < max && s.enemyGold >= cost) {
+          const unit = spawnUnit(s, type, "enemy");
+          s.units.push(unit);
+          s.enemyGold -= cost;
+          // Reset spawn timer so we don't double-spawn this tick
+          s.enemySpawnTimer = 1.5 / diff.enemySpawnSpeed;
+          break;
+        }
       }
     }
   }
@@ -1262,9 +1305,9 @@ export function selectUnit(state: GameState, worldX: number, worldY: number): Ga
 
 // ─── Move Possessed Unit ──────────────────────────────────────────────────────
 
-// Y range for possessed unit — wide enough to dodge attacks
-const POSSESSED_MIN_Y = WORLD.groundY - 120;
-const POSSESSED_MAX_Y = WORLD.groundY - 8;
+// Y range for possessed unit — full battlefield height (mountain line to near-ground)
+const POSSESSED_MIN_Y = WORLD.groundY - 220;
+const POSSESSED_MAX_Y = WORLD.groundY - 4;
 
 export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: number): GameState {
   if (!state.selectedUnitId) return state;

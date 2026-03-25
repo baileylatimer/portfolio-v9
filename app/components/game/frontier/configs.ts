@@ -368,14 +368,14 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
 // ─── World Constants ──────────────────────────────────────────────────────────
 
 export const WORLD = {
-  width: 2600,       // total world width — extra room behind enemy saloon
+  width: 3000,       // total world width — wider map for more exploration
   height: 480,       // canvas height
   groundY: 410,      // y position of ground surface — lower, like Stick Wars (~85% from top)
   hudHeight: 120,    // bottom HUD height
   mineX: 80,         // player mine x position
   playerSaloonX: 40, // player saloon x
-  enemySaloonX: 2460,// enemy saloon x (pushed right, ~140px from right edge)
-  enemyMineX: 2500,  // enemy mine x
+  enemySaloonX: 2860,// enemy saloon x (pushed right, ~140px from right edge)
+  enemyMineX: 2900,  // enemy mine x
 };
 
 // ─── Training Times (seconds to produce each unit) ───────────────────────────
@@ -410,16 +410,18 @@ export const SPAWN_INTERVAL = 0.8; // kept for enemy AI compatibility
 // Spread across the 2400px world. Player base ~40px, enemy base ~2340px.
 // Near player: 200, 380 | Mid-left: 700, 900 | Center: 1100, 1200, 1300 | Mid-right: 1500, 1700 | Near enemy: 2020, 2200
 
-export const GOLD_PILE_POSITIONS: Array<{ x: number; gold: number }> = [
-  { x: 200,  gold: 400 },  // near player base — safe, low yield
-  { x: 380,  gold: 350 },  // near player base — safe, low yield
-  { x: 700,  gold: 500 },  // mid-left — moderate risk
-  { x: 900,  gold: 500 },  // mid-left — moderate risk
-  { x: 1100, gold: 600 },  // center — contested
-  { x: 1200, gold: 700 },  // center — contested, high yield
-  { x: 1300, gold: 600 },  // center — contested
-  { x: 1500, gold: 500 },  // mid-right — enemy territory
-  { x: 1700, gold: 500 },  // mid-right — enemy territory
-  { x: 2020, gold: 350 },  // near enemy base — dangerous
-  { x: 2200, gold: 400 },  // near enemy base — dangerous
+// yOffset scatters piles vertically across the battlefield (relative to groundY - 8)
+// Negative = higher up the screen (toward mountains), positive = lower (toward ground)
+export const GOLD_PILE_POSITIONS: Array<{ x: number; gold: number; yOffset?: number }> = [
+  { x: 220,  gold: 400, yOffset:   0  },  // near player base — ground level
+  { x: 400,  gold: 350, yOffset: -55  },  // near player base — mid-height
+  { x: 750,  gold: 500, yOffset: -90  },  // mid-left — high up (near mountains)
+  { x: 950,  gold: 500, yOffset: -30  },  // mid-left — slightly elevated
+  { x: 1200, gold: 600, yOffset: -70  },  // center — elevated
+  { x: 1350, gold: 700, yOffset:   0  },  // center — ground level, high yield
+  { x: 1500, gold: 600, yOffset: -50  },  // center — mid-height
+  { x: 1750, gold: 500, yOffset: -85  },  // mid-right — high up
+  { x: 1950, gold: 500, yOffset: -20  },  // mid-right — near ground
+  { x: 2300, gold: 350, yOffset: -60  },  // near enemy base — elevated
+  { x: 2550, gold: 400, yOffset:   0  },  // near enemy base — ground level
 ];
