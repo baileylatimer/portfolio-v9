@@ -10,6 +10,9 @@ import type { Stance } from "./types";
 let _idCounter = 0;
 const uid = () => `u${++_idCounter}`;
 
+// Maximum Y-axis distance for melee/ranged attacks — prevents hitting units on different vertical levels
+const Y_ATTACK_THRESHOLD = 55;
+
 // ─── Initial State ────────────────────────────────────────────────────────────
 
 export function createInitialState(
@@ -236,9 +239,25 @@ export function updateGame(state: GameState, dt: number): GameState {
       unit.animTimer += dt;
       if (unit.animTimer > 0.15) { unit.animTimer = 0; unit.animFrame = (unit.animFrame + 1) % 4; }
       unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
-      // Possessed miner: auto-mine gold piles when standing on one (30% faster)
-      if (unit.type === "miner" && unit.goldCarrying === 0) {
-        updatePossessedMiner(unit, s, dt);
+      // Possessed miner: auto-mine when on a pile, auto-deposit when near saloon
+      if (unit.type === "miner") {
+        if (unit.goldCarrying === 0) {
+          updatePossessedMiner(unit, s, dt);
+        } else {
+          // Carrying gold — auto-deposit when near player saloon
+          const saloon = s.buildings.find(b => b.team === "player" && b.type === "saloon");
+          if (saloon) {
+            const saloonCenter = saloon.pos.x + saloon.width / 2;
+            if (Math.abs(unit.pos.x - saloonCenter) <= 35) {
+              s.gold += unit.goldCarrying;
+              spawnFloatingText(s, { x: saloonCenter, y: saloon.pos.y - 10 }, `+${unit.goldCarrying}g`, "#FFD700");
+              unit.goldCarrying = 0;
+              unit.state = "idle";
+            } else {
+              unit.state = "returning"; // show cart while walking back
+            }
+          }
+        }
       }
       return;
     }
@@ -420,7 +439,8 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
     const enemy = findNearestEnemy(unit, s);
     if (enemy) {
       const dist = Math.abs(unit.pos.x - enemy.pos.x);
-      if (dist <= unit.stats.range) {
+      const yDist = Math.abs(unit.pos.y - enemy.pos.y);
+      if (dist <= unit.stats.range && yDist <= Y_ATTACK_THRESHOLD) {
         unit.state = "attacking";
         unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
         if (unit.attackCooldown <= 0) {
@@ -479,7 +499,8 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
   const enemy = findNearestEnemy(unit, s);
   if (enemy) {
     const dist = Math.abs(unit.pos.x - enemy.pos.x);
-    if (dist <= unit.stats.range) {
+    const yDistAtk = Math.abs(unit.pos.y - enemy.pos.y);
+    if (dist <= unit.stats.range && yDistAtk <= Y_ATTACK_THRESHOLD) {
       unit.state = "attacking";
       unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
       if (unit.attackCooldown <= 0) {
@@ -596,7 +617,8 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
   const enemy = findNearestEnemy(unit, s);
   if (enemy) {
     const dist = Math.hypot(enemy.pos.x - unit.pos.x, (enemy.pos.y - unit.pos.y) * 0.5);
-    if (dist <= unit.stats.range) {
+    const yDistEnemy = Math.abs(enemy.pos.y - unit.pos.y);
+    if (dist <= unit.stats.range && yDistEnemy <= Y_ATTACK_THRESHOLD) {
       unit.state = "attacking";
       unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
       if (unit.attackCooldown <= 0) {
@@ -660,13 +682,27 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
     if (distToSaloon > 30) {
       // If the garrison exit timer is still counting down, miners hold position
       if (s.garrisonExitTimer > 0) {
-        unit.state = "idle";
+        // Show cart if carrying gold while waiting for combat units to clear
+        unit.state = unit.goldCarrying > 0 ? "returning" : "idle";
         return;
       }
-      unit.state = "walking";
-      unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
-      unit.pos.x += unit.facing * unit.stats.speed * dt;
+      // If carrying gold, show cart and move at return speed; otherwise walk normally
+      if (unit.goldCarrying > 0) {
+        unit.state = "returning";
+        unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
+        unit.pos.x += unit.facing * unit.stats.speed * 0.6 * dt;
+      } else {
+        unit.state = "walking";
+        unit.facing = saloonCenter > unit.pos.x ? 1 : -1;
+        unit.pos.x += unit.facing * unit.stats.speed * dt;
+      }
     } else {
+      // Deposit gold before entering garrison
+      if (unit.goldCarrying > 0) {
+        s.gold += unit.goldCarrying;
+        spawnFloatingText(s, { x: saloonCenter, y: saloon.pos.y - 10 }, `+${unit.goldCarrying}g`, "#FFD700");
+        unit.goldCarrying = 0;
+      }
       unit.state = "garrison";
       unit.facing = 1;
       // Only the FIRST garrisoned miner (lowest id alphabetically) shoots
@@ -761,7 +797,8 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
   // Miners fight back if attacked — deal damage TO the enemy, not to themselves
   const nearbyEnemy = s.units.find(u =>
     u.team !== unit.team && u.state !== "dead" && u.state !== "dying" && u.state !== "garrison" &&
-    Math.abs(u.pos.x - unit.pos.x) < unit.stats.range
+    Math.abs(u.pos.x - unit.pos.x) < unit.stats.range &&
+    Math.abs(u.pos.y - unit.pos.y) <= Y_ATTACK_THRESHOLD
   );
   if (nearbyEnemy && unit.attackCooldown <= 0) {
     applyDamage(nearbyEnemy, unit.stats.damage * 0.5, s);
@@ -1330,7 +1367,7 @@ export function selectUnit(state: GameState, worldX: number, worldY: number): Ga
 // ─── Move Possessed Unit ──────────────────────────────────────────────────────
 
 // Y range for possessed unit — full battlefield height (mountain line to near-ground)
-const POSSESSED_MIN_Y = WORLD.groundY - 220;
+const POSSESSED_MIN_Y = WORLD.groundY - 80; // ~330 — keeps unit in playable ground area
 const POSSESSED_MAX_Y = WORLD.groundY - 4;
 
 export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: number): GameState {
@@ -1361,7 +1398,9 @@ export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: 
 export function possessedAttack(state: GameState): GameState {
   if (!state.selectedUnitId) return state;
   const attacker = state.units.find(u => u.id === state.selectedUnitId);
-  if (!attacker || attacker.attackCooldown > 0) return state;
+  if (!attacker) return state;
+  // Possessed units bypass normal attack cooldown — player attacks as fast as they tap Space
+  if (attacker.attackCooldown > 0.05) return state;
 
   // Find nearest enemy in range (use 2× normal range for possessed)
   const range = attacker.stats.range * 2;
@@ -1370,7 +1409,7 @@ export function possessedAttack(state: GameState): GameState {
   for (const u of state.units) {
     if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
     const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
-    if (dist < range && dist < minDist) { minDist = dist; target = u; }
+    if (dist < range && Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD && dist < minDist) { minDist = dist; target = u; }
   }
 
   // Also check enemy saloon
@@ -1399,16 +1438,16 @@ export function possessedAttack(state: GameState): GameState {
         t.goldCarrying = 0;
       }
     }
-    a.attackCooldown = 1 / a.stats.attackRate;
+    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
     a.state = "attacking";
   } else if (enemySaloon && saloonDist < range) {
     enemySaloon.hp -= attacker.stats.damage;
     spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${attacker.stats.damage}`, "#ff4444");
-    a.attackCooldown = 1 / a.stats.attackRate;
+    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
     a.state = "attacking";
   } else {
     // No target in range — still play attack animation and fire projectile for ranged units
-    a.attackCooldown = 1 / a.stats.attackRate;
+    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
     a.state = "attacking";
     if (attacker.type === "gunslinger") {
       // Fire bullet in facing direction — limited range (won't cross the map)

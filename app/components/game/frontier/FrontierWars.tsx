@@ -1112,17 +1112,21 @@ function UpgradeScreen({
   upgrades,
   upgradePoints,
   onUpgrade,
+  onRespec,
   onContinue,
 }: {
   upgrades: UpgradeState;
   upgradePoints: number;
   onUpgrade: (key: keyof UpgradeState) => void;
+  onRespec: () => void;
   onContinue: () => void;
 }) {
+  const totalSpent = Object.values(upgrades).reduce((sum, v) => sum + v, 0);
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto py-8"
       style={{ background: "rgba(0,0,0,0.92)", fontFamily: "monospace" }}>
-      <div className="text-center mb-6">
+      <div className="text-center mb-4">
         <div className="text-xs tracking-widest mb-2" style={{ color: "#8B6914" }}>BETWEEN ROUNDS</div>
         <h2 className="text-4xl font-bold tracking-widest" style={{ color: "#FFD700", textShadow: "0 0 20px #FFD700" }}>
           UPGRADES
@@ -1130,6 +1134,18 @@ function UpgradeScreen({
         <div className="text-sm mt-2" style={{ color: "#F4E4C1" }}>
           Upgrade Points: <span style={{ color: "#FFD700", fontWeight: "bold" }}>{upgradePoints}</span>
         </div>
+        {totalSpent > 0 && (
+          <button
+            onClick={onRespec}
+            className="mt-2 px-4 py-1 text-xs tracking-widest border transition-all duration-150"
+            style={{ borderColor: "#cc4400", color: "#cc4400", fontFamily: "monospace", background: "transparent" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(204,68,0,0.15)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+            title={`Refund all ${totalSpent} spent upgrade points`}
+          >
+            ↺ RESET ALL UPGRADES (+{totalSpent}pts)
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 max-w-3xl w-full px-4">
@@ -1548,7 +1564,7 @@ export default function FrontierWars() {
 
     // Check phase transitions
     if (stateRef.current.phase === "VICTORY") {
-      setUpgradePoints(prev => prev + 2);
+      setUpgradePoints(prev => prev + (stateRef.current?.upgradePoints ?? 2));
       setCompletedLevels(prev => [...new Set([...prev, currentLevel])]);
       // Unlock units earned from this level
       const lvlUnlocks = (currentEntry.kind === "level" ? LEVELS[currentEntry.index]?.unlocks : []) ?? [];
@@ -1581,7 +1597,7 @@ export default function FrontierWars() {
 
   // ── Start battle (regular level by index) ──
   const startBattle = useCallback((level: number) => {
-    stateRef.current = createInitialState(level, upgrades, unlockedUnits, difficulty);
+    stateRef.current = createInitialState(level, upgrades, unlockedUnits, difficulty); // eslint-disable-line react-hooks/exhaustive-deps
     setScreen("battle");
     lastTimeRef.current = performance.now();
     animFrameRef.current = requestAnimationFrame(gameLoop);
@@ -1593,7 +1609,7 @@ export default function FrontierWars() {
       music.play().catch(() => {});
       bgMusicRef.current = music;
     } catch (e) { void e; }
-  }, [upgrades, gameLoop]);
+  }, [upgrades, unlockedUnits, difficulty, gameLoop]);
 
   // ── Start battle from a CampaignEntry (regular or ambush) ──
   const startBattleFromEntry = useCallback((entry: CampaignEntry) => {
@@ -1613,7 +1629,7 @@ export default function FrontierWars() {
       music.play().catch(() => {});
       bgMusicRef.current = music;
     } catch (e) { void e; }
-  }, [upgrades, gameLoop]);
+  }, [upgrades, unlockedUnits, difficulty, gameLoop]);
 
   // ── Input handling ──
   useEffect(() => {
@@ -1792,6 +1808,13 @@ export default function FrontierWars() {
     if (!def || upgradePoints < def.cost || upgrades[key] >= def.maxLevel) return;
     setUpgrades(prev => ({ ...prev, [key]: prev[key] + 1 }));
     setUpgradePoints(prev => prev - def.cost);
+  };
+
+  // ── Respec handler — refund all spent upgrade points ──
+  const handleRespec = () => {
+    const spent = Object.values(upgrades).reduce((sum, v) => sum + v, 0);
+    setUpgrades(DEFAULT_UPGRADES);
+    setUpgradePoints(prev => prev + spent);
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -2075,6 +2098,7 @@ export default function FrontierWars() {
           upgrades={upgrades}
           upgradePoints={upgradePoints}
           onUpgrade={handleUpgrade}
+          onRespec={handleRespec}
           onContinue={() => {
             // After upgrades, show briefing for the next entry
             setScreen("briefing");
