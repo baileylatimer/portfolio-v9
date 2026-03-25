@@ -10,8 +10,12 @@ import type { Stance } from "./types";
 let _idCounter = 0;
 const uid = () => `u${++_idCounter}`;
 
-// Maximum Y-axis distance for melee/ranged attacks — prevents hitting units on different vertical levels
+// Maximum Y-axis distance for melee attacks — prevents hitting units on different vertical levels
 const Y_ATTACK_THRESHOLD = 55;
+// Ranged unit types bypass the Y threshold — they can shoot across vertical lanes
+function isRangedUnit(type: string): boolean {
+  return type === "gunslinger" || type === "dynamiter" || type === "archer" || type === "shaman";
+}
 
 // ─── Initial State ────────────────────────────────────────────────────────────
 
@@ -86,6 +90,7 @@ export function createInitialState(
     aiStrategy,
     enemyGarrisoned: false,
     biome,
+    levelName: lvl.name,
   };
 }
 
@@ -130,6 +135,7 @@ function createFreeMiner(upgrades: GameState["upgrades"]): Unit {
     selected: false,
     deathTimer: 0,
     laneY,
+    magazine: 0, maxMagazine: 0, reloadTimer: 0,
   };
 }
 
@@ -142,7 +148,7 @@ const ENEMY_UPGRADES: GameState["upgrades"] = {
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
-  saloonRevenue: 0, saloonHp: 0,
+  saloonRevenue: 0, saloonHp: 0, barracks: 0,
 };
 
 export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
@@ -180,6 +186,7 @@ export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
     selected: false,
     deathTimer: 0,
     laneY,
+    magazine: 0, maxMagazine: 0, reloadTimer: 0,
   };
 }
 
@@ -241,6 +248,8 @@ export function updateGame(state: GameState, dt: number): GameState {
       unit.animTimer += dt;
       if (unit.animTimer > 0.15) { unit.animTimer = 0; unit.animFrame = (unit.animFrame + 1) % 4; }
       unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
+      // Tick down reload timer
+      if (unit.reloadTimer > 0) unit.reloadTimer = Math.max(0, unit.reloadTimer - dt);
       // Possessed miner: auto-mine when on a pile, auto-deposit when near saloon
       if (unit.type === "miner") {
         if (unit.goldCarrying === 0) {
@@ -459,7 +468,7 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
     if (enemy) {
       const dist = Math.abs(unit.pos.x - enemy.pos.x);
       const yDist = Math.abs(unit.pos.y - enemy.pos.y);
-      if (dist <= unit.stats.range && yDist <= Y_ATTACK_THRESHOLD) {
+      if (dist <= unit.stats.range && (isRanged || yDist <= Y_ATTACK_THRESHOLD)) {
         unit.state = "attacking";
         unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
         if (unit.attackCooldown <= 0) {
@@ -519,7 +528,7 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
   if (enemy) {
     const dist = Math.abs(unit.pos.x - enemy.pos.x);
     const yDistAtk = Math.abs(unit.pos.y - enemy.pos.y);
-    if (dist <= unit.stats.range && yDistAtk <= Y_ATTACK_THRESHOLD) {
+    if (dist <= unit.stats.range && (isRanged || yDistAtk <= Y_ATTACK_THRESHOLD)) {
       unit.state = "attacking";
       unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
       if (unit.attackCooldown <= 0) {
@@ -636,8 +645,9 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
   const enemy = findNearestEnemy(unit, s);
   if (enemy) {
     const dist = Math.hypot(enemy.pos.x - unit.pos.x, (enemy.pos.y - unit.pos.y) * 0.5);
+    const isEnemyRanged = isRangedUnit(unit.type);
     const yDistEnemy = Math.abs(enemy.pos.y - unit.pos.y);
-    if (dist <= unit.stats.range && yDistEnemy <= Y_ATTACK_THRESHOLD) {
+    if (dist <= unit.stats.range && (isEnemyRanged || yDistEnemy <= Y_ATTACK_THRESHOLD)) {
       unit.state = "attacking";
       unit.facing = enemy.pos.x > unit.pos.x ? 1 : -1;
       if (unit.attackCooldown <= 0) {
@@ -693,6 +703,12 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
 
   const saloonCenter = saloon.pos.x + saloon.width / 2;
   const isPlayer = unit.team === "player";
+
+  // ── Enemy garrison: delegate immediately so updateEnemyMinerGarrison wins ──
+  if (!isPlayer && s.enemyGarrisoned) {
+    updateEnemyMinerGarrison(unit, s, dt);
+    return;
+  }
 
   // ── Garrison stance: miners retreat to saloon too ──
   // garrisonExitTimer > 0 means combat units just left — miners wait for them to clear first
@@ -1423,34 +1439,79 @@ export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: 
 
 // ─── Possessed Unit Attack (Space) ───────────────────────────────────────────
 
+// ─── Magazine config per unit type ───────────────────────────────────────────
+// maxMag: shots before reload | betweenCooldown: seconds between shots | reloadTime: seconds
+const MAGAZINE_CONFIG: Record<string, { maxMag: number; betweenCooldown: number; reloadTime: number }> = {
+  gunslinger:    { maxMag: 6, betweenCooldown: 0.18, reloadTime: 1.4 }, // 6-shooter revolver
+  dynamiter:     { maxMag: 3, betweenCooldown: 0.35, reloadTime: 2.0 }, // 3 sticks, slow reload
+  deputy:        { maxMag: 3, betweenCooldown: 0.18, reloadTime: 0.9 }, // 3-hit combo, short fatigue
+  bounty_hunter: { maxMag: 3, betweenCooldown: 0.18, reloadTime: 0.9 },
+  marshal:       { maxMag: 3, betweenCooldown: 0.22, reloadTime: 1.1 }, // heavier, slightly slower
+  miner:         { maxMag: 3, betweenCooldown: 0.25, reloadTime: 1.0 },
+};
+
 export function possessedAttack(state: GameState): GameState {
   if (!state.selectedUnitId) return state;
   const attacker = state.units.find(u => u.id === state.selectedUnitId);
   if (!attacker) return state;
-  // Possessed units bypass normal attack cooldown — player attacks as fast as they tap Space
-  if (attacker.attackCooldown > 0.05) return state;
+
+  const cfg = MAGAZINE_CONFIG[attacker.type] ?? { maxMag: 3, betweenCooldown: 0.2, reloadTime: 1.0 };
+
+  // ── Initialize magazine on first possession ──
+  if (attacker.maxMagazine === 0) {
+    // Will be set on the mutable copy below
+  }
+
+  // ── Block if reloading ──
+  if (attacker.reloadTimer > 0) return state;
+
+  // ── Block if between-shot cooldown active ──
+  if (attacker.attackCooldown > 0) return state;
+
+  const s = { ...state, units: state.units.map(u => ({ ...u })) };
+  const a = s.units.find(u => u.id === state.selectedUnitId)!;
+
+  // Initialize magazine if needed
+  if (a.maxMagazine === 0) {
+    a.maxMagazine = cfg.maxMag;
+    a.magazine = cfg.maxMag;
+  }
+
+  // ── If magazine empty, start reload ──
+  if (a.magazine <= 0) {
+    a.reloadTimer = cfg.reloadTime;
+    a.magazine = 0;
+    spawnFloatingText(s, { x: a.pos.x, y: a.pos.y - 55 }, "RELOADING...", "#FFD700");
+    return s;
+  }
+
+  // ── Fire / strike ──
+  a.magazine -= 1;
+  a.attackCooldown = cfg.betweenCooldown;
+  a.state = "attacking";
+
+  // If magazine just hit 0, queue reload immediately after this shot
+  if (a.magazine === 0) {
+    a.reloadTimer = cfg.reloadTime;
+  }
 
   // Find nearest enemy in range (use 2× normal range for possessed)
   const range = attacker.stats.range * 2;
   let target: Unit | null = null;
   let minDist = Infinity;
-  for (const u of state.units) {
+  for (const u of s.units) {
     if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
     const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
-    if (dist < range && Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD && dist < minDist) { minDist = dist; target = u; }
+    if (dist < range && (isRangedUnit(attacker.type) || Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD) && dist < minDist) { minDist = dist; target = u; }
   }
 
-  // Also check enemy saloon
-  const enemySaloon = state.buildings.find(b => b.id === "enemy_saloon");
+  const enemySaloon = s.buildings.find(b => b.id === "enemy_saloon");
   const saloonDist = enemySaloon
     ? Math.abs(attacker.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2))
     : Infinity;
 
-  const s = { ...state, units: state.units.map(u => ({ ...u })) };
-  const a = s.units.find(u => u.id === state.selectedUnitId)!;
-
   if (target) {
-    // Direct damage + set attacker cooldown — possessed hits 30% harder
+    // Possessed hits 30% harder
     const dmg = attacker.stats.damage * 1.3;
     const t = s.units.find(u => u.id === target!.id)!;
     t.stats.hp -= dmg;
@@ -1459,26 +1520,18 @@ export function possessedAttack(state: GameState): GameState {
       t.state = "dying";
       t.deathTimer = 0;
       spawnDeathParticles(s, t.pos);
-      // Gold steal: if a possessed player kills an enemy miner carrying gold, player gets it
       if (t.team === "enemy" && t.type === "miner" && t.goldCarrying > 0) {
         s.gold += t.goldCarrying;
         spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 60 }, `+$${t.goldCarrying} STOLEN!`, "#FFD700");
         t.goldCarrying = 0;
       }
     }
-    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
-    a.state = "attacking";
   } else if (enemySaloon && saloonDist < range) {
     enemySaloon.hp -= attacker.stats.damage;
     spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${attacker.stats.damage}`, "#ff4444");
-    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
-    a.state = "attacking";
   } else {
-    // No target in range — still play attack animation and fire projectile for ranged units
-    a.attackCooldown = 0.05; // minimal cooldown — allows rapid tapping
-    a.state = "attacking";
+    // No target — fire projectile for ranged units anyway
     if (attacker.type === "gunslinger") {
-      // Fire bullet in facing direction — limited range (won't cross the map)
       s.projectiles.push({
         id: `pa_${Date.now()}`,
         pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
@@ -1486,11 +1539,10 @@ export function possessedAttack(state: GameState): GameState {
         team: "player",
         damage: attacker.stats.damage,
         type: "bullet",
-        life: 0.6, // ~240px max range at 400px/s
+        life: 0.6,
         exploded: false,
       });
     } else if (attacker.type === "dynamiter") {
-      // Lob dynamite forward to max range
       const throwDist = attacker.facing * 200;
       s.projectiles.push({
         id: `pa_${Date.now()}`,
@@ -1503,7 +1555,6 @@ export function possessedAttack(state: GameState): GameState {
         exploded: false,
       });
     }
-    // Melee types just swing (animation only, no projectile)
   }
 
   return s;
