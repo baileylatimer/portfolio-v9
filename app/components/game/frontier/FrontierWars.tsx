@@ -1699,9 +1699,9 @@ export default function FrontierWars() {
 
         // ── Unit spawn buttons (center) ──
         const btnW = 90, btnH = 70, btnGap = 8;
-        const totalW = 5 * (btnW + btnGap) - btnGap;
-        const startX = (canvasRef.current.width - totalW) / 2;
         const unitTypes: UnitType[] = ["miner", "deputy", "gunslinger", "bounty_hunter", "dynamiter", "marshal"];
+        const totalW = unitTypes.length * (btnW + btnGap) - btnGap;
+        const startX = (canvasRef.current.width - totalW) / 2;
 
         for (let i = 0; i < 6; i++) {
           const bx = startX + i * (btnW + btnGap);

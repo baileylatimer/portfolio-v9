@@ -207,7 +207,7 @@ export function updateGame(state: GameState, dt: number): GameState {
     // Small floating text near saloon
     const saloon = s.buildings.find(b => b.id === "player_saloon");
     if (saloon) {
-      spawnFloatingText(s, { x: saloon.pos.x + 40, y: saloon.pos.y - 5 }, `+${income}g`, s.nightfall ? "#88DDFF" : "#FFD700");
+      spawnFloatingText(s, { x: saloon.pos.x + 40, y: saloon.pos.y - 5 }, `+$${income}`, s.nightfall ? "#88DDFF" : "#FFD700");
     }
   }
 
@@ -231,6 +231,10 @@ export function updateGame(state: GameState, dt: number): GameState {
       unit.animTimer += dt;
       if (unit.animTimer > 0.15) { unit.animTimer = 0; unit.animFrame = (unit.animFrame + 1) % 4; }
       unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
+      // Possessed miner: auto-mine gold piles when standing on one (30% faster)
+      if (unit.type === "miner" && unit.goldCarrying === 0) {
+        updatePossessedMiner(unit, s, dt);
+      }
       return;
     }
     updateUnit(unit, s, dt);
@@ -743,13 +747,13 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
     }
   }
 
-  // Miners fight back if attacked
+  // Miners fight back if attacked — deal damage TO the enemy, not to themselves
   const nearbyEnemy = s.units.find(u =>
-    u.team !== unit.team && u.state !== "dead" && u.state !== "dying" &&
+    u.team !== unit.team && u.state !== "dead" && u.state !== "dying" && u.state !== "garrison" &&
     Math.abs(u.pos.x - unit.pos.x) < unit.stats.range
   );
   if (nearbyEnemy && unit.attackCooldown <= 0) {
-    unit.stats.hp -= nearbyEnemy.stats.damage * 0.5;
+    applyDamage(nearbyEnemy, unit.stats.damage * 0.5, s);
     unit.attackCooldown = 1 / unit.stats.attackRate;
   }
 }
@@ -758,7 +762,9 @@ function findNearestEnemy(unit: Unit, s: GameState): Unit | null {
   let nearest: Unit | null = null;
   let minDist = Infinity;
   for (const other of s.units) {
-    if (other.team === unit.team || other.state === "dead" || other.state === "dying") continue;
+    // Skip dead, dying, AND garrisoned units — garrisoned units are immune and
+    // should not be targeted so enemies fall through to attacking the building
+    if (other.team === unit.team || other.state === "dead" || other.state === "dying" || other.state === "garrison") continue;
     // Use 2D distance so Y-axis position matters (enables dodging for possessed units)
     const dist = Math.hypot(other.pos.x - unit.pos.x, (other.pos.y - unit.pos.y) * 0.5);
     if (dist < minDist) { minDist = dist; nearest = other; }
@@ -867,6 +873,34 @@ function explodeDynamite(proj: Projectile, s: GameState) {
     if (bld.team === proj.team) continue;
     const dist = Math.hypot(bld.pos.x + bld.width / 2 - proj.pos.x, bld.pos.y + bld.height / 2 - proj.pos.y);
     if (dist < radius) bld.hp -= proj.damage * 0.5;
+  }
+}
+
+// ─── Possessed Miner Auto-Mine ────────────────────────────────────────────────
+
+function updatePossessedMiner(unit: Unit, s: GameState, dt: number) {
+  // Find nearest gold pile within mining range
+  let targetPile: GoldPile | null = null;
+  let minDist = Infinity;
+  for (const pile of s.goldPiles) {
+    if (pile.gold <= 0) continue;
+    const dist = Math.abs(pile.pos.x - unit.pos.x);
+    if (dist < minDist) { minDist = dist; targetPile = pile; }
+  }
+  if (!targetPile || minDist > 18) return; // not close enough to any pile
+
+  // Mine it — 35% faster than normal (possessed bonus)
+  unit.state = "mining";
+  unit.mineTimer += dt;
+  const fastMineTime = unit.stats.mineTime * 0.65; // 35% faster
+  if (unit.mineTimer >= fastMineTime) {
+    unit.mineTimer = 0;
+    const mineAmt = Math.min(unit.stats.mineAmount, targetPile.gold);
+    targetPile.gold -= mineAmt;
+    unit.goldCarrying = mineAmt;
+    if (mineAmt > 0) {
+      spawnFloatingText(s, { x: targetPile.pos.x, y: targetPile.pos.y - 20 }, `+$${mineAmt} ⚡`, "#FFD700");
+    }
   }
 }
 
@@ -1234,13 +1268,14 @@ const POSSESSED_MAX_Y = WORLD.groundY - 8;
 
 export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: number): GameState {
   if (!state.selectedUnitId) return state;
-  const speed = 200;
   return {
     ...state,
     units: state.units.map(u => {
       if (u.id !== state.selectedUnitId) return u;
       // Never move a dead or dying unit
       if (u.state === "dead" || u.state === "dying") return u;
+      // Use the unit's own speed + 10% boost (not a hardcoded 200)
+      const speed = u.stats.speed * 1.1;
       const nx = Math.max(0, Math.min(WORLD.width, u.pos.x + dx * speed * dt));
       const ny = Math.max(POSSESSED_MIN_Y, Math.min(POSSESSED_MAX_Y, u.pos.y + dy * speed * dt));
       return {
@@ -1280,12 +1315,22 @@ export function possessedAttack(state: GameState): GameState {
   const a = s.units.find(u => u.id === state.selectedUnitId)!;
 
   if (target) {
-    // Direct damage + set attacker cooldown
-    const dmg = attacker.stats.damage * 1.5; // possessed hits harder
+    // Direct damage + set attacker cooldown — possessed hits 30% harder
+    const dmg = attacker.stats.damage * 1.3;
     const t = s.units.find(u => u.id === target!.id)!;
     t.stats.hp -= dmg;
     spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 40 }, `-${Math.round(dmg)}`, "#ff4444");
-    if (t.stats.hp <= 0) { t.state = "dying"; t.deathTimer = 0; spawnDeathParticles(s, t.pos); }
+    if (t.stats.hp <= 0) {
+      t.state = "dying";
+      t.deathTimer = 0;
+      spawnDeathParticles(s, t.pos);
+      // Gold steal: if a possessed player kills an enemy miner carrying gold, player gets it
+      if (t.team === "enemy" && t.type === "miner" && t.goldCarrying > 0) {
+        s.gold += t.goldCarrying;
+        spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 60 }, `+$${t.goldCarrying} STOLEN!`, "#FFD700");
+        t.goldCarrying = 0;
+      }
+    }
     a.attackCooldown = 1 / a.stats.attackRate;
     a.state = "attacking";
   } else if (enemySaloon && saloonDist < range) {
