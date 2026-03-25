@@ -6,6 +6,18 @@ export type Team = "player" | "enemy";
 export type GamePhase = "MENU" | "CAMPAIGN_MAP" | "BATTLE" | "UPGRADE" | "VICTORY" | "DEFEAT";
 export type UnitState = "idle" | "walking" | "mining" | "returning" | "attacking" | "garrison" | "dying" | "dead";
 export type Stance = "defense" | "garrison" | "attack";
+export type Biome =
+  | "desert"     // Dusty Gulch — classic orange western
+  | "mesa"       // Rattlesnake Ridge — red rock Arizona
+  | "canyon"     // Dead Man's Pass — dusty stone canyon
+  | "prairie"    // Goldfield — bright open plains
+  | "badlands"   // Tombstone — overcast gray/purple
+  | "industrial" // Iron Valley — smoky railroad town
+  | "volcanic"   // Devil's Canyon — blood red hellscape
+  | "snow"       // The Last Stand — cold blue winter
+  | "forest"     // Ambush I — wooded ambush
+  | "river"      // Ambush II — muddy riverbank
+  | "sacred";    // Ambush III — sacred red earth
 
 // ─── Difficulty ───────────────────────────────────────────────────────────────
 export type Difficulty = "tenderfoot" | "gunslinger" | "outlaw" | "legend";
@@ -119,6 +131,7 @@ export interface GameState {
   passiveGoldTimer: number;
   // Stance
   stance: Stance;
+  garrisonExitTimer: number;  // countdown before miners leave garrison (2.5s delay)
   // Enemy
   enemyGold: number;
   enemySpawnTimer: number;
@@ -135,6 +148,7 @@ export interface GameState {
   difficulty: Difficulty;  // selected difficulty
   aiStrategy: AiStrategy;  // current level's AI strategy
   enemyGarrisoned: boolean; // enemy has retreated to garrison
+  biome: Biome;             // visual biome for this level's background
 }
 
 export interface UpgradeState {
@@ -165,6 +179,7 @@ export interface LevelConfig {
   lore?: string[];          // multi-line lore text for briefing screen
   enemyLabel?: string;      // label shown on enemy structure in HUD
   aiStrategy?: AiStrategy;  // AI behavior pattern for this level
+  biome?: Biome;            // visual biome for this level's background
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────

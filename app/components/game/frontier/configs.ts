@@ -1,6 +1,6 @@
 // ─── Frontier Wars — Unit & Level Configs ─────────────────────────────────────
 
-import type { UnitStats, UnitType, LevelConfig, UpgradeState, Difficulty } from "./types";
+import type { UnitStats, UnitType, LevelConfig, UpgradeState, Difficulty, Biome } from "./types";
 
 // ─── Difficulty Multipliers ───────────────────────────────────────────────────
 
@@ -54,71 +54,72 @@ export const DIFFICULTY_DEFS: Record<Difficulty, DifficultyMult> = {
 
 // ─── Base Unit Stats ──────────────────────────────────────────────────────────
 
+// All speeds bumped +18% from original values for snappier feel
 export const BASE_STATS: Record<UnitType, UnitStats> = {
   miner: {
     hp: 60, maxHp: 60,
-    damage: 8, speed: 55, range: 30,
+    damage: 8, speed: 65, range: 30,
     attackRate: 0.8, cost: 150,
     mineAmount: 100, mineTime: 3.0,
   },
   deputy: {
     hp: 120, maxHp: 120,
-    damage: 18, speed: 65, range: 40,
+    damage: 18, speed: 77, range: 40,
     attackRate: 1.2, cost: 200,
     mineAmount: 0, mineTime: 0,
   },
   gunslinger: {
     hp: 80, maxHp: 80,
-    damage: 22, speed: 60, range: 180,
+    damage: 22, speed: 71, range: 180,
     attackRate: 1.5, cost: 400,
     mineAmount: 0, mineTime: 0,
   },
   dynamiter: {
     hp: 90, maxHp: 90,
-    damage: 55, speed: 50, range: 120,
+    damage: 55, speed: 59, range: 120,
     attackRate: 0.5, cost: 600,
     mineAmount: 0, mineTime: 0,
   },
   bounty_hunter: {
     hp: 220, maxHp: 220,
-    damage: 28, speed: 45, range: 45,
+    damage: 28, speed: 53, range: 45,
     attackRate: 0.9, cost: 500,
     mineAmount: 0, mineTime: 0,
   },
   marshal: {
     hp: 400, maxHp: 400,
-    damage: 35, speed: 40, range: 50,
+    damage: 35, speed: 47, range: 50,
     attackRate: 0.8, cost: 1200,
     mineAmount: 0, mineTime: 0,
   },
   // ── Native faction units (enemy-only, no cost) ──
   brave: {
     hp: 80, maxHp: 80,
-    damage: 14, speed: 80, range: 35,
+    damage: 14, speed: 94, range: 35,
     attackRate: 1.4, cost: 0,
     mineAmount: 0, mineTime: 0,
   },
   archer: {
     hp: 60, maxHp: 60,
-    damage: 18, speed: 65, range: 160,
+    damage: 18, speed: 77, range: 160,
     attackRate: 1.0, cost: 0,
     mineAmount: 0, mineTime: 0,
   },
   shaman: {
     hp: 70, maxHp: 70,
-    damage: 45, speed: 45, range: 110,
+    damage: 45, speed: 53, range: 110,
     attackRate: 0.45, cost: 0,
     mineAmount: 0, mineTime: 0,
   },
   chief: {
     hp: 500, maxHp: 500,
-    damage: 40, speed: 38, range: 55,
+    damage: 40, speed: 45, range: 55,
     attackRate: 0.9, cost: 0,
     mineAmount: 0, mineTime: 0,
   },
   mounted_brave: {
     hp: 140, maxHp: 140,
-    damage: 28, speed: 130, range: 45,
+    damage: 28, speed: 153, range: 45,
     attackRate: 1.2, cost: 0,
     mineAmount: 0, mineTime: 0,
   },
@@ -175,6 +176,7 @@ export const AMBUSH_LEVELS: LevelConfig[] = [
     isAmbush: true,
     ambushTier: 1,
     enemyLabel: "LAKOTA CAMP",
+    biome: "forest",
     lore: [
       "A Lakota scouting party has spotted your caravan crossing their hunting grounds.",
       "They move fast and strike hard — but their numbers are few.",
@@ -193,6 +195,7 @@ export const AMBUSH_LEVELS: LevelConfig[] = [
     isAmbush: true,
     ambushTier: 2,
     enemyLabel: "WAR CAMP",
+    biome: "river",
     lore: [
       "The Lakota have returned — this time with a war party.",
       "Chief Running Eagle rides at their head. He is not a man to be taken lightly.",
@@ -211,6 +214,7 @@ export const AMBUSH_LEVELS: LevelConfig[] = [
     isAmbush: true,
     ambushTier: 3,
     enemyLabel: "GREAT CAMP",
+    biome: "sacred",
     lore: [
       "The Lakota nation rides against you with everything they have.",
       "Mounted braves charge your lines. Shamans rain fire from the hills.",
@@ -254,6 +258,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 120, y: 280 },
     unlocks: [],
     aiStrategy: "economy_first",
+    biome: "desert",
   },
   {
     // Level 1 — rush: fast early aggression with deputies + gunslingers
@@ -266,6 +271,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 220, y: 240 },
     unlocks: ["gunslinger"],
     aiStrategy: "rush",
+    biome: "mesa",
   },
   {
     // Level 2 — turtle: slow build then massive wave
@@ -278,6 +284,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 310, y: 200 },
     unlocks: ["bounty_hunter"],
     aiStrategy: "turtle",
+    biome: "canyon",
   },
   {
     // Level 3 — economy war: 6 miners, races for gold supremacy
@@ -290,6 +297,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 400, y: 230 },
     unlocks: [],
     aiStrategy: "economy_war",
+    biome: "prairie",
   },
   {
     // Level 4 — siege: dynamiters + gunslingers from range, avoids melee
@@ -302,6 +310,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 490, y: 260 },
     unlocks: ["dynamiter"],
     aiStrategy: "siege",
+    biome: "badlands",
   },
   {
     // Level 5 — balanced: smart mix of all units, adapts mid-game
@@ -314,6 +323,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 580, y: 210 },
     unlocks: ["marshal"],
     aiStrategy: "balanced",
+    biome: "industrial",
   },
   {
     // Level 6 — swarm: floods with cheap units constantly
@@ -326,6 +336,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 660, y: 240 },
     unlocks: [],
     aiStrategy: "swarm",
+    biome: "volcanic",
   },
   {
     // Level 7 — adaptive: analyzes player comp and counters it
@@ -338,6 +349,7 @@ export const LEVELS: LevelConfig[] = [
     mapX: { x: 760, y: 270 },
     unlocks: [],
     aiStrategy: "adaptive",
+    biome: "snow",
   },
 ];
 
@@ -364,6 +376,125 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
   { key: "dynamiterRadius",  label: "Bigger Blast",        description: "+25% explosion radius per level", cost: 2, maxLevel: 3 },
   { key: "marshalHp",        label: "Marshal Fortitude",   description: "+100 HP per level",               cost: 2, maxLevel: 3 },
 ];
+
+// ─── Upgrade Points Per Level ─────────────────────────────────────────────────
+// Scales with campaign progress: early=2, mid=3, late=4, ambush=1 bonus
+export function getUpgradePoints(level: number, isAmbush: boolean): number {
+  if (isAmbush) return 1;
+  if (level <= 2) return 2;
+  if (level <= 5) return 3;
+  return 4; // levels 6-7
+}
+
+// ─── Biome Palette ────────────────────────────────────────────────────────────
+export interface BiomePalette {
+  skyTop: string;
+  skyMid: string;
+  skyBottom: string;
+  groundTop: string;
+  groundMid: string;
+  groundBottom: string;
+  mtnFar: string;
+  mtnNear: string;
+  dustColor: string;
+  nightSkyTop: string;
+  nightSkyMid: string;
+  nightSkyBottom: string;
+  nightGroundTop: string;
+  nightGroundMid: string;
+  nightGroundBottom: string;
+}
+
+export const BIOME_PALETTES: Record<Biome, BiomePalette> = {
+  desert: {
+    skyTop: "#1a0a2e", skyMid: "#7a3520", skyBottom: "#c2713a",
+    groundTop: "#8B5E3C", groundMid: "#A0714F", groundBottom: "#6B4423",
+    mtnFar: "#3d1a0a", mtnNear: "#5c2a12",
+    dustColor: "rgba(180,120,60,0.15)",
+    nightSkyTop: "#050510", nightSkyMid: "#0a0520", nightSkyBottom: "#1a0a10",
+    nightGroundTop: "#4a3020", nightGroundMid: "#3a2010", nightGroundBottom: "#2a1008",
+  },
+  mesa: {
+    skyTop: "#2a0a1a", skyMid: "#8B3520", skyBottom: "#cc5520",
+    groundTop: "#8B3020", groundMid: "#A04030", groundBottom: "#6B2010",
+    mtnFar: "#5c1a0a", mtnNear: "#8B2a12",
+    dustColor: "rgba(180,80,40,0.15)",
+    nightSkyTop: "#0a0008", nightSkyMid: "#1a0510", nightSkyBottom: "#2a0a08",
+    nightGroundTop: "#3a1010", nightGroundMid: "#2a0808", nightGroundBottom: "#1a0404",
+  },
+  canyon: {
+    skyTop: "#1a1a0a", skyMid: "#6B5020", skyBottom: "#a07030",
+    groundTop: "#5a4020", groundMid: "#6B5030", groundBottom: "#4a3010",
+    mtnFar: "#3d2a0a", mtnNear: "#5c3a12",
+    dustColor: "rgba(150,120,60,0.15)",
+    nightSkyTop: "#080808", nightSkyMid: "#181008", nightSkyBottom: "#281808",
+    nightGroundTop: "#2a2010", nightGroundMid: "#1a1008", nightGroundBottom: "#0a0800",
+  },
+  prairie: {
+    skyTop: "#0a1a3a", skyMid: "#2a5a8B", skyBottom: "#6aaa60",
+    groundTop: "#8B8B20", groundMid: "#a0a030", groundBottom: "#6B6B10",
+    mtnFar: "#2a4a0a", mtnNear: "#4a6a1a",
+    dustColor: "rgba(180,180,60,0.1)",
+    nightSkyTop: "#020510", nightSkyMid: "#050a20", nightSkyBottom: "#0a1a08",
+    nightGroundTop: "#3a3a10", nightGroundMid: "#2a2a08", nightGroundBottom: "#1a1a04",
+  },
+  badlands: {
+    skyTop: "#1a1a2a", skyMid: "#4a3a5a", skyBottom: "#7a6a8a",
+    groundTop: "#5a5a5a", groundMid: "#6a6a6a", groundBottom: "#4a4a4a",
+    mtnFar: "#3a3a4a", mtnNear: "#5a5a6a",
+    dustColor: "rgba(150,150,150,0.15)",
+    nightSkyTop: "#080810", nightSkyMid: "#101018", nightSkyBottom: "#181820",
+    nightGroundTop: "#282828", nightGroundMid: "#181818", nightGroundBottom: "#080808",
+  },
+  industrial: {
+    skyTop: "#1a0a0a", skyMid: "#5a3010", skyBottom: "#8a5020",
+    groundTop: "#3a2a1a", groundMid: "#4a3a2a", groundBottom: "#2a1a0a",
+    mtnFar: "#2a1a0a", mtnNear: "#4a2a10",
+    dustColor: "rgba(160,100,40,0.2)",
+    nightSkyTop: "#080404", nightSkyMid: "#100808", nightSkyBottom: "#180c04",
+    nightGroundTop: "#1a1208", nightGroundMid: "#100c04", nightGroundBottom: "#080400",
+  },
+  volcanic: {
+    skyTop: "#0a0000", skyMid: "#3a0000", skyBottom: "#8a1000",
+    groundTop: "#1a0a00", groundMid: "#2a1000", groundBottom: "#0a0500",
+    mtnFar: "#1a0000", mtnNear: "#3a0500",
+    dustColor: "rgba(200,50,0,0.15)",
+    nightSkyTop: "#050000", nightSkyMid: "#0a0000", nightSkyBottom: "#150000",
+    nightGroundTop: "#0f0500", nightGroundMid: "#080300", nightGroundBottom: "#040100",
+  },
+  snow: {
+    skyTop: "#0a1a2a", skyMid: "#2a4a6a", skyBottom: "#6a8aaa",
+    groundTop: "#d0d8e0", groundMid: "#e0e8f0", groundBottom: "#b0b8c0",
+    mtnFar: "#8a9aaa", mtnNear: "#aabaca",
+    dustColor: "rgba(200,220,240,0.1)",
+    nightSkyTop: "#020508", nightSkyMid: "#050a10", nightSkyBottom: "#0a1018",
+    nightGroundTop: "#8090a0", nightGroundMid: "#6a7a8a", nightGroundBottom: "#505a68",
+  },
+  forest: {
+    skyTop: "#0a1a0a", skyMid: "#2a4a1a", skyBottom: "#5a8a3a",
+    groundTop: "#2a4a1a", groundMid: "#3a5a2a", groundBottom: "#1a3a0a",
+    mtnFar: "#1a3a0a", mtnNear: "#2a5a1a",
+    dustColor: "rgba(100,150,60,0.1)",
+    nightSkyTop: "#020804", nightSkyMid: "#040c06", nightSkyBottom: "#081408",
+    nightGroundTop: "#101a08", nightGroundMid: "#0a1004", nightGroundBottom: "#040800",
+  },
+  river: {
+    skyTop: "#0a1a2a", skyMid: "#2a4a6a", skyBottom: "#5a8aaa",
+    groundTop: "#4a3a1a", groundMid: "#5a4a2a", groundBottom: "#3a2a0a",
+    mtnFar: "#2a3a4a", mtnNear: "#4a5a6a",
+    dustColor: "rgba(100,120,140,0.1)",
+    nightSkyTop: "#020508", nightSkyMid: "#040a10", nightSkyBottom: "#081018",
+    nightGroundTop: "#201808", nightGroundMid: "#181004", nightGroundBottom: "#0c0800",
+  },
+  sacred: {
+    skyTop: "#1a0a2a", skyMid: "#4a1a5a", skyBottom: "#8a3a8a",
+    groundTop: "#5a1a0a", groundMid: "#6a2a1a", groundBottom: "#4a0a00",
+    mtnFar: "#3a0a2a", mtnNear: "#5a1a4a",
+    dustColor: "rgba(180,100,180,0.1)",
+    nightSkyTop: "#080410", nightSkyMid: "#100818", nightSkyBottom: "#180c18",
+    nightGroundTop: "#280a04", nightGroundMid: "#1a0602", nightGroundBottom: "#0c0200",
+  },
+};
 
 // ─── World Constants ──────────────────────────────────────────────────────────
 
