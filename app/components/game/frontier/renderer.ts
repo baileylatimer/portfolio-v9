@@ -35,8 +35,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, canvasW:
   // ── Buildings ──
   state.buildings.forEach(b => drawBuilding(ctx, b, cam, state.nightfall));
 
-  // ── Units — skip garrisoned units (they're inside the building) ──
-  state.units.forEach(u => {
+  // ── Units — depth-sorted by Y (higher Y = lower on screen = drawn last = in front) ──
+  // This is the painter's algorithm: units closer to the camera (lower on screen) render on top
+  const sortedUnits = [...state.units].sort((a, b) => a.pos.y - b.pos.y);
+  sortedUnits.forEach(u => {
     if (u.state === "garrison") return; // hidden inside saloon
     drawUnit(ctx, u, cam);
   });
@@ -137,21 +139,29 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cam
     ctx.globalAlpha = 1;
   }
 
-  // Sun / moon — sun sets, moon rises
+  // Sun / moon — sun moves down over the full 3 minutes, moon rises at nightfall
   const sunX = w * 0.75 - (cam * 0.02) % w;
+  // sunProgress: 0 at t=0 (high in sky), 1 at t=180s (below horizon)
+  // This makes the sun visibly move from the very first second
+  const sunProgress = Math.min(1, time / NIGHTFALL_TIME);
   if (nightT < 1) {
-    // Sun descends as nightT increases
-    const sunY = h * (0.15 + nightT * 0.5);
-    ctx.fillStyle = nightT > 0.5 ? `rgba(255,100,0,${1 - nightT})` : "#FFD060";
-    ctx.globalAlpha = Math.max(0, 1 - nightT * 1.5);
+    // Sun descends from h*0.10 (high) to h*0.72 (below horizon) over 3 minutes
+    const sunY = h * (0.10 + sunProgress * 0.62);
+    // Color shifts from bright yellow → orange → red as it sets
+    const sunColor = sunProgress < 0.5
+      ? "#FFD060"
+      : `rgba(255,${Math.round(208 - sunProgress * 180)},0,1)`;
+    ctx.fillStyle = sunColor;
+    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, sunProgress - 0.75) * 4);
     ctx.beginPath();
     ctx.arc(sunX, sunY, 28, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
-    // Sun glow
-    if (nightT < 0.8) {
+    // Sun glow — fades as it sets
+    if (sunProgress < 0.9) {
+      const glowAlpha = 0.3 * (1 - sunProgress);
       const glow = ctx.createRadialGradient(sunX, sunY, 20, sunX, sunY, 70);
-      glow.addColorStop(0, `rgba(255,200,60,${0.3 * (1 - nightT)})`);
+      glow.addColorStop(0, `rgba(255,200,60,${glowAlpha})`);
       glow.addColorStop(1, "rgba(255,200,60,0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
@@ -325,7 +335,7 @@ function drawGoldPile(ctx: CanvasRenderingContext2D, pile: GoldPile, cam: number
     ctx.fillStyle = "#FFD700";
     ctx.font = "bold 8px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(`${pile.gold}g`, sx, sy - size * 0.4 - 4);
+    ctx.fillText(`$${pile.gold}`, sx, sy - size * 0.4 - 4);
     ctx.textAlign = "left";
   }
 }
@@ -440,9 +450,8 @@ function drawSaloonGoldPile(ctx: CanvasRenderingContext2D, saloon: Building, cam
   const sx = saloon.pos.x - cam + saloon.width / 2;
   const sy = W.groundY + 18; // below the ground line
 
-  // Scale pile size with gold (0g = tiny, 2000g = large)
-  const scale = Math.min(1, gold / 1500);
-  if (scale <= 0.01) return;
+  // Scale pile size with gold — always render at least a minimal pile so $0 is visible
+  const scale = Math.max(0.08, Math.min(1, gold / 1500));
 
   const pileW = 30 + scale * 50;
   const pileH = 10 + scale * 18;
@@ -481,7 +490,7 @@ function drawSaloonGoldPile(ctx: CanvasRenderingContext2D, saloon: Building, cam
   ctx.fillStyle = "#FFD700";
   ctx.font = `bold ${Math.round(8 + scale * 4)}px monospace`;
   ctx.textAlign = "center";
-  ctx.fillText(`${gold}g`, sx, sy + pileH + 10);
+  ctx.fillText(`$${gold}`, sx, sy + pileH + 10);
   ctx.textAlign = "left";
 }
 
@@ -491,6 +500,8 @@ function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, cam: number, n
 
   if (b.type === "mine") {
     drawMine(ctx, sx, sy, b.team === "enemy");
+  } else if (b.type === "tipi") {
+    drawTipi(ctx, sx, sy, b.hp / b.maxHp);
   } else {
     drawSaloon(ctx, sx, sy, b.team === "enemy", b.hp / b.maxHp, nightfall);
   }
@@ -575,6 +586,116 @@ function drawSaloon(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy
     ctx.lineTo(x + 15, y + 50);
     ctx.stroke();
   }
+}
+
+function drawTipi(ctx: CanvasRenderingContext2D, x: number, y: number, hpFrac: number) {
+  const w = 70;
+  const cx = x + w / 2;
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(cx, y + 70, 28, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Main tipi cone — hide (animal skin color)
+  ctx.fillStyle = "#C8A878";
+  ctx.beginPath();
+  ctx.moveTo(cx, y);           // apex
+  ctx.lineTo(cx - 30, y + 68); // bottom left
+  ctx.lineTo(cx + 30, y + 68); // bottom right
+  ctx.closePath();
+  ctx.fill();
+
+  // Tipi seam line
+  ctx.strokeStyle = "#8B6914";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, y + 4);
+  ctx.lineTo(cx, y + 68);
+  ctx.stroke();
+
+  // Decorative bands (geometric patterns)
+  ctx.strokeStyle = "#8B2020";
+  ctx.lineWidth = 2;
+  // Upper band
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, y + 18);
+  ctx.lineTo(cx + 8, y + 18);
+  ctx.stroke();
+  // Mid band with triangles
+  ctx.fillStyle = "#8B2020";
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cx + i * 8, y + 32);
+    ctx.lineTo(cx + i * 8 - 4, y + 40);
+    ctx.lineTo(cx + i * 8 + 4, y + 40);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Lower band
+  ctx.strokeStyle = "#4A6FA5";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 22, y + 52);
+  ctx.lineTo(cx + 22, y + 52);
+  ctx.stroke();
+
+  // Smoke hole poles sticking out top
+  ctx.strokeStyle = "#5C3317";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, y + 2);
+  ctx.lineTo(cx - 14, y - 18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 6, y + 2);
+  ctx.lineTo(cx + 14, y - 18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, y + 2);
+  ctx.lineTo(cx + 2, y - 22);
+  ctx.stroke();
+
+  // Smoke from top
+  ctx.fillStyle = "rgba(180,180,180,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, y - 26, 6, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 4, y - 34, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Door flap (dark opening)
+  ctx.fillStyle = "#3d1f0a";
+  ctx.beginPath();
+  ctx.ellipse(cx, y + 60, 7, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Damage cracks
+  if (hpFrac < 0.5) {
+    ctx.strokeStyle = "#5C3317";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, y + 25);
+    ctx.lineTo(cx - 5, y + 45);
+    ctx.stroke();
+  }
+
+  // HP bar
+  if (hpFrac < 1) {
+    ctx.fillStyle = "#333";
+    ctx.fillRect(x, y - 12, w, 6);
+    ctx.fillStyle = hpFrac > 0.5 ? "#4CAF50" : "#CC2200";
+    ctx.fillRect(x, y - 12, w * hpFrac, 6);
+  }
+
+  // Label
+  ctx.fillStyle = "#F4E4C1";
+  ctx.font = "7px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("TIPI CAMP", cx, y - 16);
+  ctx.textAlign = "left";
 }
 
 function drawMine(ctx: CanvasRenderingContext2D, x: number, y: number, isEnemy: boolean) {
@@ -702,11 +823,18 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number) {
 
   const isEnemy = unit.team === "enemy";
   switch (unit.type) {
-    case "miner":     drawMinerSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "deputy":    drawDeputySprite(ctx, sx, sy, unit, isEnemy); break;
-    case "gunslinger":drawGunslingerSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "dynamiter": drawDynamiterSprite(ctx, sx, sy, unit, isEnemy); break;
-    case "marshal":   drawMarshalSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "miner":         drawMinerSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "deputy":        drawDeputySprite(ctx, sx, sy, unit, isEnemy); break;
+    case "gunslinger":    drawGunslingerSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "dynamiter":     drawDynamiterSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "bounty_hunter": drawBountyHunterSprite(ctx, sx, sy, unit, isEnemy); break;
+    case "marshal":       drawMarshalSprite(ctx, sx, sy, unit, isEnemy); break;
+    // Native faction
+    case "brave":         drawBraveSprite(ctx, sx, sy, unit); break;
+    case "archer":        drawArcherSprite(ctx, sx, sy, unit); break;
+    case "shaman":        drawShamanSprite(ctx, sx, sy, unit); break;
+    case "chief":         drawChiefSprite(ctx, sx, sy, unit); break;
+    case "mounted_brave": drawMountedBraveSprite(ctx, sx, sy, unit); break;
   }
 
   ctx.restore();
@@ -717,7 +845,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number) {
     const bw = 28;
     ctx.fillStyle = COLORS.hpBg;
     ctx.fillRect(sx - bw / 2, sy - 48, bw, 4);
-    const hpFrac = unit.stats.hp / unit.stats.maxHp;
+    const hpFrac = Math.max(0, Math.min(1, unit.stats.hp / unit.stats.maxHp));
     ctx.fillStyle = hpFrac > 0.5 ? COLORS.hpGreen : COLORS.hpRed;
     ctx.fillRect(sx - bw / 2, sy - 48, bw * hpFrac, 4);
   }
@@ -1199,6 +1327,538 @@ function drawMarshalSprite(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.fillRect(x + 1, y - 48 + bob, 4, 4);
 }
 
+// ─── Bounty Hunter Sprite (Django-inspired) ───────────────────────────────────
+
+function drawBountyHunterSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit, isEnemy = false) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.2) * 2 : 0;
+  const attackPeriod = 1 / unit.stats.attackRate;
+  const swingPhase = unit.attackCooldown > 0 ? Math.min(1, unit.attackCooldown / attackPeriod) : 0;
+  const swingAngle = -Math.PI * 0.7 * swingPhase;
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 14, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = isEnemy ? "#2a1010" : "#1a0f08";
+  ctx.fillRect(x - 8, y - 16 + bob, 7, 16);
+  ctx.fillRect(x + 1, y - 16 + bob, 7, 16);
+  // Boots
+  ctx.fillStyle = isEnemy ? "#1a0808" : "#0f0808";
+  ctx.fillRect(x - 9, y - 4 + bob, 8, 6);
+  ctx.fillRect(x + 1, y - 4 + bob, 8, 6);
+
+  // Long dark duster coat
+  ctx.fillStyle = isEnemy ? "#3a1010" : "#1a1008";
+  ctx.fillRect(x - 12, y - 36 + bob, 24, 22);
+  // Coat tails
+  ctx.fillRect(x - 12, y - 14 + bob, 7, 14);
+  ctx.fillRect(x + 5, y - 14 + bob, 7, 14);
+  // Coat lapels (lighter inner)
+  ctx.fillStyle = isEnemy ? "#5a2020" : "#3a2010";
+  ctx.fillRect(x - 6, y - 36 + bob, 5, 18);
+  ctx.fillRect(x + 1, y - 36 + bob, 5, 18);
+
+  // Left arm (back-swing)
+  ctx.fillStyle = isEnemy ? "#E8A060" : "#D4A574";
+  ctx.save();
+  ctx.translate(x - 12, y - 34 + bob);
+  ctx.rotate(swingPhase > 0 ? swingAngle * 0.3 : 0);
+  ctx.fillRect(-7, 0, 7, 14);
+  ctx.restore();
+
+  // Right arm — heavy swing
+  ctx.save();
+  ctx.translate(x + 12, y - 34 + bob);
+  ctx.rotate(swingAngle);
+  ctx.fillStyle = isEnemy ? "#E8A060" : "#D4A574";
+  ctx.fillRect(0, 0, 7, 14);
+  // Weapon: chain/cleaver at end of arm
+  ctx.fillStyle = "#888";
+  ctx.fillRect(1, 12, 5, 8); // handle
+  ctx.fillRect(-2, 18, 9, 5); // blade
+  // Impact flash
+  if (swingPhase > 0.65) {
+    ctx.fillStyle = "#FFD700";
+    ctx.globalAlpha = (swingPhase - 0.65) / 0.35;
+    ctx.beginPath();
+    ctx.arc(4, 22, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+
+  // Head
+  ctx.fillStyle = isEnemy ? "#E8A060" : "#D4A574";
+  ctx.fillRect(x - 8, y - 50 + bob, 16, 14);
+
+  // Wide-brim hat (pulled low — Django style)
+  ctx.fillStyle = isEnemy ? "#1a0808" : "#0a0808";
+  ctx.fillRect(x - 14, y - 52 + bob, 28, 4); // wide brim
+  ctx.fillRect(x - 9, y - 64 + bob, 18, 14); // crown
+  // Hat band
+  ctx.fillStyle = isEnemy ? "#8B2020" : "#8B6914";
+  ctx.fillRect(x - 9, y - 54 + bob, 18, 2);
+
+  // Sunglasses (iconic)
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(x - 6, y - 44 + bob, 5, 3);
+  ctx.fillRect(x + 1, y - 44 + bob, 5, 3);
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 1, y - 43 + bob);
+  ctx.lineTo(x + 1, y - 43 + bob);
+  ctx.stroke();
+
+  // Wanted poster badge on chest
+  ctx.fillStyle = isEnemy ? "#8B2020" : "#8B6914";
+  ctx.fillRect(x - 3, y - 30 + bob, 6, 8);
+  ctx.fillStyle = isEnemy ? "#ffaaaa" : "#FFD700";
+  ctx.font = "5px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("$", x, y - 24 + bob);
+  ctx.textAlign = "left";
+}
+
+// ─── Native Unit Sprites ──────────────────────────────────────────────────────
+
+// Native color palette
+const N = {
+  skin:    "#C8845A",  // warm copper skin
+  hair:    "#1A0A00",  // near-black hair
+  cloth:   "#8B4423",  // earth-tone cloth
+  feather: "#cc2200",  // red feather
+  paint:   "#cc4400",  // war paint orange-red
+  blue:    "#2244AA",  // blue paint / beads
+  bone:    "#E8D8B0",  // bone/ivory
+  horse:   "#8B5E3C",  // horse brown
+};
+
+function drawBraveSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
+  const attacking = unit.state === "attacking";
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 11, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs (breechcloth + leggings)
+  ctx.fillStyle = N.cloth;
+  ctx.fillRect(x - 6, y - 14 + bob, 5, 14);
+  ctx.fillRect(x + 1, y - 14 + bob, 5, 14);
+  // Moccasins
+  ctx.fillStyle = N.bone;
+  ctx.fillRect(x - 7, y - 3 + bob, 6, 5);
+  ctx.fillRect(x + 1, y - 3 + bob, 6, 5);
+
+  // Body (bare chest with war paint)
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 8, y - 28 + bob, 16, 14);
+  // War paint stripes
+  ctx.fillStyle = N.paint;
+  ctx.fillRect(x - 6, y - 26 + bob, 3, 8);
+  ctx.fillRect(x + 3, y - 26 + bob, 3, 8);
+
+  // Arms
+  ctx.fillStyle = N.skin;
+  if (attacking) {
+    // Tomahawk swing
+    ctx.fillRect(x + 7, y - 30 + bob, 6, 12);
+    // Tomahawk
+    ctx.fillStyle = "#888";
+    ctx.fillRect(x + 12, y - 34 + bob, 6, 4);
+    ctx.fillStyle = N.cloth;
+    ctx.fillRect(x + 13, y - 30 + bob, 2, 8);
+  } else {
+    ctx.fillRect(x - 14, y - 28 + bob, 6, 10);
+    ctx.fillRect(x + 8, y - 28 + bob, 6, 10);
+  }
+
+  // Head
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 6, y - 40 + bob, 12, 12);
+  // Hair (black, tied back)
+  ctx.fillStyle = N.hair;
+  ctx.fillRect(x - 6, y - 40 + bob, 12, 4);
+  ctx.fillRect(x + 5, y - 40 + bob, 3, 10); // braid
+  // War paint on face
+  ctx.fillStyle = N.paint;
+  ctx.fillRect(x - 4, y - 36 + bob, 3, 2);
+  ctx.fillRect(x + 1, y - 36 + bob, 3, 2);
+  // Feather
+  ctx.fillStyle = N.feather;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y - 40 + bob);
+  ctx.lineTo(x + 2, y - 52 + bob);
+  ctx.lineTo(x + 6, y - 48 + bob);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawArcherSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.5) * 2 : 0;
+  const shooting = unit.state === "attacking";
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 11, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = N.cloth;
+  ctx.fillRect(x - 6, y - 14 + bob, 5, 14);
+  ctx.fillRect(x + 1, y - 14 + bob, 5, 14);
+
+  // Body
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 7, y - 28 + bob, 14, 14);
+  // Quiver on back
+  ctx.fillStyle = N.cloth;
+  ctx.fillRect(x - 10, y - 30 + bob, 4, 14);
+  // Arrow shafts in quiver
+  ctx.strokeStyle = N.bone;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x - 9 + i, y - 30 + bob);
+    ctx.lineTo(x - 9 + i, y - 38 + bob);
+    ctx.stroke();
+  }
+
+  // Arms + bow
+  ctx.fillStyle = N.skin;
+  if (shooting) {
+    // Draw bow (left arm extended)
+    ctx.strokeStyle = N.cloth;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x - 14, y - 26 + bob, 10, -Math.PI * 0.6, Math.PI * 0.6);
+    ctx.stroke();
+    // Bowstring
+    ctx.strokeStyle = N.bone;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, y - 32 + bob);
+    ctx.lineTo(x - 14, y - 20 + bob);
+    ctx.stroke();
+    // Arrow nocked
+    ctx.strokeStyle = N.bone;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, y - 26 + bob);
+    ctx.lineTo(x + 8, y - 26 + bob);
+    ctx.stroke();
+    // Arrowhead
+    ctx.fillStyle = "#888";
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y - 26 + bob);
+    ctx.lineTo(x + 4, y - 28 + bob);
+    ctx.lineTo(x + 4, y - 24 + bob);
+    ctx.closePath();
+    ctx.fill();
+    // Right arm pulling string
+    ctx.fillStyle = N.skin;
+    ctx.fillRect(x + 4, y - 28 + bob, 6, 10);
+  } else {
+    ctx.fillRect(x - 14, y - 28 + bob, 6, 10);
+    ctx.fillRect(x + 8, y - 28 + bob, 6, 10);
+  }
+
+  // Head
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 6, y - 40 + bob, 12, 12);
+  ctx.fillStyle = N.hair;
+  ctx.fillRect(x - 6, y - 40 + bob, 12, 4);
+  // Headband
+  ctx.fillStyle = N.feather;
+  ctx.fillRect(x - 6, y - 38 + bob, 12, 2);
+  // Two feathers
+  ctx.fillStyle = N.feather;
+  ctx.fillRect(x - 2, y - 44 + bob, 2, 6);
+  ctx.fillRect(x + 2, y - 46 + bob, 2, 8);
+}
+
+function drawShamanSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.2) * 1.5 : 0;
+  const casting = unit.state === "attacking";
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 12, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs (long robe)
+  ctx.fillStyle = "#4A3020";
+  ctx.fillRect(x - 8, y - 20 + bob, 16, 20);
+  // Robe fringe
+  ctx.strokeStyle = N.bone;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x - 7 + i * 3, y + bob);
+    ctx.lineTo(x - 7 + i * 3, y + 5 + bob);
+    ctx.stroke();
+  }
+
+  // Body (robe)
+  ctx.fillStyle = "#5C3A20";
+  ctx.fillRect(x - 9, y - 34 + bob, 18, 14);
+  // Bone necklace
+  ctx.strokeStyle = N.bone;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y - 28 + bob, 6, Math.PI * 0.2, Math.PI * 0.8);
+  ctx.stroke();
+
+  // Staff arm
+  ctx.fillStyle = N.skin;
+  if (casting) {
+    ctx.fillRect(x + 7, y - 36 + bob, 6, 14);
+    // Staff
+    ctx.strokeStyle = N.cloth;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 10, y - 36 + bob);
+    ctx.lineTo(x + 10, y - 56 + bob);
+    ctx.stroke();
+    // Staff totem (skull)
+    ctx.fillStyle = N.bone;
+    ctx.beginPath();
+    ctx.arc(x + 10, y - 58 + bob, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1a0a00";
+    ctx.fillRect(x + 7, y - 60 + bob, 2, 2);
+    ctx.fillRect(x + 11, y - 60 + bob, 2, 2);
+    // Magic glow
+    ctx.fillStyle = "rgba(100,200,255,0.4)";
+    ctx.beginPath();
+    ctx.arc(x + 10, y - 58 + bob, 10, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillRect(x - 14, y - 34 + bob, 6, 12);
+    ctx.fillRect(x + 8, y - 34 + bob, 6, 12);
+    // Staff at rest
+    ctx.strokeStyle = N.cloth;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 11, y - 34 + bob);
+    ctx.lineTo(x - 11, y - 54 + bob);
+    ctx.stroke();
+    ctx.fillStyle = N.bone;
+    ctx.beginPath();
+    ctx.arc(x - 11, y - 56 + bob, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Head
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 7, y - 46 + bob, 14, 12);
+  // Headdress (large feather crown)
+  ctx.fillStyle = "#4A3020";
+  ctx.fillRect(x - 7, y - 48 + bob, 14, 4);
+  // Feathers
+  const featherColors = [N.feather, "#FFD700", N.feather, "#FFD700", N.feather];
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = featherColors[i];
+    ctx.beginPath();
+    ctx.moveTo(x - 8 + i * 4, y - 48 + bob);
+    ctx.lineTo(x - 10 + i * 4, y - 62 + bob);
+    ctx.lineTo(x - 6 + i * 4, y - 58 + bob);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Face paint (blue)
+  ctx.fillStyle = N.blue;
+  ctx.fillRect(x - 5, y - 44 + bob, 10, 3);
+}
+
+function drawChiefSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 1.0) * 1.5 : 0;
+  const attacking = unit.state === "attacking";
+
+  // Shadow (big)
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 16, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs (thick, armored leggings)
+  ctx.fillStyle = "#3d2010";
+  ctx.fillRect(x - 9, y - 18 + bob, 8, 18);
+  ctx.fillRect(x + 1, y - 18 + bob, 8, 18);
+  // Moccasins
+  ctx.fillStyle = N.bone;
+  ctx.fillRect(x - 10, y - 3 + bob, 9, 6);
+  ctx.fillRect(x + 1, y - 3 + bob, 9, 6);
+
+  // Body (war chief regalia)
+  ctx.fillStyle = "#6B3010";
+  ctx.fillRect(x - 12, y - 36 + bob, 24, 18);
+  // Chest armor (bone plates)
+  ctx.fillStyle = N.bone;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(x - 8 + i * 6, y - 34 + bob, 4, 12);
+  }
+  // Red sash
+  ctx.fillStyle = N.feather;
+  ctx.fillRect(x - 12, y - 22 + bob, 24, 3);
+
+  // Arms
+  ctx.fillStyle = N.skin;
+  if (attacking) {
+    // War club swing
+    ctx.fillRect(x + 10, y - 36 + bob, 8, 16);
+    // War club
+    ctx.fillStyle = N.cloth;
+    ctx.fillRect(x + 16, y - 42 + bob, 5, 20);
+    ctx.fillStyle = "#888";
+    ctx.beginPath();
+    ctx.arc(x + 18, y - 44 + bob, 7, 0, Math.PI * 2);
+    ctx.fill();
+    // Spikes on club
+    ctx.fillStyle = N.bone;
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      ctx.fillRect(x + 18 + Math.cos(angle) * 5, y - 44 + bob + Math.sin(angle) * 5, 3, 3);
+    }
+  } else {
+    ctx.fillRect(x - 18, y - 36 + bob, 8, 16);
+    ctx.fillRect(x + 10, y - 36 + bob, 8, 16);
+  }
+
+  // Head (big, imposing)
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 9, y - 50 + bob, 18, 14);
+  // War paint (bold stripes)
+  ctx.fillStyle = N.paint;
+  ctx.fillRect(x - 7, y - 48 + bob, 14, 3);
+  ctx.fillStyle = N.blue;
+  ctx.fillRect(x - 7, y - 44 + bob, 14, 3);
+
+  // Grand war bonnet (full eagle feather headdress)
+  ctx.fillStyle = "#4A3020";
+  ctx.fillRect(x - 9, y - 52 + bob, 18, 5);
+  // Many feathers in arc
+  const bonnetFeathers = 9;
+  for (let i = 0; i < bonnetFeathers; i++) {
+    const angle = Math.PI * (0.15 + (i / (bonnetFeathers - 1)) * 0.7);
+    const fx = x + Math.cos(angle) * 14;
+    const fy = y - 52 + bob - Math.sin(angle) * 20;
+    ctx.fillStyle = i % 2 === 0 ? N.feather : N.bone;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * 9, y - 52 + bob - Math.sin(angle) * 9);
+    ctx.lineTo(fx - 2, fy);
+    ctx.lineTo(fx + 2, fy);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Trailing feathers down the back
+  ctx.fillStyle = N.feather;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(x + 8, y - 50 + bob + i * 8, 2, 10);
+  }
+}
+
+function drawMountedBraveSprite(ctx: CanvasRenderingContext2D, x: number, y: number, unit: Unit) {
+  const bob = unit.state === "walking" ? Math.sin(unit.animFrame * 2.0) * 3 : 0;
+  const attacking = unit.state === "attacking";
+
+  // Horse shadow
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 4, 22, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Horse body
+  ctx.fillStyle = N.horse;
+  ctx.fillRect(x - 20, y - 20 + bob, 40, 20);
+  // Horse head
+  ctx.fillRect(x + 16, y - 28 + bob, 12, 16);
+  // Horse nose
+  ctx.fillRect(x + 24, y - 24 + bob, 6, 8);
+  // Horse eye
+  ctx.fillStyle = "#1a0a00";
+  ctx.fillRect(x + 22, y - 26 + bob, 3, 3);
+  // Horse mane
+  ctx.fillStyle = "#3d1f0a";
+  ctx.fillRect(x + 16, y - 30 + bob, 4, 12);
+  // Horse tail
+  ctx.fillRect(x - 22, y - 22 + bob, 4, 14);
+
+  // Horse legs (galloping animation)
+  ctx.fillStyle = N.horse;
+  const legSwing = Math.sin(unit.animFrame * 2.0) * 8;
+  ctx.fillRect(x - 14, y + bob, 6, 14 + legSwing);
+  ctx.fillRect(x - 4, y + bob, 6, 14 - legSwing);
+  ctx.fillRect(x + 6, y + bob, 6, 14 + legSwing * 0.5);
+  ctx.fillRect(x + 14, y + bob, 6, 14 - legSwing * 0.5);
+  // Hooves
+  ctx.fillStyle = "#1a0a00";
+  ctx.fillRect(x - 14, y + 14 + bob + legSwing, 6, 4);
+  ctx.fillRect(x - 4, y + 14 + bob - legSwing, 6, 4);
+  ctx.fillRect(x + 6, y + 14 + bob + legSwing * 0.5, 6, 4);
+  ctx.fillRect(x + 14, y + 14 + bob - legSwing * 0.5, 6, 4);
+
+  // Rider body
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 6, y - 38 + bob, 12, 18);
+  // War paint
+  ctx.fillStyle = N.paint;
+  ctx.fillRect(x - 4, y - 36 + bob, 3, 8);
+  ctx.fillRect(x + 1, y - 36 + bob, 3, 8);
+
+  // Rider arms
+  ctx.fillStyle = N.skin;
+  if (attacking) {
+    // Spear thrust
+    ctx.fillRect(x + 6, y - 38 + bob, 6, 10);
+    ctx.strokeStyle = N.bone;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 9, y - 38 + bob);
+    ctx.lineTo(x + 30, y - 46 + bob);
+    ctx.stroke();
+    ctx.fillStyle = "#888";
+    ctx.beginPath();
+    ctx.moveTo(x + 30, y - 46 + bob);
+    ctx.lineTo(x + 26, y - 50 + bob);
+    ctx.lineTo(x + 26, y - 42 + bob);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillRect(x - 12, y - 38 + bob, 6, 10);
+    ctx.fillRect(x + 6, y - 38 + bob, 6, 10);
+  }
+
+  // Rider head
+  ctx.fillStyle = N.skin;
+  ctx.fillRect(x - 6, y - 50 + bob, 12, 12);
+  ctx.fillStyle = N.hair;
+  ctx.fillRect(x - 6, y - 50 + bob, 12, 4);
+  // Feathers (2, streaming back)
+  ctx.fillStyle = N.feather;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y - 50 + bob);
+  ctx.lineTo(x + 14, y - 58 + bob);
+  ctx.lineTo(x + 18, y - 52 + bob);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#FFD700";
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y - 50 + bob);
+  ctx.lineTo(x + 10, y - 62 + bob);
+  ctx.lineTo(x + 14, y - 56 + bob);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ─── Projectiles ──────────────────────────────────────────────────────────────
 
 function drawProjectile(ctx: CanvasRenderingContext2D, proj: Projectile, cam: number) {
@@ -1413,13 +2073,14 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
 
   // (Nightfall timer is now drawn in the game world area, not here)
 
-  // Unit spawn buttons
+  // Unit spawn buttons — only show unlocked units; locked ones show as padlocked silhouettes
   const units: Array<{ type: string; label: string; cost: number; color: string; key: string }> = [
-    { type: "miner",      label: "MINER",    cost: 150,  color: "#FFD700", key: "1" },
-    { type: "deputy",     label: "DEPUTY",   cost: 200,  color: "#4A6FA5", key: "2" },
-    { type: "gunslinger", label: "GUNSLNGR", cost: 400,  color: "#8B6914", key: "3" },
-    { type: "dynamiter",  label: "DYNAMITE", cost: 600,  color: "#cc2200", key: "4" },
-    { type: "marshal",    label: "MARSHAL",  cost: 1200, color: "#6B4423", key: "5" },
+    { type: "miner",         label: "MINER",    cost: 150,  color: "#FFD700", key: "1" },
+    { type: "deputy",        label: "DEPUTY",   cost: 200,  color: "#4A6FA5", key: "2" },
+    { type: "gunslinger",    label: "GUNSLNGR", cost: 400,  color: "#8B6914", key: "3" },
+    { type: "bounty_hunter", label: "BOUNTY H", cost: 500,  color: "#cc8800", key: "4" },
+    { type: "dynamiter",     label: "DYNAMITE", cost: 600,  color: "#cc2200", key: "5" },
+    { type: "marshal",       label: "MARSHAL",  cost: 1200, color: "#6B4423", key: "6" },
   ];
   // (costs displayed as $ below)
 
@@ -1430,7 +2091,28 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
   units.forEach((u, i) => {
     const bx = startX + i * (btnW + btnGap);
     const by = hudY + 10;
-    const canAfford = state.gold >= u.cost;
+    const isUnlocked = state.unlockedUnits.includes(u.type);
+    const canAfford = isUnlocked && state.gold >= u.cost;
+
+    if (!isUnlocked) {
+      // Locked — dark silhouette with padlock
+      ctx.fillStyle = "rgba(10,5,0,0.85)";
+      ctx.fillRect(bx, by, btnW, btnH);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, btnW, btnH);
+      ctx.fillStyle = "#444";
+      ctx.font = "bold 9px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(u.label, bx + btnW / 2, by + 16);
+      ctx.font = "20px monospace";
+      ctx.fillText("🔒", bx + btnW / 2, by + 42);
+      ctx.font = "8px monospace";
+      ctx.fillStyle = "#555";
+      ctx.fillText("LOCKED", bx + btnW / 2, by + 60);
+      ctx.textAlign = "left";
+      return;
+    }
 
     // Button bg
     ctx.fillStyle = canAfford ? "rgba(60,30,10,0.9)" : "rgba(30,15,5,0.6)";
@@ -1471,6 +2153,11 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
   const bw = 160;
   const hpX = canvasW - 16 - bw;
 
+  // Enemy gold pile visual (mirrored under enemy saloon)
+  if (enemySaloon && !state.isAmbushLevel) {
+    drawSaloonGoldPile(ctx, enemySaloon, state.cameraX, state.enemyGold);
+  }
+
   if (enemySaloon) {
     ctx.fillStyle = COLORS.uiText;
     ctx.font = "10px monospace";
@@ -1481,6 +2168,15 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, canvasW
     ctx.fillRect(hpX, hudY + 22, bw, 10);
     ctx.fillStyle = COLORS.uiRed;
     ctx.fillRect(hpX, hudY + 22, bw * (enemySaloon.hp / enemySaloon.maxHp), 10);
+
+    // Enemy gold — only on regular levels (ambush = war party, no economy to spy on)
+    if (!state.isAmbushLevel) {
+      ctx.fillStyle = "rgba(255,215,0,0.7)";
+      ctx.font = "9px monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`💰 $${state.enemyGold}`, canvasW - 16, hudY + 44);
+      ctx.textAlign = "left";
+    }
   }
 
   if (playerSaloon) {

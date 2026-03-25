@@ -1,20 +1,61 @@
 // ─── Frontier Wars — Main Game Component ──────────────────────────────────────
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { GameState, UnitType, UpgradeState } from "./types";
+import type { GameState, UnitType, UpgradeState, Difficulty } from "./types";
 import { createInitialState, updateGame, queueUnit, selectUnit, setStance, movePossessedUnit, possessedAttack } from "./engine";
 import { render } from "./renderer";
-import { WORLD, LEVELS, UPGRADE_DEFS } from "./configs";
+import { WORLD, LEVELS, AMBUSH_LEVELS, CAMPAIGN_SEQUENCE, UPGRADE_DEFS, DIFFICULTY_DEFS } from "./configs";
+import type { CampaignEntry } from "./configs";
 
 // ─── Default Upgrades ─────────────────────────────────────────────────────────
 
 const DEFAULT_UPGRADES: UpgradeState = {
   minerSpeed: 0, minerCapacity: 0,
   deputyHp: 0, deputyDamage: 0,
+  bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
   saloonRevenue: 0,
 };
+
+// ─── Save / Load (localStorage) ──────────────────────────────────────────────
+
+const SAVE_KEY = "frontier-wars-save-v1";
+
+interface SaveData {
+  campaignStep: number;
+  currentLevel: number;
+  completedLevels: number[];
+  upgrades: UpgradeState;
+  upgradePoints: number;
+  unlockedUnits: string[];
+  savedAt: number; // Unix ms timestamp
+  difficulty?: Difficulty;
+}
+
+function saveGame(data: SaveData): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) { void e; }
+}
+
+function loadGame(): SaveData | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SaveData;
+  } catch (e) { void e; return null; }
+}
+
+function hasSave(): boolean {
+  try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
+}
+
+function formatSaveDate(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+    " · " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
 
 // ─── Campaign Map — RDR2 Parchment Style ─────────────────────────────────────
 
@@ -108,10 +149,12 @@ const TERRAIN_COLORS: Record<string, { fill: string; stroke: string; label: stri
 function CampaignMap({
   currentLevel,
   completedLevels,
+  campaignStep,
   onSelectLevel,
 }: {
   currentLevel: number;
   completedLevels: number[];
+  campaignStep: number;
   onSelectLevel: (level: number) => void;
 }) {
   const [hoveredLevel, setHoveredLevel] = useState<number | null>(null);
@@ -241,6 +284,42 @@ function CampaignMap({
                 strokeWidth="0.4"
                 strokeDasharray="1.2,0.8"
               />
+            );
+          })}
+
+          {/* Ambush encounter markers — skull dots on the trail between territories */}
+          {/* Ambush 0: between level 1 (Rio Seco) and level 2 (Blackwood County) */}
+          {/* Ambush 1: between level 4 (Perdition) and level 5 (Iron Ridge) */}
+          {/* Ambush 2: between level 6 (Stillwater) and level 7 (Fort Sovereign) */}
+          {[
+            { ambushIdx: 0, fromLevel: 1, toLevel: 2, tier: 1 },
+            { ambushIdx: 1, fromLevel: 4, toLevel: 5, tier: 2 },
+            { ambushIdx: 2, fromLevel: 6, toLevel: 7, tier: 3 },
+          ].map(({ ambushIdx, fromLevel, toLevel, tier }) => {
+            const [x1, y1] = TERRITORIES[fromLevel].nodePos;
+            const [x2, y2] = TERRITORIES[toLevel].nodePos;
+            // Place marker at 55% along the trail (slightly past midpoint)
+            const mx = x1 + (x2 - x1) * 0.55;
+            const my = y1 + (y2 - y1) * 0.55;
+            const tierColors = ["#8B6914", "#cc4400", "#cc0000"];
+            const color = tierColors[tier - 1];
+            // Show as encountered if player has passed this point in the campaign
+            const isEncountered = campaignStep > CAMPAIGN_SEQUENCE.findIndex(e => e.kind === "ambush" && e.index === ambushIdx);
+            return (
+              <g key={`ambush_${ambushIdx}`} opacity={isEncountered ? 0.5 : 1}>
+                {/* Glow ring */}
+                <circle cx={mx} cy={my} r="2.8" fill={`${color}33`} stroke={color} strokeWidth="0.2"/>
+                {/* Inner dot */}
+                <circle cx={mx} cy={my} r="1.6" fill={color} stroke="#1a0a00" strokeWidth="0.3"/>
+                {/* Skull / feather icon */}
+                <text x={mx} y={my + 0.7} textAnchor="middle" fontSize="1.8" style={{ pointerEvents: "none" }}>
+                  {tier === 1 ? "🪶" : tier === 2 ? "⚔" : "💀"}
+                </text>
+                {/* Label */}
+                <text x={mx} y={my + 4.2} textAnchor="middle" fontSize="1.0" fill={color} fontFamily="monospace" fontWeight="bold" style={{ pointerEvents: "none" }}>
+                  AMBUSH
+                </text>
+              </g>
             );
           })}
 
@@ -423,13 +502,22 @@ function CampaignMap({
 function PauseMenu({
   onResume,
   onRestart,
+  onSave,
   onQuitToMenu,
 }: {
   onResume: () => void;
   onRestart: () => void;
+  onSave: () => void;
   onQuitToMenu: () => void;
 }) {
   const [showControls, setShowControls] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const handleSave = () => {
+    onSave();
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 2000);
+  };
 
   return (
     <div
@@ -484,6 +572,26 @@ function PauseMenu({
         {/* Menu items */}
         {!showControls ? (
           <div className="flex flex-col gap-3 w-full">
+            {/* Save game button — separate from the list so we can show flash */}
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-4 px-5 py-3 text-left transition-all duration-150"
+              style={{
+                background: savedFlash ? "rgba(255,215,0,0.2)" : "rgba(107,68,35,0.1)",
+                border: `1px solid ${savedFlash ? "#FFD700" : "rgba(107,68,35,0.3)"}`,
+                color: savedFlash ? "#FFD700" : "#1a0a00",
+                fontFamily: "monospace",
+                letterSpacing: "0.1em",
+                fontSize: 14,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { if (!savedFlash) (e.currentTarget as HTMLButtonElement).style.background = "rgba(107,68,35,0.35)"; }}
+              onMouseLeave={e => { if (!savedFlash) (e.currentTarget as HTMLButtonElement).style.background = "rgba(107,68,35,0.1)"; }}
+            >
+              <span className="text-xl w-6 text-center opacity-70">{savedFlash ? "✓" : "💾"}</span>
+              <span>{savedFlash ? "GAME SAVED!" : "SAVE GAME"}</span>
+            </button>
+
             {[
               { label: "CHARACTER CONTROLS", icon: "⚙", action: () => setShowControls(true) },
               { label: "RESTART LEVEL",       icon: "↺", action: onRestart },
@@ -847,6 +955,157 @@ function drawUpgradePreview(ctx: CanvasRenderingContext2D, unitType: string, tie
   }
 }
 
+// ─── Mission Briefing — Parchment Wanted Poster ───────────────────────────────
+
+function MissionBriefing({
+  entry,
+  onBegin,
+}: {
+  entry: CampaignEntry;
+  onBegin: () => void;
+}) {
+  const cfg = entry.kind === "ambush" ? AMBUSH_LEVELS[entry.index] : LEVELS[entry.index];
+  const isAmbush = entry.kind === "ambush";
+  const tier = isAmbush ? (cfg.ambushTier ?? 1) : 0;
+
+  // Ambush tier flavor
+  const ambushIcons = ["🪶", "⚔️", "🔥"];
+  const ambushColors = ["#8B6914", "#cc4400", "#cc0000"];
+  const accentColor = isAmbush ? ambushColors[tier - 1] : "#8B4423";
+
+  return (
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={{
+        background: "radial-gradient(ellipse at center, #1a0a00 0%, #0a0500 100%)",
+        fontFamily: "monospace",
+      }}
+    >
+      {/* Parchment poster */}
+      <div
+        className="relative flex flex-col"
+        style={{
+          width: 560,
+          background: "linear-gradient(160deg, #d4b07a 0%, #c8a060 30%, #b89050 70%, #a07830 100%)",
+          boxShadow: "0 0 0 3px #6B4423, 0 0 0 8px rgba(107,68,35,0.3), 0 30px 80px rgba(0,0,0,0.9)",
+          // Torn parchment edges
+          clipPath: "polygon(1% 0%, 99% 1%, 100% 98%, 98% 100%, 2% 99%, 0% 2%)",
+        }}
+      >
+        {/* Top decorative band */}
+        <div
+          className="w-full py-2 text-center text-xs tracking-[0.4em] font-bold"
+          style={{ background: accentColor, color: "#F4E4C1", letterSpacing: "0.4em" }}
+        >
+          {isAmbush ? `⚠ AMBUSH ENCOUNTER ⚠` : "── MISSION BRIEFING ──"}
+        </div>
+
+        {/* Main content */}
+        <div className="px-10 py-8">
+          {/* Icon + title */}
+          <div className="text-center mb-6">
+            {isAmbush && (
+              <div className="text-5xl mb-3">{ambushIcons[tier - 1]}</div>
+            )}
+            <div className="text-xs tracking-widest mb-2 opacity-60" style={{ color: "#3d1f0a" }}>
+              {isAmbush ? `AMBUSH ${["I", "II", "III"][tier - 1]} OF III` : `TERRITORY ${entry.index + 1} OF ${LEVELS.length}`}
+            </div>
+            <h2
+              className="text-3xl font-bold tracking-wider mb-1"
+              style={{ color: "#1a0a00", textShadow: "1px 1px 0 rgba(255,255,200,0.3)" }}
+            >
+              {cfg.name}
+            </h2>
+            <div className="text-sm italic opacity-70" style={{ color: "#3d1f0a" }}>
+              {cfg.subtitle}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px" style={{ background: accentColor, opacity: 0.4 }} />
+            <div className="text-sm" style={{ color: accentColor }}>✦</div>
+            <div className="flex-1 h-px" style={{ background: accentColor, opacity: 0.4 }} />
+          </div>
+
+          {/* Lore text */}
+          {cfg.lore && cfg.lore.length > 0 && (
+            <div className="mb-6 space-y-2">
+              {cfg.lore.map((line, i) => (
+                <p key={i} className="text-sm leading-relaxed" style={{ color: "#2a1008", opacity: 0.85 }}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Enemy intel box */}
+          <div
+            className="mb-6 px-4 py-3"
+            style={{
+              background: "rgba(60,30,10,0.15)",
+              border: `1px solid ${accentColor}`,
+              borderLeft: `3px solid ${accentColor}`,
+            }}
+          >
+            <div className="text-xs tracking-widest font-bold mb-2" style={{ color: accentColor }}>
+              {isAmbush ? "ENEMY FORCES" : "OBJECTIVE"}
+            </div>
+            {isAmbush ? (
+              <div className="text-xs space-y-1" style={{ color: "#2a1008" }}>
+                {Object.entries(cfg.enemyUnits).map(([type, count]) => (
+                  <div key={type} className="flex justify-between">
+                    <span className="capitalize opacity-80">{type.replace("_", " ")}</span>
+                    <span className="font-bold">{count}×</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs" style={{ color: "#2a1008", opacity: 0.8 }}>
+                Destroy the enemy saloon to claim this territory.
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px" style={{ background: accentColor, opacity: 0.3 }} />
+            <div className="text-xs opacity-40" style={{ color: "#3d1f0a" }}>FRONTIER WARS</div>
+            <div className="flex-1 h-px" style={{ background: accentColor, opacity: 0.3 }} />
+          </div>
+
+          {/* Begin button */}
+          <div className="flex justify-center">
+            <button
+              onClick={onBegin}
+              className="px-12 py-3 text-lg font-bold tracking-widest transition-all duration-200 hover:scale-105"
+              style={{
+                background: accentColor,
+                color: "#F4E4C1",
+                fontFamily: "monospace",
+                boxShadow: `0 0 20px ${accentColor}66`,
+                border: `2px solid ${accentColor}`,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.2)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = ""; }}
+            >
+              {isAmbush ? "FIGHT →" : "RIDE OUT →"}
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom band */}
+        <div
+          className="w-full py-1.5 text-center text-xs tracking-widest opacity-50"
+          style={{ background: "rgba(60,30,10,0.2)", color: "#3d1f0a" }}
+        >
+          {isAmbush ? cfg.enemyLabel ?? "ENEMY CAMP" : `STARTING GOLD: $${cfg.startGold}`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Upgrade Screen Component ─────────────────────────────────────────────────
 
 function UpgradeScreen({
@@ -1180,14 +1439,25 @@ export default function FrontierWars() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const [screen, setScreen] = useState<"menu" | "campaign" | "battle" | "upgrade" | "victory" | "defeat">("menu");
+  // campaignStep = index into CAMPAIGN_SEQUENCE (0..10)
+  const [campaignStep, setCampaignStep] = useState(0);
+  // briefingEntry = the entry we're about to play (set before showing briefing)
+  const [briefingEntry, setBriefingEntry] = useState<CampaignEntry>(CAMPAIGN_SEQUENCE[0]);
+  // currentEntry = the entry currently being played (used for "Try Again" on defeat)
+  const [currentEntry, setCurrentEntry] = useState<CampaignEntry>(CAMPAIGN_SEQUENCE[0]);
+
+  const [screen, setScreen] = useState<"menu" | "difficulty" | "campaign" | "briefing" | "battle" | "upgrade" | "victory" | "defeat">("menu");
   const [currentLevel, setCurrentLevel] = useState(0);
   const [completedLevels, setCompletedLevels] = useState<number[]>([]);
   const [upgrades, setUpgrades] = useState<UpgradeState>(DEFAULT_UPGRADES);
   const [upgradePoints, setUpgradePoints] = useState(0);
+  const [unlockedUnits, setUnlockedUnits] = useState<string[]>(["miner", "deputy"]);
+  const [difficulty, setDifficulty] = useState<Difficulty>("gunslinger");
   const [hudGold, setHudGold] = useState(0);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false); // sync ref for game loop
+  // Track whether a save exists so the menu can show "LOAD GAME"
+  const [saveExists, setSaveExists] = useState(() => hasSave());
 
   // Keep pausedRef in sync with paused state
   useEffect(() => { pausedRef.current = paused; }, [paused]);
@@ -1234,6 +1504,16 @@ export default function FrontierWars() {
       stateRef.current.cameraX += (rightHeld ? 1 : -1) * 500 * dt;
       stateRef.current.cameraX = Math.max(0, Math.min(maxCam, stateRef.current.cameraX));
       cameraIdleTimerRef.current = 3.0; // reset 3s cooldown
+    } else if (stateRef.current.selectedUnitId) {
+      // Possessed unit — camera tracks the controlled unit directly
+      const possessed = stateRef.current.units.find(u => u.id === stateRef.current!.selectedUnitId);
+      if (possessed) {
+        // Lead slightly in the direction they're facing
+        const lead = possessed.facing * vw * 0.15;
+        const targetCam = Math.max(0, Math.min(maxCam, possessed.pos.x - vw * 0.5 + lead));
+        stateRef.current.cameraX += (targetCam - stateRef.current.cameraX) * 0.12;
+      }
+      cameraIdleTimerRef.current = 0; // reset idle timer while possessing
     } else if (cameraIdleTimerRef.current > 0) {
       // Keys just released — hold position during cooldown
       cameraIdleTimerRef.current -= dt;
@@ -1249,6 +1529,20 @@ export default function FrontierWars() {
       }
     }
 
+    // ── Play sound events from engine ──
+    if (stateRef.current.soundEvents && stateRef.current.soundEvents.length > 0) {
+      for (const evt of stateRef.current.soundEvents) {
+        if (evt === "colt-shot") {
+          try {
+            const sfx = new Audio("/sounds/colt-shot.wav");
+            sfx.volume = 0.18;
+            sfx.play().catch(() => {});
+          } catch (e) { void e; }
+        }
+      }
+      stateRef.current.soundEvents = [];
+    }
+
     // Sync gold to React state (throttled)
     setHudGold(stateRef.current.gold);
 
@@ -1256,6 +1550,11 @@ export default function FrontierWars() {
     if (stateRef.current.phase === "VICTORY") {
       setUpgradePoints(prev => prev + 2);
       setCompletedLevels(prev => [...new Set([...prev, currentLevel])]);
+      // Unlock units earned from this level
+      const lvlUnlocks = (currentEntry.kind === "level" ? LEVELS[currentEntry.index]?.unlocks : []) ?? [];
+      if (lvlUnlocks.length > 0) {
+        setUnlockedUnits(prev => [...new Set([...prev, ...lvlUnlocks])]);
+      }
       setScreen("victory"); // → cinematic victory scene
       stopBgMusic();
       return;
@@ -1273,24 +1572,6 @@ export default function FrontierWars() {
     animFrameRef.current = requestAnimationFrame(gameLoop);
   }, [currentLevel]);
 
-  // ── Start battle ──
-  const startBattle = useCallback((level: number) => {
-    stateRef.current = createInitialState(level, upgrades);
-    setScreen("battle");
-    lastTimeRef.current = performance.now();
-    animFrameRef.current = requestAnimationFrame(gameLoop);
-
-    // Background music — use dramatic.mp3 (already in public/sounds)
-    stopBgMusic();
-    try {
-      const music = new Audio("/sounds/dramatic.mp3");
-      music.volume = 0.25;
-      music.loop = true;
-      music.play().catch(() => {});
-      bgMusicRef.current = music;
-    } catch (e) { void e; }
-  }, [upgrades, gameLoop]);
-
   const stopBgMusic = () => {
     if (bgMusicRef.current) {
       bgMusicRef.current.pause();
@@ -1298,12 +1579,48 @@ export default function FrontierWars() {
     }
   };
 
+  // ── Start battle (regular level by index) ──
+  const startBattle = useCallback((level: number) => {
+    stateRef.current = createInitialState(level, upgrades, unlockedUnits, difficulty);
+    setScreen("battle");
+    lastTimeRef.current = performance.now();
+    animFrameRef.current = requestAnimationFrame(gameLoop);
+    stopBgMusic();
+    try {
+      const music = new Audio("/sounds/secret-page.mp3");
+      music.volume = 0.25;
+      music.loop = true;
+      music.play().catch(() => {});
+      bgMusicRef.current = music;
+    } catch (e) { void e; }
+  }, [upgrades, gameLoop]);
+
+  // ── Start battle from a CampaignEntry (regular or ambush) ──
+  const startBattleFromEntry = useCallback((entry: CampaignEntry) => {
+    // Ambush levels encoded as 100+index so engine can distinguish them
+    const engineLevel = entry.kind === "ambush" ? 100 + entry.index : entry.index;
+    stateRef.current = createInitialState(engineLevel, upgrades, unlockedUnits, difficulty);
+    if (entry.kind !== "ambush") setCurrentLevel(entry.index);
+    setCurrentEntry(entry); // track for "Try Again" on defeat
+    setScreen("battle");
+    lastTimeRef.current = performance.now();
+    animFrameRef.current = requestAnimationFrame(gameLoop);
+    stopBgMusic();
+    try {
+      const music = new Audio("/sounds/secret-page.mp3");
+      music.volume = 0.25;
+      music.loop = true;
+      music.play().catch(() => {});
+      bgMusicRef.current = music;
+    } catch (e) { void e; }
+  }, [upgrades, gameLoop]);
+
   // ── Input handling ──
   useEffect(() => {
     if (screen !== "battle") return;
 
     const keyMap: Record<string, UnitType> = {
-      "1": "miner", "2": "deputy", "3": "gunslinger", "4": "dynamiter", "5": "marshal",
+      "1": "miner", "2": "deputy", "3": "gunslinger", "4": "bounty_hunter", "5": "dynamiter", "6": "marshal",
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1384,9 +1701,9 @@ export default function FrontierWars() {
         const btnW = 90, btnH = 70, btnGap = 8;
         const totalW = 5 * (btnW + btnGap) - btnGap;
         const startX = (canvasRef.current.width - totalW) / 2;
-        const unitTypes: UnitType[] = ["miner", "deputy", "gunslinger", "dynamiter", "marshal"];
+        const unitTypes: UnitType[] = ["miner", "deputy", "gunslinger", "bounty_hunter", "dynamiter", "marshal"];
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 6; i++) {
           const bx = startX + i * (btnW + btnGap);
           const by = hudY + 10;
           if (canvasX >= bx && canvasX <= bx + btnW && canvasY >= by && canvasY <= by + btnH) {
@@ -1435,6 +1752,38 @@ export default function FrontierWars() {
       cancelAnimationFrame(animFrameRef.current);
       stopBgMusic();
     };
+  }, []);
+
+  // ── Save / Load handlers ──
+  const handleSave = useCallback(() => {
+    saveGame({
+      campaignStep,
+      currentLevel,
+      completedLevels,
+      upgrades,
+      upgradePoints,
+      unlockedUnits,
+      savedAt: Date.now(),
+      difficulty,
+    });
+    setSaveExists(true);
+  }, [campaignStep, currentLevel, completedLevels, upgrades, upgradePoints, unlockedUnits, difficulty]);
+
+  const handleLoad = useCallback(() => {
+    const data = loadGame();
+    if (!data) return;
+    setCampaignStep(data.campaignStep);
+    setCurrentLevel(data.currentLevel);
+    setCompletedLevels(data.completedLevels);
+    setUpgrades(data.upgrades);
+    setUpgradePoints(data.upgradePoints);
+    setUnlockedUnits(data.unlockedUnits ?? ["miner", "deputy"]);
+    if (data.difficulty) setDifficulty(data.difficulty);
+    // Set briefingEntry to the saved campaign step so the next battle is correct
+    const entry = CAMPAIGN_SEQUENCE[data.campaignStep] ?? CAMPAIGN_SEQUENCE[0];
+    setBriefingEntry(entry);
+    setCurrentEntry(entry);
+    setScreen("campaign");
   }, []);
 
   // ── Upgrade handler ──
@@ -1509,13 +1858,35 @@ export default function FrontierWars() {
             </div>
 
             <button
-              onClick={() => setScreen("campaign")}
+              onClick={() => setScreen("difficulty")}
               className="border-2 px-14 py-4 text-2xl tracking-widest font-bold transition-all duration-200 hover:scale-105"
               style={{ borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace",
                 boxShadow: "0 0 30px rgba(255,215,0,0.3)" }}
             >
               PLAY
             </button>
+
+            {saveExists && (() => {
+              const save = loadGame();
+              return (
+                <div className="mt-4 flex flex-col items-center gap-1">
+                  <button
+                    onClick={handleLoad}
+                    className="border px-14 py-3 text-lg tracking-widest font-bold transition-all duration-200 hover:scale-105"
+                    style={{ borderColor: "#8B6914", color: "#c8a96e", fontFamily: "monospace" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#FFD700"; (e.currentTarget as HTMLButtonElement).style.color = "#FFD700"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#8B6914"; (e.currentTarget as HTMLButtonElement).style.color = "#c8a96e"; }}
+                  >
+                    LOAD GAME
+                  </button>
+                  {save && (
+                    <div className="text-xs opacity-40 tracking-widest" style={{ color: "#F4E4C1" }}>
+                      {formatSaveDate(save.savedAt)} · TERRITORY {save.currentLevel + 1}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="mt-6">
               <button
@@ -1530,15 +1901,120 @@ export default function FrontierWars() {
         </div>
       )}
 
+      {/* ── DIFFICULTY SELECT ── */}
+      {screen === "difficulty" && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ background: "radial-gradient(ellipse at center, #2a1a0a 0%, #1a0a00 60%, #0a0500 100%)", fontFamily: "monospace" }}
+        >
+          {/* Parchment card */}
+          <div
+            className="relative flex flex-col items-center px-12 py-10"
+            style={{
+              background: "linear-gradient(160deg, #c8a96e 0%, #b8924a 40%, #a07830 100%)",
+              border: "3px solid #6B4423",
+              boxShadow: "0 0 0 6px rgba(107,68,35,0.3), 0 20px 60px rgba(0,0,0,0.8)",
+              minWidth: 520,
+              clipPath: "polygon(0 2%, 3% 0, 97% 0, 100% 2%, 100% 98%, 97% 100%, 3% 100%, 0 98%)",
+            }}
+          >
+            <div className="text-xs tracking-widest mb-1 opacity-60" style={{ color: "#3d1f0a" }}>── FRONTIER WARS ──</div>
+            <h2 className="text-3xl font-bold tracking-widest mb-2" style={{ color: "#1a0a00" }}>SELECT DIFFICULTY</h2>
+            <div className="text-xs tracking-widest mb-8 opacity-50" style={{ color: "#3d1f0a" }}>
+              Choose your challenge, partner
+            </div>
+
+            <div className="flex flex-col gap-3 w-full">
+              {(["tenderfoot", "gunslinger", "outlaw", "legend"] as Difficulty[]).map((d) => {
+                const def = DIFFICULTY_DEFS[d];
+                const isSelected = difficulty === d;
+                const skullColors = ["#8B6914", "#c8a000", "#cc4400", "#cc0000"];
+                const dIdx = ["tenderfoot", "gunslinger", "outlaw", "legend"].indexOf(d);
+                const skullColor = skullColors[dIdx];
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d)}
+                    className="flex items-center gap-4 px-5 py-4 text-left transition-all duration-150"
+                    style={{
+                      background: isSelected ? "rgba(107,68,35,0.4)" : "rgba(107,68,35,0.1)",
+                      border: `2px solid ${isSelected ? "#6B4423" : "rgba(107,68,35,0.3)"}`,
+                      outline: isSelected ? "2px solid #FFD700" : "none",
+                      outlineOffset: -2,
+                      fontFamily: "monospace",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(107,68,35,0.3)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isSelected ? "rgba(107,68,35,0.4)" : "rgba(107,68,35,0.1)"; }}
+                  >
+                    {/* Skulls */}
+                    <div className="flex gap-0.5 flex-shrink-0 w-16 justify-center">
+                      {Array.from({ length: def.skulls }).map((_, i) => (
+                        <span key={i} style={{ color: skullColor, fontSize: 16 }}>💀</span>
+                      ))}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1">
+                      <div className="font-bold tracking-widest text-sm" style={{ color: isSelected ? "#FFD700" : "#1a0a00" }}>
+                        {def.label}
+                      </div>
+                      <div className="text-xs mt-0.5 opacity-70" style={{ color: "#3d1f0a" }}>
+                        {def.description}
+                      </div>
+                    </div>
+                    {/* Selected indicator */}
+                    {isSelected && (
+                      <div className="text-lg flex-shrink-0" style={{ color: "#FFD700" }}>★</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setScreen("campaign")}
+              className="mt-8 border-2 px-12 py-3 text-lg tracking-widest font-bold transition-all duration-200 hover:scale-105"
+              style={{
+                borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace",
+                boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+              }}
+            >
+              RIDE OUT →
+            </button>
+
+            <button
+              onClick={() => setScreen("menu")}
+              className="mt-3 text-xs tracking-widest opacity-40 hover:opacity-70 transition-opacity"
+              style={{ color: "#3d1f0a", fontFamily: "monospace" }}
+            >
+              ← BACK
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── CAMPAIGN MAP ── */}
       {screen === "campaign" && (
         <CampaignMap
           currentLevel={currentLevel}
           completedLevels={completedLevels}
+          campaignStep={campaignStep}
           onSelectLevel={(level) => {
+            // Find the campaign step for this level and show briefing
+            const stepIdx = CAMPAIGN_SEQUENCE.findIndex(e => e.kind === "level" && e.index === level);
+            const entry: CampaignEntry = stepIdx >= 0 ? CAMPAIGN_SEQUENCE[stepIdx] : { kind: "level", index: level };
             setCurrentLevel(level);
-            startBattle(level);
+            setBriefingEntry(entry);
+            setCampaignStep(stepIdx >= 0 ? stepIdx : 0);
+            setScreen("briefing");
           }}
+        />
+      )}
+
+      {/* ── BRIEFING (parchment wanted poster) ── */}
+      {screen === "briefing" && (
+        <MissionBriefing
+          entry={briefingEntry}
+          onBegin={() => startBattleFromEntry(briefingEntry)}
         />
       )}
 
@@ -1580,6 +2056,7 @@ export default function FrontierWars() {
                 cancelAnimationFrame(animFrameRef.current);
                 startBattle(currentLevel);
               }}
+              onSave={handleSave}
               onQuitToMenu={() => {
                 pausedRef.current = false;
                 setPaused(false);
@@ -1599,9 +2076,8 @@ export default function FrontierWars() {
           upgradePoints={upgradePoints}
           onUpgrade={handleUpgrade}
           onContinue={() => {
-            const nextLevel = Math.min(currentLevel + 1, LEVELS.length - 1);
-            setCurrentLevel(nextLevel);
-            setScreen("campaign");
+            // After upgrades, show briefing for the next entry
+            setScreen("briefing");
           }}
         />
       )}
@@ -1611,13 +2087,18 @@ export default function FrontierWars() {
         <VictoryScene
           level={currentLevel}
           onContinue={() => {
-            const nextLevel = currentLevel + 1;
-            if (nextLevel >= LEVELS.length) {
-              // Beat the whole campaign — show grand finale
+            // Advance campaign step
+            const nextStep = campaignStep + 1;
+            if (nextStep >= CAMPAIGN_SEQUENCE.length) {
               setScreen("menu");
-            } else {
-              setScreen("upgrade");
+              return;
             }
+            const nextEntry = CAMPAIGN_SEQUENCE[nextStep];
+            setCampaignStep(nextStep);
+            setBriefingEntry(nextEntry);
+            if (nextEntry.kind === "level") setCurrentLevel(nextEntry.index);
+            // Always show upgrade screen between battles (skip for ambush→ambush edge case)
+            setScreen("upgrade");
           }}
           isFinalLevel={currentLevel >= LEVELS.length - 1}
         />
@@ -1637,7 +2118,7 @@ export default function FrontierWars() {
             </div>
             <div className="flex gap-4 justify-center">
               <button
-                onClick={() => startBattle(currentLevel)}
+                onClick={() => startBattleFromEntry(currentEntry)}
                 className="border-2 px-8 py-3 text-lg tracking-widest"
                 style={{ borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace" }}
               >
