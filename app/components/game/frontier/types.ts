@@ -163,6 +163,7 @@ export interface UpgradeState {
   dynamiterRadius: number;  // 0-3
   marshalHp: number;        // 0-3
   saloonRevenue: number;    // 0-4 → 2/4/6/8/10 gold/sec
+  saloonHp: number;         // 0-3 → +300 HP/level, grows saloon visually
 }
 
 export interface LevelConfig {

@@ -15,7 +15,7 @@ const DEFAULT_UPGRADES: UpgradeState = {
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
   dynamiterRadius: 0, marshalHp: 0,
-  saloonRevenue: 0,
+  saloonRevenue: 0, saloonHp: 0,
 };
 
 // ─── Save / Load (localStorage) ──────────────────────────────────────────────
@@ -675,6 +675,7 @@ const UPGRADE_UNIT_MAP: Record<string, { unit: string; tier: (u: UpgradeState) =
   dynamiterRadius: { unit: "dynamiter",  tier: u => u.dynamiterRadius },
   marshalHp:       { unit: "marshal",    tier: u => u.marshalHp },
   saloonRevenue:   { unit: "saloon",     tier: u => u.saloonRevenue },
+  saloonHp:        { unit: "saloon",     tier: u => u.saloonHp },
 };
 
 function UnitPreview({ unitType, tier }: { unitType: string; tier: number }) {
@@ -1567,7 +1568,11 @@ export default function FrontierWars() {
       setUpgradePoints(prev => prev + (stateRef.current?.upgradePoints ?? 2));
       setCompletedLevels(prev => [...new Set([...prev, currentLevel])]);
       // Unlock units earned from this level
-      const lvlUnlocks = (currentEntry.kind === "level" ? LEVELS[currentEntry.index]?.unlocks : []) ?? [];
+      // Derive unlocks from live game state (avoids stale closure on currentEntry)
+      const liveLevel = stateRef.current?.level ?? 0;
+      const liveIsAmbush = liveLevel >= 100;
+      const liveLevelIdx = liveIsAmbush ? liveLevel - 100 : liveLevel;
+      const lvlUnlocks = (!liveIsAmbush && LEVELS[liveLevelIdx]?.unlocks) || [];
       if (lvlUnlocks.length > 0) {
         setUnlockedUnits(prev => [...new Set([...prev, ...lvlUnlocks])]);
       }
@@ -1645,7 +1650,7 @@ export default function FrontierWars() {
       if (!stateRef.current) return;
 
       // Space = possessed attack
-      if (e.key === " " && stateRef.current.selectedUnitId) {
+      if (e.key === " " && !e.repeat && stateRef.current.selectedUnitId) {
         stateRef.current = possessedAttack(stateRef.current);
         e.preventDefault();
         return;
