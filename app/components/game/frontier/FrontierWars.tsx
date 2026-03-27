@@ -14,7 +14,7 @@ const DEFAULT_UPGRADES: UpgradeState = {
   deputyHp: 0, deputyDamage: 0,
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
-  dynamiterRadius: 0, marshalHp: 0,
+  dynamiterRadius: 0, dynamiterRange: 0, marshalHp: 0,
   saloonRevenue: 0, saloonHp: 0, barracks: 0,
 };
 
@@ -673,6 +673,7 @@ const UPGRADE_UNIT_MAP: Record<string, { unit: string; tier: (u: UpgradeState) =
   gunslingerRange: { unit: "gunslinger", tier: u => u.gunslingerRange },
   gunslingerRate:  { unit: "gunslinger", tier: u => u.gunslingerRate },
   dynamiterRadius: { unit: "dynamiter",  tier: u => u.dynamiterRadius },
+  dynamiterRange:  { unit: "dynamiter",  tier: u => u.dynamiterRange },
   marshalHp:       { unit: "marshal",    tier: u => u.marshalHp },
   saloonRevenue:   { unit: "saloon",     tier: u => u.saloonRevenue },
   saloonHp:        { unit: "saloon_hp",  tier: u => u.saloonHp },

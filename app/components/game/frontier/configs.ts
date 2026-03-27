@@ -149,6 +149,7 @@ export function getStats(type: UnitType, upgrades: UpgradeState): UnitStats {
       base.attackRate += upgrades.gunslingerRate * 0.4;
       break;
     case "dynamiter":
+      base.range += upgrades.dynamiterRange * 30; // +30 throw range per level
       // radius handled in combat
       break;
     case "marshal":
@@ -380,6 +381,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
   { key: "gunslingerRange",  label: "Gunslinger Range",    description: "+30 range per level",             cost: 1, maxLevel: 3 },
   { key: "gunslingerRate",   label: "Quick Draw",          description: "+0.4 attacks/sec per level",      cost: 2, maxLevel: 3 },
   { key: "dynamiterRadius",  label: "Bigger Blast",        description: "+25% explosion radius per level", cost: 2, maxLevel: 3 },
+  { key: "dynamiterRange",   label: "Long Arm",            description: "+30 throw range per level",       cost: 1, maxLevel: 3 },
   { key: "marshalHp",        label: "Marshal Fortitude",   description: "+100 HP per level",               cost: 2, maxLevel: 3 },
   { key: "saloonHp",         label: "Saloon Fortification", description: "+300 max HP per level (1500→2400)", cost: 1, maxLevel: 3 },
   { key: "barracks",         label: "War Room",             description: "+8% HP & +5% damage for all combat units per level", cost: 2, maxLevel: 3 },
