@@ -136,6 +136,7 @@ function createFreeMiner(upgrades: GameState["upgrades"]): Unit {
     deathTimer: 0,
     laneY,
     magazine: 0, maxMagazine: 0, reloadTimer: 0,
+    swingCharge: 0, swingChargeMax: 0,
   };
 }
 
@@ -147,7 +148,7 @@ const ENEMY_UPGRADES: GameState["upgrades"] = {
   deputyHp: 0, deputyDamage: 0,
   bountyHp: 0, bountyDamage: 0,
   gunslingerRange: 0, gunslingerRate: 0,
-  dynamiterRadius: 0, marshalHp: 0,
+  dynamiterRadius: 0, dynamiterRange: 0, marshalHp: 0,
   saloonRevenue: 0, saloonHp: 0, barracks: 0,
 };
 
@@ -187,6 +188,7 @@ export function spawnUnit(state: GameState, type: UnitType, team: Team): Unit {
     deathTimer: 0,
     laneY,
     magazine: 0, maxMagazine: 0, reloadTimer: 0,
+    swingCharge: 0, swingChargeMax: 0,
   };
 }
 
@@ -248,8 +250,17 @@ export function updateGame(state: GameState, dt: number): GameState {
       unit.animTimer += dt;
       if (unit.animTimer > 0.15) { unit.animTimer = 0; unit.animFrame = (unit.animFrame + 1) % 4; }
       unit.attackCooldown = Math.max(0, unit.attackCooldown - dt);
-      // Tick down reload timer
-      if (unit.reloadTimer > 0) unit.reloadTimer = Math.max(0, unit.reloadTimer - dt);
+      // Tick down reload timer — refill magazine when reload completes
+      if (unit.reloadTimer > 0) {
+        unit.reloadTimer = Math.max(0, unit.reloadTimer - dt);
+        if (unit.reloadTimer === 0 && unit.maxMagazine > 0) {
+          unit.magazine = unit.maxMagazine; // reload complete!
+        }
+      }
+      // Tick up swing charge for possessed melee units
+      if (unit.swingChargeMax > 0) {
+        unit.swingCharge = Math.min(1.0, unit.swingCharge + dt / unit.swingChargeMax);
+      }
       // Possessed miner: auto-mine when on a pile, auto-deposit when near saloon
       if (unit.type === "miner") {
         if (unit.goldCarrying === 0) {
@@ -430,11 +441,17 @@ function updateCombatUnitWithStance(unit: Unit, s: GameState, dt: number) {
       const nearestEnemy = findNearestEnemy(unit, s);
       if (nearestEnemy && Math.abs(nearestEnemy.pos.x - unit.pos.x) <= garrisonRange) {
         if (unit.attackCooldown <= 0) {
-          // Shoot at 50% damage
-          const vel: Vec2 = { x: 400, y: -10 };
+          // Shoot at 50% damage — aimed at nearest enemy's actual position
+          const spawnX = saloon.pos.x + saloon.width;
+          const spawnY = saloon.pos.y + 20;
+          const aimDx = nearestEnemy.pos.x - spawnX;
+          const aimDy = nearestEnemy.pos.y - spawnY;
+          const aimDist = Math.hypot(aimDx, aimDy) || 1;
+          const speed = 420;
+          const vel: Vec2 = { x: (aimDx / aimDist) * speed, y: (aimDy / aimDist) * speed };
           s.projectiles.push({
             id: `g${Date.now()}_${Math.random()}`,
-            pos: { x: saloon.pos.x + saloon.width, y: saloon.pos.y + 20 },
+            pos: { x: spawnX, y: spawnY },
             vel, team: "player",
             damage: Math.round(unit.stats.damage * 0.5),
             type: "bullet", life: 1.5, exploded: false,
@@ -625,10 +642,16 @@ function updateCombatUnitEnemy(unit: Unit, s: GameState, dt: number) {
         const nearestPlayer = findNearestEnemy(unit, s);
         if (nearestPlayer && Math.abs(nearestPlayer.pos.x - unit.pos.x) <= garrisonRange) {
           if (unit.attackCooldown <= 0) {
+            const eSpawnX = enemySaloon.pos.x;
+            const eSpawnY = enemySaloon.pos.y + 20;
+            const eDx = nearestPlayer.pos.x - eSpawnX;
+            const eDy = nearestPlayer.pos.y - eSpawnY;
+            const eDist = Math.hypot(eDx, eDy) || 1;
+            const eSpeed = 420;
             s.projectiles.push({
               id: uid(),
-              pos: { x: enemySaloon.pos.x, y: enemySaloon.pos.y + 20 },
-              vel: { x: -400, y: -10 },
+              pos: { x: eSpawnX, y: eSpawnY },
+              vel: { x: (eDx / eDist) * eSpeed, y: (eDy / eDist) * eSpeed },
               team: "enemy",
               damage: Math.round(unit.stats.damage * 0.5),
               type: "bullet", life: 1.5, exploded: false,
@@ -751,10 +774,16 @@ function updateMiner(unit: Unit, s: GameState, dt: number) {
         const nearestEnemy = findNearestEnemy(unit, s);
         if (nearestEnemy && Math.abs(nearestEnemy.pos.x - unit.pos.x) <= garrisonRange) {
           if (unit.attackCooldown <= 0) {
+            const mSpawnX = saloon.pos.x + saloon.width;
+            const mSpawnY = saloon.pos.y + 30;
+            const mDx = nearestEnemy.pos.x - mSpawnX;
+            const mDy = nearestEnemy.pos.y - mSpawnY;
+            const mDist = Math.hypot(mDx, mDy) || 1;
+            const mSpeed = 380;
             s.projectiles.push({
               id: `gm${Date.now()}_${Math.random()}`,
-              pos: { x: saloon.pos.x + saloon.width, y: saloon.pos.y + 30 },
-              vel: { x: 400, y: -5 },
+              pos: { x: mSpawnX, y: mSpawnY },
+              vel: { x: (mDx / mDist) * mSpeed, y: (mDy / mDist) * mSpeed },
               team: "player",
               damage: Math.round(unit.stats.damage * 0.5),
               type: "bullet", life: 1.5, exploded: false,
@@ -1438,124 +1467,218 @@ export function movePossessedUnit(state: GameState, dx: number, dy: number, dt: 
 }
 
 // ─── Possessed Unit Attack (Space) ───────────────────────────────────────────
+// Two distinct systems:
+//   RANGED (gunslinger, dynamiter) → Magazine system: burst fire then reload
+//   MELEE  (deputy, bounty_hunter, marshal) → Power Strike: charge meter scales damage
+//   MINER  → Simple cooldown (same as normal attack rate)
 
-// ─── Magazine config per unit type ───────────────────────────────────────────
+// ─── Ranged magazine config ───────────────────────────────────────────────────
 // maxMag: shots before reload | betweenCooldown: seconds between shots | reloadTime: seconds
 const MAGAZINE_CONFIG: Record<string, { maxMag: number; betweenCooldown: number; reloadTime: number }> = {
-  gunslinger:    { maxMag: 6, betweenCooldown: 0.18, reloadTime: 1.4 }, // 6-shooter revolver
-  dynamiter:     { maxMag: 3, betweenCooldown: 0.35, reloadTime: 2.0 }, // 3 sticks, slow reload
-  deputy:        { maxMag: 3, betweenCooldown: 0.18, reloadTime: 0.9 }, // 3-hit combo, short fatigue
-  bounty_hunter: { maxMag: 3, betweenCooldown: 0.18, reloadTime: 0.9 },
-  marshal:       { maxMag: 3, betweenCooldown: 0.22, reloadTime: 1.1 }, // heavier, slightly slower
-  miner:         { maxMag: 3, betweenCooldown: 0.25, reloadTime: 1.0 },
+  gunslinger: { maxMag: 6, betweenCooldown: 0.25, reloadTime: 1.4 }, // 6-shooter, ~4 shots/sec burst
+  dynamiter:  { maxMag: 3, betweenCooldown: 0.5,  reloadTime: 2.0 }, // 3 sticks, weighty throws
 };
+
+// ─── Melee power-strike config ────────────────────────────────────────────────
+// chargeTime: seconds to reach full charge (1.0) from 0
+// Damage scales with charge: 0-30%→20%, 30-70%→55%, 70-99%→100%, 100%→135%
+const MELEE_CHARGE_CONFIG: Record<string, { chargeTime: number }> = {
+  deputy:        { chargeTime: 0.7  }, // light, fast fighter
+  bounty_hunter: { chargeTime: 0.85 }, // balanced
+  marshal:       { chargeTime: 1.1  }, // heavy hitter — patience rewarded
+};
+
+// Returns damage multiplier based on charge level (0.0 → 1.0)
+function getMeleeChargeDamage(charge: number, baseDamage: number): { dmg: number; label: string; color: string } {
+  if (charge >= 1.0) return { dmg: baseDamage * 1.35, label: `⚡ -${Math.round(baseDamage * 1.35)} POWER!`, color: "#FFD700" };
+  if (charge >= 0.7) return { dmg: baseDamage * 1.0,  label: `-${Math.round(baseDamage)}`,         color: "#ff4444" };
+  if (charge >= 0.3) return { dmg: baseDamage * 0.55, label: `-${Math.round(baseDamage * 0.55)}`,  color: "#ff8844" };
+  return                    { dmg: baseDamage * 0.2,  label: `-${Math.round(baseDamage * 0.2)}`,   color: "#ff6666" };
+}
 
 export function possessedAttack(state: GameState): GameState {
   if (!state.selectedUnitId) return state;
   const attacker = state.units.find(u => u.id === state.selectedUnitId);
   if (!attacker) return state;
 
-  const cfg = MAGAZINE_CONFIG[attacker.type] ?? { maxMag: 3, betweenCooldown: 0.2, reloadTime: 1.0 };
-
-  // ── Initialize magazine on first possession ──
-  if (attacker.maxMagazine === 0) {
-    // Will be set on the mutable copy below
-  }
-
-  // ── Block if reloading ──
-  if (attacker.reloadTimer > 0) return state;
-
-  // ── Block if between-shot cooldown active ──
+  // ── Block if between-shot cooldown active (all unit types) ──
   if (attacker.attackCooldown > 0) return state;
 
   const s = { ...state, units: state.units.map(u => ({ ...u })) };
   const a = s.units.find(u => u.id === state.selectedUnitId)!;
 
-  // Initialize magazine if needed
-  if (a.maxMagazine === 0) {
-    a.maxMagazine = cfg.maxMag;
-    a.magazine = cfg.maxMag;
-  }
+  // ── RANGED: Magazine system ───────────────────────────────────────────────
+  if (attacker.type === "gunslinger" || attacker.type === "dynamiter") {
+    const cfg = MAGAZINE_CONFIG[attacker.type];
 
-  // ── If magazine empty, start reload ──
-  if (a.magazine <= 0) {
-    a.reloadTimer = cfg.reloadTime;
-    a.magazine = 0;
-    spawnFloatingText(s, { x: a.pos.x, y: a.pos.y - 55 }, "RELOADING...", "#FFD700");
+    // Block if reloading
+    if (a.reloadTimer > 0) return state;
+
+    // Initialize magazine on first use
+    if (a.maxMagazine === 0) {
+      a.maxMagazine = cfg.maxMag;
+      a.magazine = cfg.maxMag;
+    }
+
+    // Magazine empty — start reload (shouldn't normally reach here since reload
+    // is queued immediately after last shot, but safety net)
+    if (a.magazine <= 0) {
+      a.reloadTimer = cfg.reloadTime;
+      a.magazine = 0;
+      return s;
+    }
+
+    // Fire a shot
+    a.magazine -= 1;
+    a.attackCooldown = cfg.betweenCooldown;
+    a.state = "attacking";
+
+    // Queue reload immediately after last shot
+    if (a.magazine === 0) {
+      a.reloadTimer = cfg.reloadTime;
+    }
+
+    // Find target in 2× range
+    const range = attacker.stats.range * 2;
+    let target: Unit | null = null;
+    let minDist = Infinity;
+    for (const u of s.units) {
+      if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
+      const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
+      if (dist < range && dist < minDist) { minDist = dist; target = u; }
+    }
+
+    const enemySaloon = s.buildings.find(b => b.id === "enemy_saloon");
+    const saloonDist = enemySaloon
+      ? Math.abs(attacker.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2))
+      : Infinity;
+
+    if (target) {
+      const dmg = attacker.stats.damage * 1.3;
+      const t = s.units.find(u => u.id === target!.id)!;
+      t.stats.hp -= dmg;
+      spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 40 }, `-${Math.round(dmg)}`, "#ff4444");
+      if (t.stats.hp <= 0) {
+        t.state = "dying"; t.deathTimer = 0;
+        spawnDeathParticles(s, t.pos);
+        if (t.team === "enemy" && t.type === "miner" && t.goldCarrying > 0) {
+          s.gold += t.goldCarrying;
+          spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 60 }, `+$${t.goldCarrying} STOLEN!`, "#FFD700");
+          t.goldCarrying = 0;
+        }
+      }
+    } else if (enemySaloon && saloonDist < range) {
+      enemySaloon.hp -= attacker.stats.damage;
+      spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${attacker.stats.damage}`, "#ff4444");
+    } else {
+      // No target — fire projectile anyway
+      if (attacker.type === "gunslinger") {
+        s.projectiles.push({
+          id: `pa_${Date.now()}`,
+          pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
+          vel: { x: attacker.facing * 400, y: -15 },
+          team: "player", damage: attacker.stats.damage,
+          type: "bullet", life: 0.6, exploded: false,
+        });
+        s.soundEvents.push("colt-shot");
+      } else {
+        const throwDist = attacker.facing * 200;
+        s.projectiles.push({
+          id: `pa_${Date.now()}`,
+          pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
+          vel: { x: throwDist * 0.6, y: -250 },
+          team: "player", damage: attacker.stats.damage,
+          type: "dynamite", life: 2.0, exploded: false,
+        });
+      }
+    }
     return s;
   }
 
-  // ── Fire / strike ──
-  a.magazine -= 1;
-  a.attackCooldown = cfg.betweenCooldown;
-  a.state = "attacking";
+  // ── MELEE: Power Strike charge system ────────────────────────────────────
+  if (attacker.type === "deputy" || attacker.type === "bounty_hunter" || attacker.type === "marshal") {
+    const cfg = MELEE_CHARGE_CONFIG[attacker.type];
 
-  // If magazine just hit 0, queue reload immediately after this shot
-  if (a.magazine === 0) {
-    a.reloadTimer = cfg.reloadTime;
-  }
+    // Initialize charge system on first possession
+    if (a.swingChargeMax === 0) {
+      a.swingChargeMax = cfg.chargeTime;
+      a.swingCharge = 0; // start at 0 — must charge up first
+    }
 
-  // Find nearest enemy in range (use 2× normal range for possessed)
-  const range = attacker.stats.range * 2;
-  let target: Unit | null = null;
-  let minDist = Infinity;
-  for (const u of s.units) {
-    if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
-    const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
-    if (dist < range && (isRangedUnit(attacker.type) || Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD) && dist < minDist) { minDist = dist; target = u; }
-  }
+    // Calculate damage based on current charge level
+    const { dmg, label, color } = getMeleeChargeDamage(a.swingCharge, attacker.stats.damage);
 
-  const enemySaloon = s.buildings.find(b => b.id === "enemy_saloon");
-  const saloonDist = enemySaloon
-    ? Math.abs(attacker.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2))
-    : Infinity;
+    // Set cooldown based on charge — full charge = normal attack rate, spam = faster but weaker
+    // This prevents spam from being faster than normal AI attacks
+    const normalCooldown = 1 / attacker.stats.attackRate;
+    a.attackCooldown = normalCooldown * 0.5; // always 50% of normal cooldown between swings
+    a.swingCharge = 0; // reset charge after swing
+    a.state = "attacking";
 
-  if (target) {
-    // Possessed hits 30% harder
-    const dmg = attacker.stats.damage * 1.3;
-    const t = s.units.find(u => u.id === target!.id)!;
-    t.stats.hp -= dmg;
-    spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 40 }, `-${Math.round(dmg)}`, "#ff4444");
-    if (t.stats.hp <= 0) {
-      t.state = "dying";
-      t.deathTimer = 0;
-      spawnDeathParticles(s, t.pos);
-      if (t.team === "enemy" && t.type === "miner" && t.goldCarrying > 0) {
-        s.gold += t.goldCarrying;
-        spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 60 }, `+$${t.goldCarrying} STOLEN!`, "#FFD700");
-        t.goldCarrying = 0;
+    // Find nearest enemy in 2× range
+    const range = attacker.stats.range * 2;
+    let target: Unit | null = null;
+    let minDist = Infinity;
+    for (const u of s.units) {
+      if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
+      const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
+      if (dist < range && Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD && dist < minDist) {
+        minDist = dist; target = u;
       }
     }
-  } else if (enemySaloon && saloonDist < range) {
-    enemySaloon.hp -= attacker.stats.damage;
-    spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, `-${attacker.stats.damage}`, "#ff4444");
-  } else {
-    // No target — fire projectile for ranged units anyway
-    if (attacker.type === "gunslinger") {
-      s.projectiles.push({
-        id: `pa_${Date.now()}`,
-        pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
-        vel: { x: attacker.facing * 400, y: -15 },
-        team: "player",
-        damage: attacker.stats.damage,
-        type: "bullet",
-        life: 0.6,
-        exploded: false,
-      });
-    } else if (attacker.type === "dynamiter") {
-      const throwDist = attacker.facing * 200;
-      s.projectiles.push({
-        id: `pa_${Date.now()}`,
-        pos: { x: attacker.pos.x, y: attacker.pos.y - 20 },
-        vel: { x: throwDist * 0.6, y: -250 },
-        team: "player",
-        damage: attacker.stats.damage,
-        type: "dynamite",
-        life: 2.0,
-        exploded: false,
-      });
+
+    const enemySaloon = s.buildings.find(b => b.id === "enemy_saloon");
+    const saloonDist = enemySaloon
+      ? Math.abs(attacker.pos.x - (enemySaloon.pos.x + enemySaloon.width / 2))
+      : Infinity;
+
+    if (target) {
+      const t = s.units.find(u => u.id === target!.id)!;
+      t.stats.hp -= dmg;
+      spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 40 }, label, color);
+      if (t.stats.hp <= 0) {
+        t.state = "dying"; t.deathTimer = 0;
+        spawnDeathParticles(s, t.pos);
+        if (t.team === "enemy" && t.type === "miner" && t.goldCarrying > 0) {
+          s.gold += t.goldCarrying;
+          spawnFloatingText(s, { x: t.pos.x, y: t.pos.y - 60 }, `+$${t.goldCarrying} STOLEN!`, "#FFD700");
+          t.goldCarrying = 0;
+        }
+      }
+    } else if (enemySaloon && saloonDist < range) {
+      enemySaloon.hp -= dmg;
+      spawnFloatingText(s, { x: enemySaloon.pos.x + 40, y: enemySaloon.pos.y }, label, color);
     }
+    return s;
   }
 
-  return s;
+  // ── MINER: Simple cooldown (same as normal attack rate) ──────────────────
+  // Miners aren't fighters — just a basic swing with no special system
+  const minerCooldown = 1 / attacker.stats.attackRate;
+  const s2 = { ...state, units: state.units.map(u => ({ ...u })) };
+  const a2 = s2.units.find(u => u.id === state.selectedUnitId)!;
+  a2.attackCooldown = minerCooldown;
+  a2.state = "attacking";
+
+  const range2 = attacker.stats.range * 1.5;
+  let target2: Unit | null = null;
+  let minDist2 = Infinity;
+  for (const u of s2.units) {
+    if (u.team === "player" || u.state === "dead" || u.state === "dying") continue;
+    const dist = Math.hypot(u.pos.x - attacker.pos.x, u.pos.y - attacker.pos.y);
+    if (dist < range2 && Math.abs(u.pos.y - attacker.pos.y) <= Y_ATTACK_THRESHOLD && dist < minDist2) {
+      minDist2 = dist; target2 = u;
+    }
+  }
+  if (target2) {
+    const t = s2.units.find(u => u.id === target2!.id)!;
+    const dmg = attacker.stats.damage;
+    t.stats.hp -= dmg;
+    spawnFloatingText(s2, { x: t.pos.x, y: t.pos.y - 40 }, `-${Math.round(dmg)}`, "#ff4444");
+    if (t.stats.hp <= 0) {
+      t.state = "dying"; t.deathTimer = 0;
+      spawnDeathParticles(s2, t.pos);
+    }
+  }
+  return s2;
 }

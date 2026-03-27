@@ -64,10 +64,13 @@ export interface Unit {
   selected: boolean;     // player-controlled (possession mechanic)
   deathTimer: number;
   laneY: number;         // assigned Y position for this unit's lane
-  // Possession magazine/reload system
-  magazine: number;      // shots/hits remaining before reload
+  // Possession magazine/reload system (ranged units)
+  magazine: number;      // shots remaining before reload
   maxMagazine: number;   // full magazine size (set when possessed)
   reloadTimer: number;   // countdown to reload complete (0 = ready)
+  // Possession power-strike system (melee units)
+  swingCharge: number;   // 0.0 → 1.0, fills over time when possessed
+  swingChargeMax: number; // charge time in seconds (unit-type dependent, 0 = not melee)
 }
 
 export interface Building {
@@ -166,6 +169,7 @@ export interface UpgradeState {
   gunslingerRange: number;  // 0-3
   gunslingerRate: number;   // 0-3
   dynamiterRadius: number;  // 0-3
+  dynamiterRange: number;   // 0-3 → +30 throw range per level
   marshalHp: number;        // 0-3
   saloonRevenue: number;    // 0-4 → 2/4/6/8/10 gold/sec
   saloonHp: number;         // 0-3 → +300 HP/level, grows saloon visually

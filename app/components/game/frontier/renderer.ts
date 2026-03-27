@@ -1193,8 +1193,57 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number, upgrad
     ctx.ellipse(sx, sy + 2, 16, 5, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // ── Magazine / reload indicator above possessed unit ──
-    if (unit.maxMagazine > 0) {
+    // ── Possession combat indicator ──
+    const isMeleeUnit = unit.type === "deputy" || unit.type === "bounty_hunter" || unit.type === "marshal";
+    const isRangedUnit = unit.type === "gunslinger" || unit.type === "dynamiter";
+
+    if (isMeleeUnit && unit.swingChargeMax > 0) {
+      // ── MELEE: Power Strike charge ring ──
+      const charge = Math.min(1.0, unit.swingCharge);
+      const ringR = 14;
+      const ringY = sy - 2;
+
+      // Determine ring color based on charge level
+      let ringColor: string;
+      if (charge >= 1.0)      ringColor = "#FFD700"; // gold — POWER STRIKE ready
+      else if (charge >= 0.7) ringColor = "#88FF44"; // green — full damage
+      else if (charge >= 0.3) ringColor = "#FFAA00"; // orange — partial
+      else                    ringColor = "#FF4444"; // red — weak
+
+      // Background ring (dark)
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(sx, ringY, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2);
+      ctx.stroke();
+
+      // Charge arc (fills clockwise from top)
+      if (charge > 0) {
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(sx, ringY, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge);
+        ctx.stroke();
+      }
+
+      // Pulse glow when fully charged
+      if (charge >= 1.0) {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+        ctx.strokeStyle = `rgba(255,215,0,${0.3 + pulse * 0.4})`;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(sx, ringY, ringR + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        // "READY" label
+        ctx.fillStyle = "#FFD700";
+        ctx.font = "bold 6px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("READY!", sx, sy - 22);
+        ctx.textAlign = "left";
+      }
+
+    } else if (isRangedUnit && unit.maxMagazine > 0) {
+      // ── RANGED: Magazine dots + reload bar ──
       const dotSize = 5;
       const dotGap = 3;
       const totalW = unit.maxMagazine * (dotSize + dotGap) - dotGap;
@@ -1202,9 +1251,9 @@ function drawUnit(ctx: CanvasRenderingContext2D, unit: Unit, cam: number, upgrad
       const dotY = sy - 56;
 
       if (unit.reloadTimer > 0) {
-        // Reload bar — shows reload progress
-        const cfg = { gunslinger: 1.4, dynamiter: 2.0, deputy: 0.9, bounty_hunter: 0.9, marshal: 1.1, miner: 1.0 } as Record<string, number>;
-        const reloadTime = cfg[unit.type] ?? 1.0;
+        // Reload bar — shows reload progress filling left to right
+        const reloadTimes: Record<string, number> = { gunslinger: 1.4, dynamiter: 2.0 };
+        const reloadTime = reloadTimes[unit.type] ?? 1.4;
         const pct = 1 - unit.reloadTimer / reloadTime;
         const barW = totalW + 4;
         ctx.fillStyle = "rgba(0,0,0,0.6)";
