@@ -862,3 +862,57 @@ body.shooting-mode {
     opacity: 0.9;
   }
 }
+
+/* ── Frontier Wars — game title text (14vw, separate from nav-text) ── */
+.game-title-text {
+  font-size: 14vw;
+  line-height: 82%;
+}
+
+/* ── Frontier Wars — page flap back button ── */
+.page-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  z-index: 50;
+  background: none;
+  border: none;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.page-flap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 80px 80px 0 0;
+  border-color: #F4E4C1 transparent transparent transparent;
+  filter: drop-shadow(2px 3px 8px rgba(0,0,0,0.6));
+  transition: border-width 0.25s ease;
+}
+.page-flap:hover::before {
+  border-width: 104px 104px 0 0;
+}
+.page-flap-arrow {
+  position: absolute;
+  top: 13px;
+  left: 9px;
+  color: #2C1810;
+  font-size: 1.4rem;
+  font-weight: bold;
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease;
+  font-family: monospace;
+  line-height: 1;
+}
+.page-flap:hover .page-flap-arrow {
+  top: 18px;
+  left: 14px;
+}
