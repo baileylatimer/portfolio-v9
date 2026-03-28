@@ -12,9 +12,11 @@ interface CustomButtonProps {
   strokeColor?: string;
   /** Override the text color (default: #DCCFBE) */
   textColor?: string;
+  /** Override the inner shadow color as [r,g,b] 0-1 floats (default: light beige) */
+  shadowColor?: [number, number, number];
 }
 
-const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = 'on', className = '', fillColor: fillColorProp, strokeColor, textColor }) => {
+const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = 'on', className = '', fillColor: fillColorProp, strokeColor, textColor, shadowColor }) => {
   const fillColor = fillColorProp ?? (fill === 'off' ? 'rgba(26, 25, 23, 0.01)' : '#1A1917'); // Very slight opacity for 'off' to keep shadow visible
   const textRef = useRef<HTMLSpanElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
@@ -98,7 +100,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({ children, onClick, fill = '
             <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
             <feOffset dx="-42.0482" dy="-4.20482"/>
             <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
-            <feColorMatrix type="matrix" values="0 0 0 0 0.854902 0 0 0 0 0.792157 0 0 0 0 0.717647 0 0 0 1 0"/>
+            <feColorMatrix type="matrix" values={`0 0 0 0 ${shadowColor ? shadowColor[0] : 0.854902} 0 0 0 0 ${shadowColor ? shadowColor[1] : 0.792157} 0 0 0 0 ${shadowColor ? shadowColor[2] : 0.717647} 0 0 0 1 0`}/>
             <feBlend mode="normal" in2="shape" result="effect1_innerShadow_5768_366"/>
           </filter>
         </defs>

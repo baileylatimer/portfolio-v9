@@ -1550,7 +1550,7 @@ function drawMenuBg(ctx: CanvasRenderingContext2D, W: number, H: number, t: numb
   }
 }
 
-function drawMenuChar(ctx: CanvasRenderingContext2D, x: number, y: number, type: string, dir: number, frame: number, flash: number) {
+function drawMenuChar(ctx: CanvasRenderingContext2D, x: number, y: number, type: string, dir: number, frame: number, flash: number, tier: number = 0) {
   const s = 3;
   ctx.save();
   ctx.translate(x, y);
@@ -1560,13 +1560,21 @@ function drawMenuChar(ctx: CanvasRenderingContext2D, x: number, y: number, type:
   const ll = walk < 2 ? 3 : -3, lr = walk < 2 ? -3 : 3;
   const al = walk < 2 ? -2 : 2;
 
-  // Legs
-  ctx.fillStyle = "#3D2B1F";
+  // Legs — gold-trimmed at tier 3
+  ctx.fillStyle = tier >= 3 ? "#5C4033" : "#3D2B1F";
   ctx.fillRect(-4*s, ll, 3*s, 9*s);
   ctx.fillRect(s, lr, 3*s, 9*s);
 
-  // Body
-  const bc = type === "deputy" ? "#4a7a9b" : type === "gunslinger" ? "#8B4513" : type === "bounty_hunter" ? "#5a3a1a" : "#8B6914";
+  // Body — brightens with tier
+  const bodyTiers: Record<string, string[]> = {
+    deputy:        ["#3a6a8b", "#4a7a9b", "#5a8aab", "#6a9abb"],
+    gunslinger:    ["#7B3503", "#8B4513", "#9B5523", "#ab6533"],
+    bounty_hunter: ["#4a2a0a", "#5a3a1a", "#6a4a2a", "#7a5a3a"],
+    miner:         ["#7B5904", "#8B6914", "#9B7924", "#ab8934"],
+    brave:         ["#7B2A0A", "#8B3A1A", "#9B4A2A", "#ab5a3a"],
+    archer:        ["#6A4A1A", "#7A5A2A", "#8A6A3A", "#9A7A4A"],
+  };
+  const bc = (bodyTiers[type] ?? bodyTiers.deputy)[Math.min(tier, 3)];
   ctx.fillStyle = bc;
   ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
 
@@ -1590,74 +1598,118 @@ function drawMenuChar(ctx: CanvasRenderingContext2D, x: number, y: number, type:
   ctx.fillStyle = "#D4A574";
   ctx.fillRect(-4*s, -22*s, 8*s, 8*s);
 
-  // Hat
-  ctx.fillStyle = "#3D2B1F";
+  // Hat — gold at tier 3
+  ctx.fillStyle = tier >= 3 ? "#8B6914" : "#3D2B1F";
   ctx.fillRect(-6*s, -24*s, 12*s, 3*s);
   ctx.fillRect(-4*s, -31*s, 8*s, 8*s);
+  // Hat band — upgrades with tier
+  if (tier >= 1) {
+    ctx.fillStyle = tier >= 3 ? "#FFD700" : tier >= 2 ? "#cc2200" : "#8B6914";
+    ctx.fillRect(-4*s, -25*s, 8*s, s);
+  }
 
-  // Type details
+  // Type-specific details with tier upgrades
   if (type === "deputy") {
-    ctx.fillStyle = "#FFD700";
+    const badgeColor = tier >= 2 ? "#FFD700" : tier >= 1 ? "#C0C0C0" : "#888";
+    ctx.fillStyle = badgeColor;
     ctx.fillRect(-s, -9*s, 2*s, 2*s);
-  } else if (type === "miner") {
-    ctx.fillStyle = "#888";
-    ctx.fillRect(-11*s, -11*s + al, 7*s, 2*s);
-  } else if (type === "brave") {
-    // Brave: red body, feather headdress, no hat
-    // Override body color (already drawn above as #8B6914 fallback)
-    ctx.fillStyle = "#8B3A1A";
-    ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
-    // Feather headdress — 3 feathers above head
-    const featherColors = ["#cc2200", "#FFD700", "#cc2200"];
-    for (let fi = 0; fi < 3; fi++) {
-      ctx.fillStyle = featherColors[fi];
-      ctx.fillRect((-3 + fi * 2.5)*s, -32*s, s, 8*s);
+    if (tier >= 2) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(2*s, -34*s, s, 5*s); // red plume
     }
-    // Headband
-    ctx.fillStyle = "#8B6914";
-    ctx.fillRect(-4*s, -24*s, 8*s, 2*s);
-    // Erase the cowboy hat (draw skin over it)
+    if (tier >= 3) {
+      ctx.strokeStyle = "#8B6914";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-5*s, -12*s);
+      ctx.lineTo(3*s, -2*s);
+      ctx.stroke(); // bandolier
+    }
+  } else if (type === "miner") {
+    // Hard hat color upgrades with tier
+    ctx.fillStyle = tier >= 1 ? "#FFD700" : "#888";
+    ctx.fillRect(-6*s, -24*s, 12*s, 3*s);
+    ctx.fillRect(-4*s, -31*s, 8*s, 8*s);
+    ctx.fillStyle = "#888";
+    ctx.fillRect(-11*s, -11*s + al, 7*s, 2*s); // pickaxe
+    if (tier >= 2) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(2*s, -30*s, 2*s, 2*s); // headlamp
+    }
+    if (tier >= 3) {
+      ctx.fillStyle = "#FFD700";
+      for (let i = 0; i < 3; i++) ctx.fillRect(-4*s + i*3*s, -14*s, 2*s, 2*s); // gold nuggets
+    }
+  } else if (type === "gunslinger") {
+    if (tier >= 1) {
+      ctx.fillStyle = "#3d1f0a";
+      ctx.fillRect(-8*s, -6*s, 3*s, 4*s);
+      ctx.fillRect(5*s, -6*s, 3*s, 4*s); // dual holsters
+    }
+    if (tier >= 2) {
+      ctx.fillStyle = "#FFD700";
+      ctx.fillRect(-6*s, 0, 3*s, s);
+      ctx.fillRect(3*s, 0, 3*s, s); // gold spurs
+    }
+    if (tier >= 3) {
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-5*s, -12*s, 10*s, 12*s); // gold-trimmed duster
+    }
+  } else if (type === "brave") {
+    ctx.fillStyle = bc;
+    ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
+    const featherCount = 3 + tier;
+    const fColors = ["#cc2200", "#FFD700", "#cc2200", "#FF6600", "#FFD700"];
+    for (let fi = 0; fi < featherCount; fi++) {
+      ctx.fillStyle = fColors[fi % fColors.length];
+      ctx.fillRect((-3 + fi * 2)*s, -32*s, s, (8 + tier)*s);
+    }
+    ctx.fillStyle = tier >= 2 ? "#FFD700" : "#8B6914";
+    ctx.fillRect(-4*s, -24*s, 8*s, 2*s); // headband
     ctx.fillStyle = "#D4A574";
-    ctx.fillRect(-6*s, -31*s, 12*s, 10*s);
-    // Re-draw head
+    ctx.fillRect(-6*s, -31*s, 12*s, 10*s); // erase hat
     ctx.fillStyle = "#C4905A";
-    ctx.fillRect(-4*s, -22*s, 8*s, 8*s);
-    // Headband on head
-    ctx.fillStyle = "#8B3A1A";
-    ctx.fillRect(-4*s, -20*s, 8*s, 2*s);
-    // Feathers above head
-    for (let fi = 0; fi < 3; fi++) {
-      ctx.fillStyle = featherColors[fi];
-      ctx.fillRect((-3 + fi * 2.5)*s, -30*s, s, 9*s);
+    ctx.fillRect(-4*s, -22*s, 8*s, 8*s); // head
+    ctx.fillStyle = tier >= 2 ? "#FFD700" : "#8B3A1A";
+    ctx.fillRect(-4*s, -20*s, 8*s, 2*s); // headband on head
+    for (let fi = 0; fi < featherCount; fi++) {
+      ctx.fillStyle = fColors[fi % fColors.length];
+      ctx.fillRect((-3 + fi * 2)*s, -30*s, s, (9 + tier)*s);
+    }
+    if (tier >= 1) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(-3*s, -20*s, s, 2*s);
+      ctx.fillRect(2*s, -20*s, s, 2*s); // war paint
     }
   } else if (type === "archer") {
-    // Archer: tan body, single tall feather, bow in hand
-    ctx.fillStyle = "#7A5A2A";
+    ctx.fillStyle = bc;
     ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
-    // Erase hat, draw skin
     ctx.fillStyle = "#D4A574";
-    ctx.fillRect(-6*s, -31*s, 12*s, 10*s);
-    // Re-draw head
+    ctx.fillRect(-6*s, -31*s, 12*s, 10*s); // erase hat
     ctx.fillStyle = "#C4905A";
-    ctx.fillRect(-4*s, -22*s, 8*s, 8*s);
-    // Single tall red feather
-    ctx.fillStyle = "#cc2200";
-    ctx.fillRect(2*s, -32*s, s, 11*s);
-    ctx.fillStyle = "#FF6600";
-    ctx.fillRect(3*s, -30*s, s, 7*s);
-    // Bow — arc on the right arm side
-    ctx.strokeStyle = "#5C3A10";
-    ctx.lineWidth = 2;
+    ctx.fillRect(-4*s, -22*s, 8*s, 8*s); // head
+    const archerFeathers = 1 + tier;
+    for (let fi = 0; fi < archerFeathers; fi++) {
+      ctx.fillStyle = fi % 2 === 0 ? "#cc2200" : "#FFD700";
+      ctx.fillRect((fi * 2)*s, -32*s, s, 11*s);
+    }
+    ctx.strokeStyle = tier >= 3 ? "#FFD700" : tier >= 2 ? "#8B6914" : "#5C3A10";
+    ctx.lineWidth = tier >= 2 ? 3 : 2;
     ctx.beginPath();
     ctx.arc(8*s, -8*s, 7*s, -Math.PI * 0.6, Math.PI * 0.6);
-    ctx.stroke();
-    // Bowstring
+    ctx.stroke(); // bow
     ctx.strokeStyle = "#D4A574";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(8*s, -8*s - 7*s * Math.sin(Math.PI * 0.6));
     ctx.lineTo(8*s, -8*s + 7*s * Math.sin(Math.PI * 0.6));
-    ctx.stroke();
+    ctx.stroke(); // bowstring
+    if (tier >= 1) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(-2*s, -20*s, s, 2*s);
+      ctx.fillRect(s, -20*s, s, 2*s); // war paint
+    }
   }
 
   ctx.restore();
@@ -1748,7 +1800,7 @@ export default function FrontierWars() {
           npc.shootFlash = Math.max(0, npc.shootFlash - dt * 4);
         }
 
-        drawMenuChar(ctx, npc.x * W, npc.y * H, npc.type, npc.dir, npc.frame, npc.shootFlash);
+        drawMenuChar(ctx, npc.x * W, npc.y * H, npc.type, npc.dir, npc.frame, npc.shootFlash, menuDifficultyTierRef.current);
       }
 
       for (let i = particles.length - 1; i >= 0; i--) {
@@ -1785,6 +1837,9 @@ export default function FrontierWars() {
   const [unlockedUnits, setUnlockedUnits] = useState<string[]>(["miner", "deputy"]);
   const [difficulty, setDifficulty] = useState<Difficulty>("gunslinger");
   const [hudGold, setHudGold] = useState(0);
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  // 0=tenderfoot, 1=gunslinger, 2=outlaw, 3=legend — drives NPC upgrade tier on menu
+  const menuDifficultyTierRef = useRef<number>(1);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false); // sync ref for game loop
   // Track whether a save exists so the menu can show "LOAD GAME"
@@ -1792,6 +1847,12 @@ export default function FrontierWars() {
 
   // Keep pausedRef in sync with paused state
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  // Sync NPC upgrade tier whenever difficulty changes
+  useEffect(() => {
+    const tierMap: Record<string, number> = { tenderfoot: 0, gunslinger: 1, outlaw: 2, legend: 3 };
+    menuDifficultyTierRef.current = tierMap[difficulty] ?? 1;
+  }, [difficulty]);
 
   // ── Game loop ──
   const gameLoop = useCallback((timestamp: number) => {
@@ -2200,7 +2261,7 @@ export default function FrontierWars() {
             {/* Buttons — bottom right, centered column */}
             <div className="flex flex-col items-center gap-2 pb-10 pr-4">
               <CustomButton
-                onClick={() => setScreen("difficulty")}
+                onClick={() => setShowDifficultyModal(true)}
                 fillColor="#FFD700"
                 strokeColor="#FFD700"
                 textColor="#2C1810"
@@ -2218,6 +2279,120 @@ export default function FrontierWars() {
               )}
             </div>
           </div>
+
+          {/* ── DIFFICULTY MODAL (overlays menu, keeps background alive) ── */}
+          {showDifficultyModal && (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-50"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+            >
+              <div className="relative flex flex-col items-center" style={{ width: 494 }}>
+                {/* Exact container SVG from design */}
+                <div className="relative w-full" style={{ height: 453 }}>
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 494 453"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g filter="url(#filter0_i_6376_3728)">
+                      <path d="M0 18C9.94113 18 18 9.94113 18 0H476C476 9.94113 484.059 18 494 18V435C484.059 435 476 443.059 476 453H18C18 443.059 9.94113 435 0 435V18Z" fill="#382913"/>
+                    </g>
+                    <path d="M474.557 1.5C475.285 11.0736 482.926 18.7151 492.5 19.4434V433.557C482.926 434.285 475.285 441.926 474.557 451.5H19.4434C18.7151 441.926 11.0736 434.285 1.5 433.557V19.4434C11.0736 18.7151 18.7151 11.0736 19.4434 1.5H474.557Z" stroke="#ECD449" strokeWidth="3"/>
+                    <defs>
+                      <filter id="filter0_i_6376_3728" x="0" y="0" width="494" height="453" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                        <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                        <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                        <feOffset dx="-10" dy="-1"/>
+                        <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                        <feColorMatrix type="matrix" values="0 0 0 0 0.92549 0 0 0 0 0.831373 0 0 0 0 0.286275 0 0 0 1 0"/>
+                        <feBlend mode="normal" in2="shape" result="effect1_innerShadow_6376_3728"/>
+                      </filter>
+                    </defs>
+                  </svg>
+
+                  {/* Content */}
+                  <div className="absolute inset-0 flex flex-col px-0 py-7">
+                    {/* Header — only "Select Difficulty" */}
+                    <div className="text-center mb-5 px-8">
+                      <h2 className="font-secondary" style={{ color: "#ECD449", fontSize: "2.2rem", lineHeight: 1.1 }}>
+                        Select Difficulty
+                      </h2>
+                    </div>
+
+                    {/* Difficulty rows — flush edge-to-edge, no gap, 3px border-top/bottom only */}
+                    <div className="flex flex-col flex-1">
+                      {([
+                        { key: "tenderfoot" as Difficulty, label: "TENDERFOOT",        desc: "For greenhorns just off the stagecoach. Enemy is slow and underfunded." },
+                        { key: "gunslinger"  as Difficulty, label: "GUNSLINGER",         desc: "A fair fight. The current balanced experience." },
+                        { key: "outlaw"      as Difficulty, label: "OUTLAW",             desc: "They're meaner, faster, and better funded. Bring your best." },
+                        { key: "legend"      as Difficulty, label: "LEGEND OF THE WEST", desc: "Only the deadliest survive. No mercy, no quarter." },
+                      ] as const).map(({ key, label, desc }) => {
+                        const isActive = difficulty === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setDifficulty(key)}
+                            className="flex items-center gap-4 px-4 py-4 text-left w-full"
+                            style={{
+                              background: "transparent",
+                              borderTop: "3px solid #ECD449",
+                              borderBottom: "3px solid #ECD449",
+                              borderLeft: "none",
+                              borderRight: "none",
+                              marginTop: -3, // collapse double borders between rows
+                              outline: "none",
+                            }}
+                          >
+                            {/* Skull — only visible when active */}
+                            <div className="flex-shrink-0" style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {isActive && (
+                                <svg width="26" height="24" viewBox="0 0 116 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path fillRule="evenodd" clipRule="evenodd" d="M77 10H103V21H116V64H103V74H90V85H77V74H65V85H52V74H39V85H26V74H13V64H0V21H13V10H39V0H77V10ZM13 52H52V42H39V31H13V52ZM77 42H65V52H103V31H77V42Z" fill="#ECD449"/>
+                                </svg>
+                              )}
+                            </div>
+                            {/* Text */}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold tracking-widest" style={{ color: "#ECD449", fontFamily: "monospace" }}>
+                                {label}
+                              </div>
+                              <div className="text-xs mt-0.5" style={{ color: "#ECD449", opacity: 0.6, fontFamily: "monospace" }}>
+                                {desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIDE OUT button — overlaps bottom of modal */}
+                <div className="relative" style={{ marginTop: -30, zIndex: 10 }}>
+                  <CustomButton
+                    onClick={() => { setShowDifficultyModal(false); setScreen("campaign"); }}
+                    fillColor="#ECD449"
+                    strokeColor="#ECD449"
+                    textColor="#382913"
+                    shadowColor={[0.22, 0.161, 0.075]}
+                  >
+                    RIDE OUT
+                  </CustomButton>
+                </div>
+
+                {/* BACK link */}
+                <button
+                  onClick={() => setShowDifficultyModal(false)}
+                  className="mt-3 text-xs tracking-widest hover:opacity-70 transition-opacity"
+                  style={{ color: "#ECD449", fontFamily: "monospace", opacity: 0.4 }}
+                >
+                  — BACK —
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
