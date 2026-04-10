@@ -1099,12 +1099,8 @@ function updateEnemyAI(s: GameState, dt: number) {
       s.enemyGarrisoned = false;
     }
 
-    // Apply garrison to enemy miners
-    for (const unit of s.units) {
-      if (unit.team === "enemy" && unit.type === "miner" && unit.state !== "dead" && unit.state !== "dying") {
-        updateEnemyMinerGarrison(unit, s, dt);
-      }
-    }
+    // (Enemy miner garrison movement is handled inside updateMiner() via the
+    //  early-return delegation at the top of that function — no second call needed here)
 
     // ── Emergency spawn: player is raiding the base — bypass normal spawn timer ──
     // Spawn the cheapest available combat unit immediately (human panic response)

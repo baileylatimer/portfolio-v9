@@ -1,6 +1,7 @@
 // ─── Frontier Wars — Main Game Component ──────────────────────────────────────
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import CustomButton from "~/components/custom-button";
 import type { GameState, UnitType, UpgradeState, Difficulty } from "./types";
 import { createInitialState, updateGame, queueUnit, selectUnit, setStance, movePossessedUnit, possessedAttack } from "./engine";
 import { render } from "./renderer";
@@ -49,12 +50,6 @@ function loadGame(): SaveData | null {
 
 function hasSave(): boolean {
   try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
-}
-
-function formatSaveDate(ts: number): string {
-  const d = new Date(ts);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-    " · " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 // ─── Campaign Map — RDR2 Parchment Style ─────────────────────────────────────
@@ -1491,6 +1486,237 @@ function VictoryScene({
 // Virtual height is fixed; width adapts to the window's aspect ratio
 const VIRTUAL_H = 600;
 
+interface MenuNPC {
+  x: number; y: number; type: string; dir: number;
+  speed: number; frame: number; frameTimer: number;
+  shootTimer: number; shootFlash: number;
+}
+interface MenuParticle {
+  x: number; y: number; vx: number; vy: number;
+  life: number; maxLife: number; color: string; size: number;
+}
+function menuLerpColor(a: string, b: string, t: number): string {
+  const h = (s: string) => [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)] as const;
+  const [r1,g1,b1] = h(a), [r2,g2,b2] = h(b);
+  return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+}
+
+function drawMenuBg(ctx: CanvasRenderingContext2D, W: number, H: number, t: number) {
+  const phase = (Math.sin(t * 0.12) + 1) / 2;
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.78);
+  grad.addColorStop(0, menuLerpColor("#1a0a2e", "#2a0e1a", phase));
+  grad.addColorStop(0.45, menuLerpColor("#7a3520", "#c86030", phase));
+  grad.addColorStop(1, "#8B5E3C");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  const groundY = H * 0.78;
+
+  // Far mountains
+  ctx.fillStyle = "#3D1A08";
+  ctx.beginPath();
+  ctx.moveTo(0, groundY);
+  const mPts = [0,0.12,0.22,0.35,0.48,0.58,0.70,0.82,0.92,1.0];
+  const mH   = [0,0.28,0.12,0.32,0.18,0.30,0.14,0.26,0.10,0];
+  for (let i = 0; i < mPts.length; i++) ctx.lineTo(mPts[i]*W, groundY - mH[i]*groundY);
+  ctx.lineTo(W, groundY); ctx.closePath(); ctx.fill();
+
+  // Near mountains
+  ctx.fillStyle = "#5C2E10";
+  ctx.beginPath();
+  ctx.moveTo(0, groundY);
+  const m2Pts = [0,0.08,0.20,0.32,0.45,0.60,0.72,0.85,0.95,1.0];
+  const m2H   = [0,0.16,0.06,0.20,0.08,0.18,0.05,0.15,0.07,0];
+  for (let i = 0; i < m2Pts.length; i++) ctx.lineTo(m2Pts[i]*W, groundY - m2H[i]*groundY);
+  ctx.lineTo(W, groundY); ctx.closePath(); ctx.fill();
+
+  // Ground
+  ctx.fillStyle = "#6B4423";
+  ctx.fillRect(0, groundY, W, H - groundY);
+  ctx.fillStyle = "#7a5030";
+  ctx.fillRect(0, groundY, W, 5);
+
+  // Cacti
+  for (const px of [0.07, 0.19, 0.63, 0.79, 0.92]) {
+    const sc = 0.7 + Math.sin(px * 13) * 0.25;
+    const cx = px * W, cy = groundY;
+    const h = 50 * sc, w = 9 * sc;
+    ctx.fillStyle = "#2a5a2a";
+    ctx.fillRect(cx - w/2, cy - h, w, h);
+    ctx.fillRect(cx - w/2 - 14*sc, cy - h*0.65, 14*sc, w*0.75);
+    ctx.fillRect(cx - w/2 - 14*sc, cy - h*0.65 - 14*sc, w*0.75, 14*sc);
+    ctx.fillRect(cx + w/2, cy - h*0.75, 14*sc, w*0.75);
+    ctx.fillRect(cx + w/2, cy - h*0.75 - 12*sc, w*0.75, 12*sc);
+  }
+}
+
+function drawMenuChar(ctx: CanvasRenderingContext2D, x: number, y: number, type: string, dir: number, frame: number, flash: number, tier: number = 0) {
+  const s = 3;
+  ctx.save();
+  ctx.translate(x, y);
+  if (dir === -1) ctx.scale(-1, 1);
+
+  const walk = frame % 4;
+  const ll = walk < 2 ? 3 : -3, lr = walk < 2 ? -3 : 3;
+  const al = walk < 2 ? -2 : 2;
+
+  // Legs — gold-trimmed at tier 3
+  ctx.fillStyle = tier >= 3 ? "#5C4033" : "#3D2B1F";
+  ctx.fillRect(-4*s, ll, 3*s, 9*s);
+  ctx.fillRect(s, lr, 3*s, 9*s);
+
+  // Body — brightens with tier
+  const bodyTiers: Record<string, string[]> = {
+    deputy:        ["#3a6a8b", "#4a7a9b", "#5a8aab", "#6a9abb"],
+    gunslinger:    ["#7B3503", "#8B4513", "#9B5523", "#ab6533"],
+    bounty_hunter: ["#4a2a0a", "#5a3a1a", "#6a4a2a", "#7a5a3a"],
+    miner:         ["#7B5904", "#8B6914", "#9B7924", "#ab8934"],
+    brave:         ["#7B2A0A", "#8B3A1A", "#9B4A2A", "#ab5a3a"],
+    archer:        ["#6A4A1A", "#7A5A2A", "#8A6A3A", "#9A7A4A"],
+  };
+  const bc = (bodyTiers[type] ?? bodyTiers.deputy)[Math.min(tier, 3)];
+  ctx.fillStyle = bc;
+  ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
+
+  // Arms
+  ctx.fillStyle = "#D4A574";
+  ctx.fillRect(-8*s, -10*s + al, 3*s, 7*s);
+  if (type === "gunslinger" && flash > 0) {
+    ctx.fillStyle = "#888";
+    ctx.fillRect(5*s, -14*s, 8*s, 2*s);
+    ctx.fillStyle = "#FFD700";
+    ctx.globalAlpha = flash;
+    ctx.fillRect(12*s, -17*s, 5*s, 5*s);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = "#D4A574";
+    const ar = walk < 2 ? 2 : -2;
+    ctx.fillRect(5*s, -10*s + ar, 3*s, 7*s);
+  }
+
+  // Head
+  ctx.fillStyle = "#D4A574";
+  ctx.fillRect(-4*s, -22*s, 8*s, 8*s);
+
+  // Hat — gold at tier 3
+  ctx.fillStyle = tier >= 3 ? "#8B6914" : "#3D2B1F";
+  ctx.fillRect(-6*s, -24*s, 12*s, 3*s);
+  ctx.fillRect(-4*s, -31*s, 8*s, 8*s);
+  // Hat band — upgrades with tier
+  if (tier >= 1) {
+    ctx.fillStyle = tier >= 3 ? "#FFD700" : tier >= 2 ? "#cc2200" : "#8B6914";
+    ctx.fillRect(-4*s, -25*s, 8*s, s);
+  }
+
+  // Type-specific details with tier upgrades
+  if (type === "deputy") {
+    const badgeColor = tier >= 2 ? "#FFD700" : tier >= 1 ? "#C0C0C0" : "#888";
+    ctx.fillStyle = badgeColor;
+    ctx.fillRect(-s, -9*s, 2*s, 2*s);
+    if (tier >= 2) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(2*s, -34*s, s, 5*s); // red plume
+    }
+    if (tier >= 3) {
+      ctx.strokeStyle = "#8B6914";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-5*s, -12*s);
+      ctx.lineTo(3*s, -2*s);
+      ctx.stroke(); // bandolier
+    }
+  } else if (type === "miner") {
+    // Hard hat color upgrades with tier
+    ctx.fillStyle = tier >= 1 ? "#FFD700" : "#888";
+    ctx.fillRect(-6*s, -24*s, 12*s, 3*s);
+    ctx.fillRect(-4*s, -31*s, 8*s, 8*s);
+    ctx.fillStyle = "#888";
+    ctx.fillRect(-11*s, -11*s + al, 7*s, 2*s); // pickaxe
+    if (tier >= 2) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(2*s, -30*s, 2*s, 2*s); // headlamp
+    }
+    if (tier >= 3) {
+      ctx.fillStyle = "#FFD700";
+      for (let i = 0; i < 3; i++) ctx.fillRect(-4*s + i*3*s, -14*s, 2*s, 2*s); // gold nuggets
+    }
+  } else if (type === "gunslinger") {
+    if (tier >= 1) {
+      ctx.fillStyle = "#3d1f0a";
+      ctx.fillRect(-8*s, -6*s, 3*s, 4*s);
+      ctx.fillRect(5*s, -6*s, 3*s, 4*s); // dual holsters
+    }
+    if (tier >= 2) {
+      ctx.fillStyle = "#FFD700";
+      ctx.fillRect(-6*s, 0, 3*s, s);
+      ctx.fillRect(3*s, 0, 3*s, s); // gold spurs
+    }
+    if (tier >= 3) {
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-5*s, -12*s, 10*s, 12*s); // gold-trimmed duster
+    }
+  } else if (type === "brave") {
+    ctx.fillStyle = bc;
+    ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
+    const featherCount = 3 + tier;
+    const fColors = ["#cc2200", "#FFD700", "#cc2200", "#FF6600", "#FFD700"];
+    for (let fi = 0; fi < featherCount; fi++) {
+      ctx.fillStyle = fColors[fi % fColors.length];
+      ctx.fillRect((-3 + fi * 2)*s, -32*s, s, (8 + tier)*s);
+    }
+    ctx.fillStyle = tier >= 2 ? "#FFD700" : "#8B6914";
+    ctx.fillRect(-4*s, -24*s, 8*s, 2*s); // headband
+    ctx.fillStyle = "#D4A574";
+    ctx.fillRect(-6*s, -31*s, 12*s, 10*s); // erase hat
+    ctx.fillStyle = "#C4905A";
+    ctx.fillRect(-4*s, -22*s, 8*s, 8*s); // head
+    ctx.fillStyle = tier >= 2 ? "#FFD700" : "#8B3A1A";
+    ctx.fillRect(-4*s, -20*s, 8*s, 2*s); // headband on head
+    for (let fi = 0; fi < featherCount; fi++) {
+      ctx.fillStyle = fColors[fi % fColors.length];
+      ctx.fillRect((-3 + fi * 2)*s, -30*s, s, (9 + tier)*s);
+    }
+    if (tier >= 1) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(-3*s, -20*s, s, 2*s);
+      ctx.fillRect(2*s, -20*s, s, 2*s); // war paint
+    }
+  } else if (type === "archer") {
+    ctx.fillStyle = bc;
+    ctx.fillRect(-5*s, -12*s, 10*s, 12*s);
+    ctx.fillStyle = "#D4A574";
+    ctx.fillRect(-6*s, -31*s, 12*s, 10*s); // erase hat
+    ctx.fillStyle = "#C4905A";
+    ctx.fillRect(-4*s, -22*s, 8*s, 8*s); // head
+    const archerFeathers = 1 + tier;
+    for (let fi = 0; fi < archerFeathers; fi++) {
+      ctx.fillStyle = fi % 2 === 0 ? "#cc2200" : "#FFD700";
+      ctx.fillRect((fi * 2)*s, -32*s, s, 11*s);
+    }
+    ctx.strokeStyle = tier >= 3 ? "#FFD700" : tier >= 2 ? "#8B6914" : "#5C3A10";
+    ctx.lineWidth = tier >= 2 ? 3 : 2;
+    ctx.beginPath();
+    ctx.arc(8*s, -8*s, 7*s, -Math.PI * 0.6, Math.PI * 0.6);
+    ctx.stroke(); // bow
+    ctx.strokeStyle = "#D4A574";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(8*s, -8*s - 7*s * Math.sin(Math.PI * 0.6));
+    ctx.lineTo(8*s, -8*s + 7*s * Math.sin(Math.PI * 0.6));
+    ctx.stroke(); // bowstring
+    if (tier >= 1) {
+      ctx.fillStyle = "#cc2200";
+      ctx.fillRect(-2*s, -20*s, s, 2*s);
+      ctx.fillRect(s, -20*s, s, 2*s); // war paint
+    }
+  }
+
+  ctx.restore();
+}
+
+// ─── Main Game Component ──────────────────────────────────────────────────────
+
 export default function FrontierWars() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1500,6 +1726,8 @@ export default function FrontierWars() {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const keysHeldRef = useRef<Set<string>>(new Set());
   const cameraIdleTimerRef = useRef<number>(0); // seconds since last manual scroll
+  const menuCanvasRef = useRef<HTMLCanvasElement>(null);
+  const menuAnimRef = useRef<number>(0);
   const [isMobile, setIsMobile] = useState(false);
 
   // ── Mobile detection ──
@@ -1510,6 +1738,91 @@ export default function FrontierWars() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  const [screen, setScreen] = useState<"menu" | "difficulty" | "campaign" | "briefing" | "battle" | "upgrade" | "victory" | "defeat">("menu");
+
+  // ── Menu canvas animation ──
+  useEffect(() => {
+    if (screen !== "menu") return;
+    const canvas = menuCanvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const npcs: MenuNPC[] = [
+      { x: 0.12, y: 0.74, type: "deputy",       dir:  1, speed: 0.06, frame: 0, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      { x: 0.28, y: 0.76, type: "miner",         dir: -1, speed: 0.04, frame: 2, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      { x: 0.50, y: 0.72, type: "gunslinger",    dir:  1, speed: 0.05, frame: 1, frameTimer: 0, shootTimer: 2.5, shootFlash: 0 },
+      { x: 0.65, y: 0.75, type: "bounty_hunter", dir: -1, speed: 0.045,frame: 3, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      { x: 0.82, y: 0.73, type: "deputy",        dir:  1, speed: 0.035,frame: 0, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      { x: 0.40, y: 0.77, type: "miner",         dir:  1, speed: 0.03, frame: 2, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      // Native characters — wander from the right side
+      { x: 0.88, y: 0.75, type: "brave",         dir: -1, speed: 0.055,frame: 1, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+      { x: 0.73, y: 0.73, type: "archer",        dir: -1, speed: 0.04, frame: 3, frameTimer: 0, shootTimer: 0,   shootFlash: 0 },
+    ];
+    const particles: MenuParticle[] = [];
+    let t = 0, last = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now; t += dt;
+      const W = canvas.width, H = canvas.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      drawMenuBg(ctx, W, H, t);
+
+      for (const npc of npcs) {
+        npc.frameTimer += dt;
+        if (npc.frameTimer > 0.15) { npc.frameTimer = 0; npc.frame = (npc.frame + 1) % 4; }
+        npc.x += npc.dir * npc.speed * dt;
+        if (npc.x < 0.05) { npc.x = 0.05; npc.dir = 1; }
+        if (npc.x > 0.95) { npc.x = 0.95; npc.dir = -1; }
+
+        if (npc.type === "gunslinger") {
+          npc.shootTimer -= dt;
+          if (npc.shootTimer <= 0) {
+            npc.shootTimer = 3.5 + Math.random() * 3;
+            npc.shootFlash = 1.0;
+            for (let i = 0; i < 10; i++) {
+              particles.push({
+                x: npc.x * W + (npc.dir > 0 ? 30 : -30),
+                y: npc.y * H - 42,
+                vx: (Math.random() - 0.5) * 80,
+                vy: -120 - Math.random() * 80,
+                life: 0.6, maxLife: 0.6,
+                color: i % 2 === 0 ? "#FFD700" : "#FF8800",
+                size: 3 + Math.random() * 3,
+              });
+            }
+          }
+          npc.shootFlash = Math.max(0, npc.shootFlash - dt * 4);
+        }
+
+        drawMenuChar(ctx, npc.x * W, npc.y * H, npc.type, npc.dir, npc.frame, npc.shootFlash, menuDifficultyTierRef.current);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.globalAlpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+      }
+      ctx.globalAlpha = 1;
+
+      menuAnimRef.current = requestAnimationFrame(tick);
+    };
+
+    menuAnimRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(menuAnimRef.current);
+      window.removeEventListener("resize", resize);
+    };
+  }, [screen]);
+
   // campaignStep = index into CAMPAIGN_SEQUENCE (0..10)
   const [campaignStep, setCampaignStep] = useState(0);
   // briefingEntry = the entry we're about to play (set before showing briefing)
@@ -1517,7 +1830,6 @@ export default function FrontierWars() {
   // currentEntry = the entry currently being played (used for "Try Again" on defeat)
   const [currentEntry, setCurrentEntry] = useState<CampaignEntry>(CAMPAIGN_SEQUENCE[0]);
 
-  const [screen, setScreen] = useState<"menu" | "difficulty" | "campaign" | "briefing" | "battle" | "upgrade" | "victory" | "defeat">("menu");
   const [currentLevel, setCurrentLevel] = useState(0);
   const [completedLevels, setCompletedLevels] = useState<number[]>([]);
   const [upgrades, setUpgrades] = useState<UpgradeState>(DEFAULT_UPGRADES);
@@ -1525,6 +1837,9 @@ export default function FrontierWars() {
   const [unlockedUnits, setUnlockedUnits] = useState<string[]>(["miner", "deputy"]);
   const [difficulty, setDifficulty] = useState<Difficulty>("gunslinger");
   const [hudGold, setHudGold] = useState(0);
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  // 0=tenderfoot, 1=gunslinger, 2=outlaw, 3=legend — drives NPC upgrade tier on menu
+  const menuDifficultyTierRef = useRef<number>(1);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false); // sync ref for game loop
   // Track whether a save exists so the menu can show "LOAD GAME"
@@ -1532,6 +1847,12 @@ export default function FrontierWars() {
 
   // Keep pausedRef in sync with paused state
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  // Sync NPC upgrade tier whenever difficulty changes
+  useEffect(() => {
+    const tierMap: Record<string, number> = { tenderfoot: 0, gunslinger: 1, outlaw: 2, legend: 3 };
+    menuDifficultyTierRef.current = tierMap[difficulty] ?? 1;
+  }, [difficulty]);
 
   // ── Game loop ──
   const gameLoop = useCallback((timestamp: number) => {
@@ -1895,75 +2216,183 @@ export default function FrontierWars() {
 
       {/* ── MENU ── */}
       {screen === "menu" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center"
-          style={{ background: "linear-gradient(180deg, #1a0a2e 0%, #7a3520 60%, #8B5E3C 100%)", fontFamily: "monospace" }}>
-          <div className="text-center">
-            <div className="text-xs tracking-widest mb-4" style={{ color: "#8B6914" }}>BAILEY LATIMER PRESENTS</div>
-            <h1 className="text-7xl font-bold tracking-widest mb-2"
-              style={{ color: "#FFD700", textShadow: "0 0 40px #FFD700, 0 0 80px rgba(255,215,0,0.3)" }}>
-              FRONTIER
-            </h1>
-            <h1 className="text-7xl font-bold tracking-widest mb-6"
-              style={{ color: "#F4E4C1", textShadow: "0 0 20px rgba(244,228,193,0.5)" }}>
-              WARS
-            </h1>
-            <div className="text-sm tracking-widest mb-12 opacity-60" style={{ color: "#F4E4C1" }}>
-              A WESTERN STRATEGY GAME
-            </div>
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Living background canvas */}
+          <canvas ref={menuCanvasRef} className="absolute inset-0 w-full h-full" />
 
-            <div className="border p-6 mb-8 text-left text-sm space-y-2 max-w-sm mx-auto"
-              style={{ borderColor: "#8B5E3C", color: "#F4E4C1", background: "rgba(44,24,16,0.6)" }}>
-              <div className="text-center mb-3 opacity-60">── HOW TO PLAY ──</div>
-              <div><span style={{ color: "#FFD700" }}>[1]</span> Spawn Miner — mines gold</div>
-              <div><span style={{ color: "#FFD700" }}>[2]</span> Spawn Deputy — melee fighter</div>
-              <div><span style={{ color: "#FFD700" }}>[3]</span> Spawn Gunslinger — ranged</div>
-              <div><span style={{ color: "#FFD700" }}>[4]</span> Spawn Dynamiter — AOE</div>
-              <div><span style={{ color: "#FFD700" }}>[5]</span> Spawn Marshal — tank</div>
-              <div className="pt-2 opacity-60">Click units to select &amp; control them</div>
-              <div className="opacity-60">Destroy the enemy Saloon to win</div>
-            </div>
+          {/* Page flap — top-left corner fold back to site */}
+          <button
+            className="page-flap"
+            onClick={() => { window.location.href = "/"; }}
+            title="Back to site"
+            aria-label="Back to site"
+          >
+            <span className="page-flap-arrow">←</span>
+          </button>
 
-            <button
-              onClick={() => setScreen("difficulty")}
-              className="border-2 px-14 py-4 text-2xl tracking-widest font-bold transition-all duration-200 hover:scale-105"
-              style={{ borderColor: "#FFD700", color: "#FFD700", fontFamily: "monospace",
-                boxShadow: "0 0 30px rgba(255,215,0,0.3)" }}
+          {/* FRONTIER — top, full width */}
+          <div className="absolute top-0 left-0 right-0 px-3 pt-1 pointer-events-none select-none">
+            <span
+              className="font-accent game-title-text block"
+              style={{
+                color: "#FFD700",
+                textShadow: "0 6px 0 rgba(0,0,0,0.55), 0 0 80px rgba(255,215,0,0.15)",
+                letterSpacing: "-0.02em",
+              }}
             >
-              PLAY
-            </button>
+              FRONTIER
+            </span>
+          </div>
 
-            {saveExists && (() => {
-              const save = loadGame();
-              return (
-                <div className="mt-4 flex flex-col items-center gap-1">
-                  <button
-                    onClick={handleLoad}
-                    className="border px-14 py-3 text-lg tracking-widest font-bold transition-all duration-200 hover:scale-105"
-                    style={{ borderColor: "#8B6914", color: "#c8a96e", fontFamily: "monospace" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#FFD700"; (e.currentTarget as HTMLButtonElement).style.color = "#FFD700"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#8B6914"; (e.currentTarget as HTMLButtonElement).style.color = "#c8a96e"; }}
-                  >
-                    LOAD GAME
-                  </button>
-                  {save && (
-                    <div className="text-xs opacity-40 tracking-widest" style={{ color: "#F4E4C1" }}>
-                      {formatSaveDate(save.savedAt)} · TERRITORY {save.currentLevel + 1}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+          {/* Bottom row: WARS left, buttons right */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-3 pb-2">
+            {/* WARS */}
+            <span
+              className="font-accent game-title-text select-none pointer-events-none"
+              style={{
+                color: "#FFD700",
+                textShadow: "0 6px 0 rgba(0,0,0,0.55), 0 0 80px rgba(255,215,0,0.15)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              WARS
+            </span>
 
-            <div className="mt-6">
-              <button
-                onClick={() => { window.location.href = "/"; }}
-                className="text-xs tracking-widest opacity-40 hover:opacity-70 transition-opacity"
-                style={{ color: "#F4E4C1", fontFamily: "monospace" }}
+            {/* Buttons — bottom right, centered column */}
+            <div className="flex flex-col items-center gap-2 pb-10 pr-4">
+              <CustomButton
+                onClick={() => setShowDifficultyModal(true)}
+                fillColor="#FFD700"
+                strokeColor="#FFD700"
+                textColor="#2C1810"
               >
-                ← BACK TO SITE
-              </button>
+                PLAY NOW
+              </CustomButton>
+              {saveExists && (
+                <button
+                  onClick={handleLoad}
+                  className="text-sm tracking-widest font-bold hover:opacity-80 transition-opacity"
+                  style={{ color: "#FFD700", fontFamily: "monospace", textShadow: "0 2px 0 rgba(0,0,0,0.6)" }}
+                >
+                  LOAD GAME
+                </button>
+              )}
             </div>
           </div>
+
+          {/* ── DIFFICULTY MODAL (overlays menu, keeps background alive) ── */}
+          {showDifficultyModal && (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-50"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+            >
+              <div className="relative flex flex-col items-center" style={{ width: 494 }}>
+                {/* Exact container SVG from design */}
+                <div className="relative w-full" style={{ height: 453 }}>
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 494 453"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g filter="url(#filter0_i_6376_3728)">
+                      <path d="M0 18C9.94113 18 18 9.94113 18 0H476C476 9.94113 484.059 18 494 18V435C484.059 435 476 443.059 476 453H18C18 443.059 9.94113 435 0 435V18Z" fill="#382913"/>
+                    </g>
+                    <path d="M474.557 1.5C475.285 11.0736 482.926 18.7151 492.5 19.4434V433.557C482.926 434.285 475.285 441.926 474.557 451.5H19.4434C18.7151 441.926 11.0736 434.285 1.5 433.557V19.4434C11.0736 18.7151 18.7151 11.0736 19.4434 1.5H474.557Z" stroke="#ECD449" strokeWidth="3"/>
+                    <defs>
+                      <filter id="filter0_i_6376_3728" x="0" y="0" width="494" height="453" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                        <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                        <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                        <feOffset dx="-10" dy="-1"/>
+                        <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                        <feColorMatrix type="matrix" values="0 0 0 0 0.92549 0 0 0 0 0.831373 0 0 0 0 0.286275 0 0 0 1 0"/>
+                        <feBlend mode="normal" in2="shape" result="effect1_innerShadow_6376_3728"/>
+                      </filter>
+                    </defs>
+                  </svg>
+
+                  {/* Content */}
+                  <div className="absolute inset-0 flex flex-col px-0 py-7">
+                    {/* Header — only "Select Difficulty" */}
+                    <div className="text-center mb-5 px-8">
+                      <h2 className="font-secondary" style={{ color: "#ECD449", fontSize: "2.2rem", lineHeight: 1.1 }}>
+                        Select Difficulty
+                      </h2>
+                    </div>
+
+                    {/* Difficulty rows — flush edge-to-edge, no gap, 3px border-top/bottom only */}
+                    <div className="flex flex-col flex-1">
+                      {([
+                        { key: "tenderfoot" as Difficulty, label: "TENDERFOOT",        desc: "For greenhorns just off the stagecoach. Enemy is slow and underfunded." },
+                        { key: "gunslinger"  as Difficulty, label: "GUNSLINGER",         desc: "A fair fight. The current balanced experience." },
+                        { key: "outlaw"      as Difficulty, label: "OUTLAW",             desc: "They're meaner, faster, and better funded. Bring your best." },
+                        { key: "legend"      as Difficulty, label: "LEGEND OF THE WEST", desc: "Only the deadliest survive. No mercy, no quarter." },
+                      ] as const).map(({ key, label, desc }) => {
+                        const isActive = difficulty === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setDifficulty(key)}
+                            className="flex items-center gap-4 px-4 py-4 text-left w-full"
+                            style={{
+                              background: "transparent",
+                              borderTop: "3px solid #ECD449",
+                              borderBottom: "3px solid #ECD449",
+                              borderLeft: "none",
+                              borderRight: "none",
+                              marginTop: -3, // collapse double borders between rows
+                              outline: "none",
+                            }}
+                          >
+                            {/* Skull — only visible when active */}
+                            <div className="flex-shrink-0" style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {isActive && (
+                                <svg width="26" height="24" viewBox="0 0 116 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path fillRule="evenodd" clipRule="evenodd" d="M77 10H103V21H116V64H103V74H90V85H77V74H65V85H52V74H39V85H26V74H13V64H0V21H13V10H39V0H77V10ZM13 52H52V42H39V31H13V52ZM77 42H65V52H103V31H77V42Z" fill="#ECD449"/>
+                                </svg>
+                              )}
+                            </div>
+                            {/* Text */}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold tracking-widest" style={{ color: "#ECD449", fontFamily: "monospace" }}>
+                                {label}
+                              </div>
+                              <div className="text-xs mt-0.5" style={{ color: "#ECD449", opacity: 0.6, fontFamily: "monospace" }}>
+                                {desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIDE OUT button — overlaps bottom of modal */}
+                <div className="relative" style={{ marginTop: -30, zIndex: 10 }}>
+                  <CustomButton
+                    onClick={() => { setShowDifficultyModal(false); setScreen("campaign"); }}
+                    fillColor="#ECD449"
+                    strokeColor="#ECD449"
+                    textColor="#382913"
+                    shadowColor={[0.22, 0.161, 0.075]}
+                  >
+                    RIDE OUT
+                  </CustomButton>
+                </div>
+
+                {/* BACK link */}
+                <button
+                  onClick={() => setShowDifficultyModal(false)}
+                  className="mt-3 text-xs tracking-widest hover:opacity-70 transition-opacity"
+                  style={{ color: "#ECD449", fontFamily: "monospace", opacity: 0.4 }}
+                >
+                  — BACK —
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
