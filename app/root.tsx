@@ -162,6 +162,8 @@ function AppContent() {
 
   const showFooter = location.pathname !== '/contact';
   const isGameRoute = location.pathname === '/play';
+  // Hide nav/footer on individual lab experiment pages (not the /lab listing page itself)
+  const isLabExperiment = location.pathname.startsWith('/lab/');
 
   // Initialize GSAP ScrollSmoother
   useEffect(() => {
@@ -228,10 +230,10 @@ function AppContent() {
             }} 
           />
           <div className="relative z-10 flex-grow">
-            {!isGameRoute && <Navigation />}
+            {!isGameRoute && !isLabExperiment && <Navigation />}
             <Outlet context={{ openSecretSection }} />
           </div>
-          {!isGameRoute && showFooter && <Footer />}
+          {!isGameRoute && !isLabExperiment && showFooter && <Footer />}
         </div>
       </div>
       {bulletHoles?.map((hole: BulletHole) => (
@@ -258,7 +260,8 @@ function AppContent() {
 function GameOverlays() {
   const location = useLocation();
   const isGameRoute = location.pathname === '/play';
-  if (isGameRoute) return null;
+  const isLabExperiment = location.pathname.startsWith('/lab/');
+  if (isGameRoute || isLabExperiment) return null;
   return (
     <>
       <Weapon3D />

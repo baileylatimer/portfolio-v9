@@ -98,17 +98,36 @@ export async function loader() {
       content
     }`;
 
-    const [projects, services, partners, imageWithText, clientLogos, heroMedia, mission] = await Promise.all([
+    const experimentsQuery = `*[_type == "experiment"] | order(order asc) {
+      _id,
+      title,
+      "slug": slug.current,
+      number,
+      description,
+      thumbnail {
+        asset-> {
+          url
+        }
+      },
+      tags,
+      date,
+      order,
+      scrollable,
+      route
+    }`;
+
+    const [projects, services, partners, imageWithText, clientLogos, heroMedia, mission, experiments] = await Promise.all([
       sanityClient.fetch(projectsQuery),
       sanityClient.fetch(servicesQuery),
       sanityClient.fetch(partnersQuery),
       sanityClient.fetch(imageWithTextQuery),
       sanityClient.fetch(clientLogosQuery),
       sanityClient.fetch(heroMediaQuery),
-      sanityClient.fetch(missionQuery)
+      sanityClient.fetch(missionQuery),
+      sanityClient.fetch(experimentsQuery)
     ]);
 
-    return json({ projects, services, partners, imageWithText, clientLogos, heroMedia, mission });
+    return json({ projects, services, partners, imageWithText, clientLogos, heroMedia, mission, experiments });
   } catch (error) {
     console.error('Error fetching data:', error);
     return json({ error: 'Failed to fetch data' }, { status: 500 });

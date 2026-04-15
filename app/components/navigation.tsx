@@ -9,6 +9,7 @@ export default function Navigation() {
   const navInfoRef = useRef<HTMLDivElement>(null);
   const workLinkRef = useRef<HTMLAnchorElement>(null);
   const aboutLinkRef = useRef<HTMLAnchorElement>(null);
+  const labLinkRef = useRef<HTMLAnchorElement>(null);
   const playLinkRef = useRef<HTMLAnchorElement>(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
 
@@ -618,6 +619,47 @@ export default function Navigation() {
                 }}
               >
                 ABOUT
+              </Link>
+              <Link
+                ref={labLinkRef}
+                to="/lab"
+                className="block hover:cursor-pointer relative"
+                style={{
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 10010
+                }}
+                onMouseEnter={() => {
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      const letters = "LAB".split("");
+                      const scramble = () => {
+                        for (let i = letters.length - 1; i > 0; i--) {
+                          const j = Math.floor(Math.random() * (i + 1));
+                          [letters[i], letters[j]] = [letters[j], letters[i]];
+                        }
+                        return letters.join("");
+                      };
+                      const tl = gsap.timeline();
+                      tl.to(labLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(labLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(labLinkRef.current, { duration: 0.05, text: scramble() })
+                        .to(labLinkRef.current, { duration: 0.05, text: "LAB" });
+                    });
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (gsapLoaded) {
+                    import('gsap').then((gsapModule) => {
+                      const gsap = gsapModule.default;
+                      gsap.to(labLinkRef.current, { duration: 0.1, text: "LAB" });
+                    });
+                  }
+                }}
+              >
+                LAB
               </Link>
               <Link
                 ref={playLinkRef}
