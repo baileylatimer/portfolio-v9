@@ -41,6 +41,12 @@ export interface Experiment {
   order?: number;
   scrollable?: boolean;
   route?: string;
+  songName?: string;
+  songFile?: {
+    asset: {
+      url: string;
+    };
+  };
 }
 
 export const loader: LoaderFunction = async () => {

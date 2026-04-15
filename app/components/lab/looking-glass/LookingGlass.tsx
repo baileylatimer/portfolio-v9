@@ -103,39 +103,29 @@ void main() {
     vec2 cellUV    = (cellIdx + 0.5) / uGridSize; // cell center in canvas UV
 
     // ── Convex lens normal — vertical reed profile ────────────────────────
-    // Stronger X curvature, weaker Y → light spreads as vertical bars
-    // (matches real reeded / privacy glass orientation)
-    vec2 lc = localUV * 2.0 - 1.0;             // -1..1 within cell
-    float nx = lc.x * 0.70;   // strong horizontal curvature → vertical light
-    float ny = lc.y * 0.28;   // weak vertical curvature → less circular
+    vec2 lc = localUV * 2.0 - 1.0;
+    float nx = lc.x * 0.70;
+    float ny = lc.y * 0.28;
     float nz = sqrt(max(0.001, 1.0 - nx*nx - ny*ny));
     vec3 normal = normalize(vec3(nx, ny, nz));
 
-    // ── Cursor-following light (distant source) ───────────────────────────
+    // ── Cursor-following light ────────────────────────────────────────────
     vec2 toLight2D = uCursor - cellUV;
     toLight2D.x *= uAspect / max(uImgAspect, 0.001);
     float dist    = length(toLight2D) + 0.001;
-    // Z=1.2 pushes the light source further behind the glass → broader, softer
     vec3 lightDir = normalize(vec3(toLight2D / dist, 1.2));
     float atten   = 1.0 / (1.0 + dist * dist * 6.0);
 
-    // ── Global brightness falloff from cursor ─────────────────────────────
-    // Tiles near the reveal box are bright; tiles far away fade to dark.
-    // Uses a wider, smoother falloff than the specular attenuation.
+    // ── Global brightness falloff ─────────────────────────────────────────
     float globalAtten = 1.0 / (1.0 + dist * dist * 2.5);
-    float brightness  = mix(0.45, 1.0, globalAtten); // 0.45 = dark far edge
+    float brightness  = mix(0.45, 1.0, globalAtten);
 
     // ── Multi-sample frosted blur ─────────────────────────────────────────
-    // Each tile averages several UV samples spread across its lens footprint.
-    // This creates the "blurry color blob" look of real privacy glass.
-    // Blur radius scales with distance from cursor: far tiles are blurrier.
-    float blurRadius = mix(0.40, 0.75, 1.0 - atten); // heavier blur
+    float blurRadius = mix(0.40, 0.75, 1.0 - atten);
     vec2 cellSize = 1.0 / uGridSize;
 
-    // 9-tap rotated grid (good quality, avoids axis-aligned artifacts)
     vec3 portrait = vec3(0.0);
     float totalW  = 0.0;
-    // Offsets in local UV space (-1..1), rotated 22.5° to avoid grid aliasing
     vec2 taps[9];
     taps[0] = vec2( 0.000,  0.000);
     taps[1] = vec2( 0.924,  0.383);
@@ -148,10 +138,9 @@ void main() {
     taps[8] = vec2( 0.707, -0.707);
 
     for (int i = 0; i < 9; i++) {
-      // Refraction: each tap is offset by the lens normal + blur spread
       vec2 tapOffset = (taps[i] * blurRadius + vec2(normal.x, normal.y) * 0.35) * cellSize;
       vec2 sUV = clamp(coverUV(cellUV + tapOffset, uAspect, uImgAspect), 0.0, 1.0);
-      float w = 1.0 - length(taps[i]) * 0.15; // center tap weighted slightly more
+      float w = 1.0 - length(taps[i]) * 0.15;
       portrait += texture2D(uTexture, sUV).rgb * w;
       totalW   += w;
     }
@@ -159,33 +148,23 @@ void main() {
 
     // ── Lighting ──────────────────────────────────────────────────────────
     float diffuse = max(0.0, dot(normal, lightDir));
-
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
-
-    // ── Fresnel edge darkening ────────────────────────────────────────────
     float edgeFresnel = pow(1.0 - abs(dot(normal, viewDir)), 2.0);
 
-    // ── Thin seam shadow ──────────────────────────────────────────────────
     float ex = smoothstep(0.0, uEdgeWidth, localUV.x) *
                (1.0 - smoothstep(1.0 - uEdgeWidth, 1.0, localUV.x));
     float ey = smoothstep(0.0, uEdgeWidth, localUV.y) *
                (1.0 - smoothstep(1.0 - uEdgeWidth, 1.0, localUV.y));
     float seam = ex * ey;
 
-    // ── Combine ───────────────────────────────────────────────────────────
     vec3 glassTint = vec3(0.97, 0.99, 1.03);
     color = portrait * glassTint;
-    // Diffuse shading (softer — light is further away)
     color = color * (0.60 + 0.40 * diffuse);
-    // Specular: softer exponent range, lower intensity
     float specExp = mix(8.0, 32.0, atten);
     float spec2   = pow(max(0.0, dot(normalize(lightDir + vec3(0.0,0.0,1.0)), normal)), specExp);
     color += spec2 * atten * 0.35 * vec3(1.0, 1.0, 1.02);
-    // Fresnel edge darkening
     color *= 1.0 - edgeFresnel * 0.25;
-    // Seam shadow
     color *= mix(0.82, 1.0, seam);
-    // Global brightness falloff: bright near cursor, dark at edges
     color *= brightness;
   }
 
@@ -225,9 +204,11 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
 
-    const THIN_PX       = 1;
-    const THICK_PX      = 4;
-    const HANDLE_LEN_PX = 20;
+    const THIN_PX            = 1;
+    const THICK_PX_DESKTOP   = 4;
+    const THICK_PX_MOBILE    = 2;
+    const HANDLE_LEN_DESKTOP = 20;
+    const HANDLE_LEN_MOBILE  = 10;
 
     const uniforms = {
       uTexture:     { value: texture },
@@ -235,22 +216,21 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
       uImgAspect:   { value: imgAspect },
       uFadeIn:      { value: 0.0 },
       uGridSize:    { value: new THREE.Vector2(GRID_CONFIG.cellsX, GRID_CONFIG.cellsY) },
-      uEdgeWidth:   { value: 0.04 },   // very thin seam (4% of cell width)
+      uEdgeWidth:   { value: 0.04 },
       uCursor:      { value: new THREE.Vector2(-2, -2) },
       uRevealSize:  { value: new THREE.Vector2(REVEAL_CONFIG.halfW, REVEAL_CONFIG.halfW) },
       uBorderThin:  { value: THIN_PX / 1000 },
-      uBorderThick: { value: THICK_PX / 1000 },
-      uHandleLen:   { value: HANDLE_LEN_PX / 1000 },
+      uBorderThick: { value: THICK_PX_DESKTOP / 1000 },
+      uHandleLen:   { value: HANDLE_LEN_DESKTOP / 1000 },
       uBorderColor: { value: new THREE.Color(...(REVEAL_CONFIG.borderColor as [number, number, number])) },
     };
 
-    const geo  = new THREE.PlaneGeometry(1, 1);
-    const mat  = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms });
+    const geo = new THREE.PlaneGeometry(1, 1);
+    const mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms });
     scene.add(new THREE.Mesh(geo, mat));
 
-    // Base cell size in pixels at the reference width (GRID_CONFIG.cellsX columns)
-    // This stays constant so cells keep the same physical size on any viewport.
-    let baseCellPx = 1; // computed on first updateSize call
+    // Base cell size in pixels — locked on first render, stays constant on resize
+    let baseCellPx = 1;
 
     const updateSize = () => {
       const w = container.clientWidth;
@@ -258,24 +238,30 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
       renderer.setSize(w, h);
       const aspect = w / h;
       uniforms.uAspect.value = aspect;
-      uniforms.uRevealSize.value.set(REVEAL_CONFIG.halfW, REVEAL_CONFIG.halfW * aspect);
 
-      // Derive cell size from the reference column count at the baseline width.
-      // On first call, set baseCellPx from the current width.
+      // Lock baseCellPx on first call
       if (baseCellPx === 1) baseCellPx = w / GRID_CONFIG.cellsX;
 
-      // Compute grid from pixel dimensions so cells stay the same physical size.
-      // tileAspect > 1 = cells are taller than wide (reeded glass look).
-      const cellW = baseCellPx;
-      const cellH = baseCellPx / GRID_CONFIG.tileAspect;
+      // Pixel-derived grid so cells stay the same physical size on any viewport
+      const cellW  = baseCellPx;
+      const cellH  = baseCellPx / GRID_CONFIG.tileAspect;
       const cellsX = Math.round(w / cellW);
       const cellsY = Math.round(h / cellH);
       uniforms.uGridSize.value.set(cellsX, cellsY);
 
-      const minDim = Math.min(w, h);
-      uniforms.uBorderThin.value  = THIN_PX  / minDim;
-      uniforms.uBorderThick.value = THICK_PX / minDim;
-      uniforms.uHandleLen.value   = HANDLE_LEN_PX / minDim;
+      const isMobile = w < 768;
+      const minDim   = Math.min(w, h);
+
+      // Reveal box: 1.6× bigger on mobile
+      const revealHalf = isMobile ? REVEAL_CONFIG.halfW * 1.6 : REVEAL_CONFIG.halfW;
+      uniforms.uRevealSize.value.set(revealHalf, revealHalf * aspect);
+
+      // Crop marks: smaller pixel values on mobile
+      const thickPx     = isMobile ? THICK_PX_MOBILE    : THICK_PX_DESKTOP;
+      const handleLenPx = isMobile ? HANDLE_LEN_MOBILE  : HANDLE_LEN_DESKTOP;
+      uniforms.uBorderThin.value  = THIN_PX      / minDim;
+      uniforms.uBorderThick.value = thickPx      / minDim;
+      uniforms.uHandleLen.value   = handleLenPx  / minDim;
     };
     updateSize();
     const ro = new ResizeObserver(updateSize);
@@ -298,7 +284,7 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
 
     // ── Touch events (mobile drag-to-reveal) ──────────────────────────────
     const onTouchStart = (e: TouchEvent) => {
-      e.preventDefault(); // prevent scroll hijack
+      e.preventDefault();
       const t = e.touches[0];
       setCursorFromClient(t.clientX, t.clientY);
     };

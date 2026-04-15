@@ -73,6 +73,19 @@ export default defineType({
       type: 'string',
       description: 'The route file name (e.g. "kinetic-type" maps to /lab/kinetic-type)',
     }),
+    defineField({
+      name: 'songName',
+      title: 'Song Name',
+      type: 'string',
+      description: 'Display name for the music player (e.g. "Midnight Drive"). Spaces become underscores in the UI.',
+    }),
+    defineField({
+      name: 'songFile',
+      title: 'Song File',
+      type: 'file',
+      options: { accept: 'audio/*' },
+      description: 'MP3 or other audio file — hosted on Sanity CDN',
+    }),
   ],
   preview: {
     select: {

@@ -44,7 +44,9 @@ export const loader: LoaderFunction = async () => {
     date,
     order,
     scrollable,
-    route
+    route,
+    songName,
+    songFile { asset-> { url } }
   }`;
 
   const experiments = await sanityClient.fetch<Experiment[]>(experimentsQuery);

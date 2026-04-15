@@ -2,6 +2,7 @@ import type { LoaderFunction, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { createClient } from "@sanity/client";
+import { useEffect, useRef, useState } from "react";
 import type { Experiment } from "./lab";
 
 const sanityClient = createClient({
@@ -42,7 +43,13 @@ export const loader: LoaderFunction = async ({ params }) => {
     date,
     order,
     scrollable,
-    route
+    route,
+    songName,
+    songFile {
+      asset-> {
+        url
+      }
+    }
   }`;
 
   const experiments = await sanityClient.fetch<Experiment[]>(experimentsQuery);
@@ -55,10 +62,92 @@ export const loader: LoaderFunction = async ({ params }) => {
   return json({ experiment, experiments });
 };
 
+// ─── Music Player ─────────────────────────────────────────────────────────────
+
+function MusicPlayer({
+  songName,
+  songUrl,
+}: {
+  songName: string;
+  songUrl: string;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Format display: "Midnight Drive" → "MIDNIGHT_DRIVE.MP3"
+  const displayName =
+    songName.toUpperCase().replace(/\s+/g, "_") + ".MP3";
+
+  useEffect(() => {
+    const audio = new Audio(songUrl);
+    audio.loop = true;
+    audioRef.current = audio;
+
+    // Attempt autoplay
+    audio
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch(() => {
+        // Autoplay blocked — user must interact first
+        setIsPlaying(false);
+      });
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, [songUrl]);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 no-bullet-holes color-bg"
+      style={{
+        fontFamily: "'Neue Montreal', sans-serif",
+        fontSize: "11px",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: 0,
+      }}
+      aria-label={isPlaying ? "Pause music" : "Play music"}
+    >
+      <span className="text-xs uppercase tracking-widest">
+        {displayName}
+      </span>
+      {/* Play / Pause icon */}
+      {isPlaying ? (
+        // Pause: two vertical bars
+        <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="3" height="12" fill="var(--color-bg)" />
+          <rect x="7" y="0" width="3" height="12" fill="var(--color-bg)" />
+        </svg>
+      ) : (
+        // Play: triangle
+        <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="0,0 10,6 0,12" fill="var(--color-bg)" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 /**
  * ExperimentShell wraps each experiment with:
  * - Full-screen or scrollable layout (based on `scrollable` field)
  * - A minimal back button overlay
+ * - Optional music player (if experiment has songName + songFile)
  * - Passes children (the actual experiment content)
  */
 export function ExperimentShell({
@@ -69,6 +158,7 @@ export function ExperimentShell({
   children: React.ReactNode;
 }) {
   const isScrollable = experiment.scrollable ?? false;
+  const hasSong = !!(experiment.songName && experiment.songFile?.asset?.url);
 
   return (
     <div
@@ -79,20 +169,28 @@ export function ExperimentShell({
       {/* Back button — always visible, minimal */}
       <Link
         to="/lab"
-        className="fixed top-4 left-4 z-[9999] font-mono text-xs uppercase tracking-widest no-bullet-holes"
+        className="fixed top-4 left-4 z-[9999] uppercase tracking-widest no-bullet-holes color-bg"
         style={{
-          mixBlendMode: "difference",
-          color: "white",
+          fontFamily: "'Neue Montreal', sans-serif",
+          fontSize: "11px",
           pointerEvents: "auto",
         }}
       >
         ← LAB
       </Link>
 
+      {/* Music player — centered, only if song is set */}
+      {hasSong && (
+        <MusicPlayer
+          songName={experiment.songName!}
+          songUrl={experiment.songFile!.asset.url}
+        />
+      )}
+
       {/* Experiment number badge */}
       <div
-        className="fixed top-4 right-4 z-[9999] font-mono text-xs opacity-40 no-bullet-holes"
-        style={{ mixBlendMode: "difference", color: "white" }}
+        className="fixed top-4 right-4 z-[9999] no-bullet-holes color-bg"
+        style={{ fontFamily: "'Neue Montreal', sans-serif", fontSize: "11px" }}
       >
         {String(experiment.number).padStart(3, "0")}
       </div>
