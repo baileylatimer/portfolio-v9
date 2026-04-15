@@ -248,6 +248,10 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
     const mat  = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms });
     scene.add(new THREE.Mesh(geo, mat));
 
+    // Base cell size in pixels at the reference width (GRID_CONFIG.cellsX columns)
+    // This stays constant so cells keep the same physical size on any viewport.
+    let baseCellPx = 1; // computed on first updateSize call
+
     const updateSize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -255,11 +259,19 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
       const aspect = w / h;
       uniforms.uAspect.value = aspect;
       uniforms.uRevealSize.value.set(REVEAL_CONFIG.halfW, REVEAL_CONFIG.halfW * aspect);
-      // tileAspect > 1 = tiles are taller than wide (portrait/reeded glass look)
-      uniforms.uGridSize.value.set(
-        GRID_CONFIG.cellsX,
-        Math.round(GRID_CONFIG.cellsX * aspect * GRID_CONFIG.tileAspect)
-      );
+
+      // Derive cell size from the reference column count at the baseline width.
+      // On first call, set baseCellPx from the current width.
+      if (baseCellPx === 1) baseCellPx = w / GRID_CONFIG.cellsX;
+
+      // Compute grid from pixel dimensions so cells stay the same physical size.
+      // tileAspect > 1 = cells are taller than wide (reeded glass look).
+      const cellW = baseCellPx;
+      const cellH = baseCellPx / GRID_CONFIG.tileAspect;
+      const cellsX = Math.round(w / cellW);
+      const cellsY = Math.round(h / cellH);
+      uniforms.uGridSize.value.set(cellsX, cellsY);
+
       const minDim = Math.min(w, h);
       uniforms.uBorderThin.value  = THIN_PX  / minDim;
       uniforms.uBorderThick.value = THICK_PX / minDim;
@@ -269,16 +281,36 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
     const ro = new ResizeObserver(updateSize);
     ro.observe(container);
 
-    const onMouseMove = (e: MouseEvent) => {
+    // ── Shared cursor setter ──────────────────────────────────────────────
+    const setCursorFromClient = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect();
       uniforms.uCursor.value.set(
-        (e.clientX - rect.left) / rect.width,
-        1.0 - (e.clientY - rect.top) / rect.height
+        (clientX - rect.left) / rect.width,
+        1.0 - (clientY - rect.top) / rect.height
       );
     };
+
+    // ── Mouse events ──────────────────────────────────────────────────────
+    const onMouseMove  = (e: MouseEvent) => setCursorFromClient(e.clientX, e.clientY);
     const onMouseLeave = () => uniforms.uCursor.value.set(-2, -2);
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('mouseleave', onMouseLeave);
+
+    // ── Touch events (mobile drag-to-reveal) ──────────────────────────────
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault(); // prevent scroll hijack
+      const t = e.touches[0];
+      setCursorFromClient(t.clientX, t.clientY);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      setCursorFromClient(t.clientX, t.clientY);
+    };
+    const onTouchEnd = () => uniforms.uCursor.value.set(-2, -2);
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    container.addEventListener('touchend',   onTouchEnd);
 
     let animId: number;
     let alive = true;
@@ -297,8 +329,11 @@ export default function LookingGlass({ imageSrc }: LookingGlassProps) {
       alive = false;
       cancelAnimationFrame(animId);
       ro.disconnect();
-      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('mousemove',  onMouseMove);
       container.removeEventListener('mouseleave', onMouseLeave);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove',  onTouchMove);
+      container.removeEventListener('touchend',   onTouchEnd);
     };
   }, [imageSrc]);
 

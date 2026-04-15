@@ -6,7 +6,7 @@ export const IMAGE_SRC = '/images/lab/the-looking-glass/portrait.jpg';
 // Reeded / privacy glass grid
 export const GRID_CONFIG = {
   // Number of cells across the width (fewer = bigger tiles, more dramatic)
-  cellsX: 40,
+  cellsX: 32,
   // cellsY is computed at runtime: cellsX * aspect * tileAspect
   cellsY: 80,
   // Vertical stretch factor — makes tiles portrait-oriented like real reeded glass
