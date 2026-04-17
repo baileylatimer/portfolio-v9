@@ -45,9 +45,11 @@ const FRICTION    = 0.97;
 const MIN_SPEED   = DVD_SPEED;
 const MOVE_THRESH = 3;     // px — relayout threshold
 const MASK_RES    = 256;   // ink mask resolution
-const MIN_GAP_W   = 6;     // px — minimum gap width to bother laying text into
-const MOBILE_BREAKPOINT = 768; // px — viewport width below which mobile layout applies
-const COL_PAD     = 0;     // px — page margin on mobile (edge-to-edge)
+const MIN_GAP_W         = 6;    // px — minimum gap width to bother laying text into
+const MOBILE_BREAKPOINT = 768;  // px — viewport width below which mobile layout applies
+const COL_PAD           = 0;    // px — page margin on mobile (edge-to-edge)
+const JUSTIFY_MIN_SEG_W = 60;   // px — segments narrower than this are not justified
+const JUSTIFY_MAX_RATIO = 0.45; // skip justification if gap > 45% of seg width (last line / fragment)
 
 // ─── Column + image constants ─────────────────────────────────────────────────
 const COLUMN_W    = 500;   // px — centered text column width
@@ -58,6 +60,43 @@ const IMG_GUTTER  = 10;    // px — gap between image right edge and wrapping t
 
 const KANJI_SEQUENCE = ['余', '白', '活', '字', '間', '墨'];
 const ESSAY_TEXT = CIRCLE_TEXT.toUpperCase();
+
+// ─── Text measurement (for justification) ────────────────────────────────────
+
+let _measureCtx: CanvasRenderingContext2D | null = null;
+
+/** Return a cached 2D context used only for measureText calls. */
+function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (_measureCtx) return _measureCtx;
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 1; c.height = 1;
+  _measureCtx = c.getContext('2d');
+  if (_measureCtx) _measureCtx.font = FONT_STR;
+  return _measureCtx;
+}
+
+/** Measure the natural pixel width of a string in FONT_STR. */
+function measureTextWidth(text: string): number {
+  const ctx = getMeasureCtx();
+  if (!ctx) return 0;
+  return ctx.measureText(text).width;
+}
+
+/**
+ * Compute the CSS word-spacing (px) needed to justify `text` into `segW` px.
+ * Returns 0 if justification should be skipped (no spaces, too narrow, last line).
+ */
+function justifyWordSpacing(text: string, segW: number): number {
+  if (segW < JUSTIFY_MIN_SEG_W) return 0;
+  const spaces = (text.match(/ /g) || []).length;
+  if (spaces === 0) return 0;
+  const natural = measureTextWidth(text);
+  const gap = segW - natural;
+  if (gap <= 0) return 0;
+  if (gap / segW > JUSTIFY_MAX_RATIO) return 0; // likely last/short line
+  return gap / spaces;
+}
 
 // ─── Ink mask ─────────────────────────────────────────────────────────────────
 
@@ -440,8 +479,10 @@ export default function Yohaku() {
         const line = materializeLineRange(prepared.current, range);
         cursor = range.end;
           if (line.text.trim().length > 0) {
+          const ws = justifyWordSpacing(line.text, seg.w);
+          const wsStyle = ws > 0 ? `;word-spacing:${ws.toFixed(2)}px` : '';
           html.push(
-            `<span style="position:absolute;left:${seg.x.toFixed(1)}px;top:${rowY}px;white-space:pre;">${escHtml(line.text)}</span>`
+            `<span style="position:absolute;left:${seg.x.toFixed(1)}px;top:${rowY}px;white-space:pre${wsStyle};">${escHtml(line.text)}</span>`
           );
         }
       }
@@ -481,10 +522,17 @@ export default function Yohaku() {
         p.x += p.vx;
         p.y += p.vy;
 
-        if (p.x - kHalf < 0)    { p.x = kHalf;     p.vx =  Math.abs(p.vx); }
-        if (p.x + kHalf > w)    { p.x = w - kHalf;  p.vx = -Math.abs(p.vx); }
-        if (p.y - kHalf < 0)    { p.y = kHalf;     p.vy =  Math.abs(p.vy); }
-        if (p.y + kHalf > h)    { p.y = h - kHalf;  p.vy = -Math.abs(p.vy); }
+        let edgeHit = false;
+        if (p.x - kHalf < 0)    { p.x = kHalf;     p.vx =  Math.abs(p.vx); edgeHit = true; }
+        if (p.x + kHalf > w)    { p.x = w - kHalf;  p.vx = -Math.abs(p.vx); edgeHit = true; }
+        if (p.y - kHalf < 0)    { p.y = kHalf;     p.vy =  Math.abs(p.vy); edgeHit = true; }
+        if (p.y + kHalf > h)    { p.y = h - kHalf;  p.vy = -Math.abs(p.vy); edgeHit = true; }
+        if (edgeHit) {
+          const next = (p.charIdx + 1) % KANJI_SEQUENCE.length;
+          p.charIdx = next;
+          setCharIdx(next);
+          lastLayout.current = { x: -999, y: -999, charIdx: -1 };
+        }
       }
 
       if (kanjiDivRef.current) {
