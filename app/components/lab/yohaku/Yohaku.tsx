@@ -46,6 +46,8 @@ const MIN_SPEED   = DVD_SPEED;
 const MOVE_THRESH = 3;     // px — relayout threshold
 const MASK_RES    = 256;   // ink mask resolution
 const MIN_GAP_W   = 6;     // px — minimum gap width to bother laying text into
+const MOBILE_BREAKPOINT = 768; // px — viewport width below which mobile layout applies
+const COL_PAD     = 0;     // px — page margin on mobile (edge-to-edge)
 
 // ─── Column + image constants ─────────────────────────────────────────────────
 const COLUMN_W    = 500;   // px — centered text column width
@@ -236,7 +238,10 @@ export default function Yohaku() {
   const containerRef = useRef<HTMLDivElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const kanjiDivRef  = useRef<HTMLDivElement>(null);
-  const rafRef       = useRef<number>(0);
+  const leftColRef         = useRef<HTMLDivElement>(null);
+  const rightColRef        = useRef<HTMLDivElement>(null);
+  const mobileDialogueTop  = useRef<number | null>(null); // static baseline, set once per screen size
+  const rafRef             = useRef<number>(0);
 
   // Physics (mutable, no re-renders)
   const phys = useRef({ x: 0, y: 0, vx: DVD_SPEED, vy: DVD_SPEED * 0.75, size: 0, charIdx: 0 });
@@ -258,6 +263,7 @@ export default function Yohaku() {
 
   const [ready, setReady]     = useState(false);
   const [charIdx, setCharIdx] = useState(0);
+  const [, forceUpdate]       = useState(0); // incremented on resize to re-render image
 
   // ── Disable scroll on mount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -294,14 +300,66 @@ export default function Yohaku() {
     // Prepare text with pretext
     prepared.current = prepareWithSegments(ESSAY_TEXT, FONT_STR);
 
+    // Compute the static baseline bottom for mobile dialogue positioning.
+    // Runs the row loop with ONLY the image obstacle (no kanji) to get the
+    // natural bottom of the full text flow. Called once per screen size.
+    const computeBaselineBottom = () => {
+      if (!prepared.current) return;
+      const { w: pw, h: ph } = pageDims.current;
+      if (pw >= MOBILE_BREAKPOINT) return; // desktop — not needed
+      const effColW = Math.min(COLUMN_W, pw - 2 * COL_PAD);
+      const effImgW = Math.min(IMG_W, Math.floor(effColW * 0.45));
+      const cLeft   = Math.round((pw - effColW) / 2);
+      const cRight  = cLeft + effColW;
+      let cur: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 };
+      let bottom = IMG_TOP;
+      const rows = Math.ceil((ph - IMG_TOP) / LINE_H);
+      for (let row = 0; row < rows; row++) {
+        const rTop = IMG_TOP + row * LINE_H;
+        const rBot = rTop + LINE_H;
+        const blocked: Array<{ x: number; w: number }> = [];
+        if (rTop < IMG_TOP + IMG_H && rBot > IMG_TOP) {
+          blocked.push({ x: cLeft, w: effImgW + IMG_GUTTER });
+        }
+        const segs = subtractIntervals(cLeft, cRight, blocked).filter(s => s.w >= MIN_GAP_W);
+        if (segs.length === 0) {
+          const r = layoutNextLineRange(prepared.current, cur, cRight - cLeft);
+          if (r) cur = r.end;
+          continue;
+        }
+        for (const seg of segs) {
+          const r = layoutNextLineRange(prepared.current, cur, seg.w);
+          if (!r) break;
+          const line = materializeLineRange(prepared.current, r);
+          cur = r.end;
+          if (line.text.trim().length > 0) bottom = rTop + LINE_H;
+        }
+      }
+      // Clamp so dialogue never gets pushed off-screen
+      mobileDialogueTop.current = Math.min(bottom, ph - 40);
+      // Apply immediately to dialogue refs
+      const lc = leftColRef.current;
+      const rc = rightColRef.current;
+      if (lc && rc) {
+        lc.style.top = `${mobileDialogueTop.current}px`;
+        lc.style.padding = '0';
+        rc.style.top = `${mobileDialogueTop.current}px`;
+        rc.style.padding = '0';
+      }
+    };
+
     // Re-measure on resize
     const onResize = () => {
       measure();
       lastLayout.current = { x: -999, y: -999, charIdx: -1 };
+      computeBaselineBottom();
+      forceUpdate(n => n + 1);
     };
     window.addEventListener('resize', onResize);
 
     setReady(true);
+    // Defer baseline computation until after first render so refs are attached
+    requestAnimationFrame(computeBaselineBottom);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
@@ -315,9 +373,12 @@ export default function Yohaku() {
     const mask = kanjiMasks.current[p.charIdx];
     if (!mask) return;
 
-    // Centered text column bounds
-    const colLeft  = Math.round((pageW - COLUMN_W) / 2);
-    const colRight = colLeft + COLUMN_W;
+    // Responsive column — clamp to viewport on mobile
+    const isMobile = pageW < MOBILE_BREAKPOINT;
+    const effectiveColW = isMobile ? Math.min(COLUMN_W, pageW - 2 * COL_PAD) : COLUMN_W;
+    const effectiveImgW = isMobile ? Math.min(IMG_W, Math.floor(effectiveColW * 0.45)) : IMG_W;
+    const colLeft  = Math.round((pageW - effectiveColW) / 2);
+    const colRight = colLeft + effectiveColW;
     if (colRight - colLeft < 20) return;
 
     const kHalf = p.size * 0.5;
@@ -343,8 +404,8 @@ export default function Yohaku() {
       // 1. Eyes image obstacle (rectangular)
       const imgBot = IMG_TOP + IMG_H;
       if (rowPageTop < imgBot && rowPageBot > IMG_TOP) {
-        // Block from colLeft to colLeft + IMG_W + IMG_GUTTER
-        blocked.push({ x: colLeft, w: IMG_W + IMG_GUTTER });
+        // Block from colLeft to colLeft + effectiveImgW + IMG_GUTTER
+        blocked.push({ x: colLeft, w: effectiveImgW + IMG_GUTTER });
       }
 
       // 2. Kanji ink obstacle (per-stroke mask)
@@ -378,7 +439,7 @@ export default function Yohaku() {
         if (!range) break;
         const line = materializeLineRange(prepared.current, range);
         cursor = range.end;
-        if (line.text.trim().length > 0) {
+          if (line.text.trim().length > 0) {
           html.push(
             `<span style="position:absolute;left:${seg.x.toFixed(1)}px;top:${rowY}px;white-space:pre;">${escHtml(line.text)}</span>`
           );
@@ -387,6 +448,20 @@ export default function Yohaku() {
     }
 
     layer.innerHTML = html.join('');
+
+    // On desktop, ensure dialogue columns are reset to their default position.
+    // On mobile the position is set once by computeBaselineBottom() and never
+    // touched here — that's what prevents the per-frame jitter.
+    if (!isMobile) {
+      const leftCol  = leftColRef.current;
+      const rightCol = rightColRef.current;
+      if (leftCol && rightCol) {
+        leftCol.style.top     = '0';
+        leftCol.style.padding = '40px 0 0 0';
+        rightCol.style.top     = '0';
+        rightCol.style.padding = '40px 0 0 0';
+      }
+    }
   }, []);
 
   // ── RAF physics + relayout ──────────────────────────────────────────────────
@@ -498,10 +573,12 @@ export default function Yohaku() {
 
   const ksize = phys.current.size;
 
-  // Compute colLeft for image positioning (needs pageW)
-  const colLeft = pageDims.current.w > 0
-    ? Math.round((pageDims.current.w - COLUMN_W) / 2)
-    : 0;
+  // Compute responsive column + image dims for render (mirrors relayout logic)
+  const _pw = pageDims.current.w;
+  const isMobileRender = _pw > 0 && _pw < MOBILE_BREAKPOINT;
+  const effectiveColWRender = isMobileRender ? Math.min(COLUMN_W, _pw - 2 * COL_PAD) : COLUMN_W;
+  const effectiveImgWRender = isMobileRender ? Math.min(IMG_W, Math.floor(effectiveColWRender * 0.45)) : IMG_W;
+  const colLeft = _pw > 0 ? Math.round((_pw - effectiveColWRender) / 2) : 0;
 
   return (
     <div
@@ -540,7 +617,7 @@ export default function Yohaku() {
             position: 'absolute',
             left: colLeft,
             top: IMG_TOP,
-            width: IMG_W,
+            width: effectiveImgWRender,
             height: IMG_H,
             objectFit: 'cover',
             objectPosition: 'center',
@@ -553,7 +630,7 @@ export default function Yohaku() {
       )}
 
       {/* ── LEFT dialogue ────────────────────────────────────────────────── */}
-      <div style={{
+      <div ref={leftColRef} style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, width: SIDE_W, padding: '40px 0 0 0',
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0,
         pointerEvents: 'none', zIndex: 20,
@@ -568,7 +645,7 @@ export default function Yohaku() {
       </div>
 
       {/* ── RIGHT dialogue ───────────────────────────────────────────────── */}
-      <div style={{
+      <div ref={rightColRef} style={{
         position: 'absolute', right: 0, top: 0, bottom: 0, width: SIDE_W, padding: '40px 0 0 0',
         display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0,
         pointerEvents: 'none', zIndex: 20,
@@ -621,19 +698,6 @@ export default function Yohaku() {
         </div>
       )}
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'absolute', bottom: 12, left: 16, right: 16,
-        display: 'flex', justifyContent: 'space-between',
-        fontSize: '8px', fontFamily: LABEL_FONT,
-        color: 'var(--color-fg, #1a1008)', opacity: 0.3,
-        letterSpacing: '0.08em', pointerEvents: 'none',
-        borderTop: '0.5px solid currentColor', paddingTop: 5, zIndex: 30,
-      }}>
-        <span>No. 002 · 余白 · {new Date().getFullYear()}</span>
-        <span>DRAG · THROW · CLICK TO CYCLE</span>
-        <span>Latimer Design</span>
-      </div>
     </div>
   );
 }
