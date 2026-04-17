@@ -12,6 +12,7 @@
     "generate-project-pages": "node scripts/generateProjectPages.js"
   },
   "dependencies": {
+    "@chenglou/pretext": "^0.0.5",
     "@gsap/react": "^2.1.1",
     "@netlify/functions": "^2.6.0",
     "@netlify/remix-adapter": "^2.3.1",
