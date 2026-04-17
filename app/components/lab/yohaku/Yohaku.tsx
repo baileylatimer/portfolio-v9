@@ -698,6 +698,23 @@ export default function Yohaku() {
         </div>
       )}
 
+      {/* ── Photocopy texture overlay — decorative, click-through ────────── */}
+      <img
+        src="/images/lab/yohaku/photocopy-texture.jpg"
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 0.3,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 50,
+        }}
+      />
     </div>
   );
 }
