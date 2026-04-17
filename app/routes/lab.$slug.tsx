@@ -43,6 +43,7 @@ export const loader: LoaderFunction = async ({ params }) => {
     date,
     order,
     scrollable,
+    uiTheme,
     route,
     songName,
     songFile {
@@ -67,9 +68,11 @@ export const loader: LoaderFunction = async ({ params }) => {
 function MusicPlayer({
   songName,
   songUrl,
+  chromeColor,
 }: {
   songName: string;
   songUrl: string;
+  chromeColor: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -112,14 +115,15 @@ function MusicPlayer({
   return (
     <button
       onClick={toggle}
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 no-bullet-holes color-bg"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 no-bullet-holes"
       style={{
-        fontFamily: "'Neue Montreal', sans-serif",
+        fontFamily: "'OTNeueMontreal-SemiBoldSemiSqueezed', 'Neue Montreal', sans-serif",
         fontSize: "11px",
         background: "none",
         border: "none",
         cursor: "pointer",
         padding: 0,
+        color: chromeColor,
       }}
       aria-label={isPlaying ? "Pause music" : "Play music"}
     >
@@ -130,13 +134,13 @@ function MusicPlayer({
       {isPlaying ? (
         // Pause: two vertical bars
         <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="3" height="12" fill="var(--color-bg)" />
-          <rect x="7" y="0" width="3" height="12" fill="var(--color-bg)" />
+          <rect x="0" y="0" width="3" height="12" fill={chromeColor} />
+          <rect x="7" y="0" width="3" height="12" fill={chromeColor} />
         </svg>
       ) : (
         // Play: triangle
         <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="0,0 10,6 0,12" fill="var(--color-bg)" />
+          <polygon points="0,0 10,6 0,12" fill={chromeColor} />
         </svg>
       )}
     </button>
@@ -159,6 +163,12 @@ export function ExperimentShell({
 }) {
   const isScrollable = experiment.scrollable ?? false;
   const hasSong = !!(experiment.songName && experiment.songFile?.asset?.url);
+  // uiTheme: 'dark' → use fg color (dark text for light backgrounds)
+  //          'light' (default) → use bg color (light text for dark backgrounds)
+  const chromeColor =
+    experiment.uiTheme === "dark"
+      ? "var(--color-fg, #1a1008)"
+      : "var(--color-bg, #DCCFBE)";
 
   return (
     <div
@@ -169,11 +179,12 @@ export function ExperimentShell({
       {/* Back button — always visible, minimal */}
       <Link
         to="/lab"
-        className="fixed top-4 left-4 z-[9999] uppercase tracking-widest no-bullet-holes color-bg"
+        className="fixed top-4 left-4 z-[9999] uppercase tracking-widest no-bullet-holes"
         style={{
-          fontFamily: "'Neue Montreal', sans-serif",
+          fontFamily: "'OTNeueMontreal-SemiBoldSemiSqueezed', 'Neue Montreal', sans-serif",
           fontSize: "11px",
           pointerEvents: "auto",
+          color: chromeColor,
         }}
       >
         ← LAB
@@ -184,13 +195,18 @@ export function ExperimentShell({
         <MusicPlayer
           songName={experiment.songName!}
           songUrl={experiment.songFile!.asset.url}
+          chromeColor={chromeColor}
         />
       )}
 
       {/* Experiment number badge */}
       <div
-        className="fixed top-4 right-4 z-[9999] no-bullet-holes color-bg"
-        style={{ fontFamily: "'Neue Montreal', sans-serif", fontSize: "11px" }}
+        className="fixed top-4 right-4 z-[9999] no-bullet-holes"
+        style={{
+          fontFamily: "'OTNeueMontreal-SemiBoldSemiSqueezed', 'Neue Montreal', sans-serif",
+          fontSize: "11px",
+          color: chromeColor,
+        }}
       >
         {String(experiment.number).padStart(3, "0")}
       </div>

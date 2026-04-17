@@ -68,6 +68,20 @@ export default defineType({
       initialValue: false,
     }),
     defineField({
+      name: 'uiTheme',
+      title: 'UI Theme',
+      type: 'string',
+      description: 'Controls the color of the top-bar chrome (← LAB, song name, experiment number). Use "dark" for experiments with light backgrounds.',
+      options: {
+        list: [
+          { title: 'Light (default — white text)', value: 'light' },
+          { title: 'Dark (black text, for light backgrounds)', value: 'dark' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'light',
+    }),
+    defineField({
       name: 'route',
       title: 'Route',
       type: 'string',

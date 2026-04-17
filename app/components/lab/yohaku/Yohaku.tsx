@@ -1,21 +1,194 @@
 /**
  * Yohaku.tsx — 余白 (White Space)
  *
- * Performance architecture:
- * - Face pixel map: computed ONCE on mount from portrait photo
- * - Kanji ink masks: computed ONCE per character at mount (6 total)
- * - Grid: rendered to a single <canvas> element, only redrawn when kanji moves > 3px
- * - Physics: runs every RAF frame, only moves a single <div>
- * - Side columns: static React, scramble via GSAP (no per-frame React updates)
+ * Text layout powered by @chenglou/pretext.
+ *
+ * Body copy is constrained to a centered COLUMN_W-wide column.
+ * An image (eyes.jpg) is pinned to the top-left of that column;
+ * text wraps around it as a rectangular obstacle.
+ *
+ * The kanji floats over the full page. For every text row, we:
+ *   1. Rasterize the kanji to a 256×256 ink mask (once per character, cached).
+ *   2. For each text row, OR the mask vertically across the row's pixel height
+ *      to get a 1-D ink profile (256 booleans).
+ *   3. Walk the profile to find contiguous ink "run" intervals in page coords.
+ *   4. Collect ALL obstacle intervals for the row (image rect + kanji ink runs).
+ *   5. Subtract them from [colLeft, colRight] to get open segments.
+ *   6. Call pretext's layoutNextLineRange() for each open segment.
+ *
+ * This means text genuinely flows between the actual ink strokes of the kanji,
+ * not around a bounding rectangle, AND wraps around the eyes image.
+ *
+ * Layout: centered COLUMN_W column. Dialogue columns are decorative margins.
+ * Kanji bounces off page edges. Scroll disabled on mount.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BODY_SEQ, FILLER_SEQ, LEFT_DIALOGUE, RIGHT_DIALOGUE } from './content';
+import {
+  prepareWithSegments,
+  layoutNextLineRange,
+  materializeLineRange,
+  type PreparedTextWithSegments,
+  type LayoutCursor,
+} from '@chenglou/pretext';
+import { CIRCLE_TEXT, LEFT_DIALOGUE, RIGHT_DIALOGUE } from './content';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const FONT_SIZE   = 11;
+const LINE_H      = 15;
+const FONT_STR    = `${FONT_SIZE}px "OTNeueMontreal-SemiBoldSemiSqueezed", "Neue Montreal", Arial, sans-serif`;
+const LABEL_FONT  = '"OTNeueMontreal-SemiBoldSemiSqueezed", "Neue Montreal", Arial, sans-serif';
+const KANJI_FONT  = '"Noto Serif JP", "Hiragino Mincho ProN", serif';
+const SIDE_W      = 140;   // px — dialogue column width (decorative)
+const DVD_SPEED   = 1.8;
+const FRICTION    = 0.97;
+const MIN_SPEED   = DVD_SPEED;
+const MOVE_THRESH = 3;     // px — relayout threshold
+const MASK_RES    = 256;   // ink mask resolution
+const MIN_GAP_W   = 6;     // px — minimum gap width to bother laying text into
+
+// ─── Column + image constants ─────────────────────────────────────────────────
+const COLUMN_W    = 500;   // px — centered text column width
+const IMG_W       = 180;   // px — eyes.jpg render width
+const IMG_H       = 200;   // px — eyes.jpg render height
+const IMG_TOP     = 40;    // px — aligns with dialogue column top padding
+const IMG_GUTTER  = 10;    // px — gap between image right edge and wrapping text
+
+const KANJI_SEQUENCE = ['余', '白', '活', '字', '間', '墨'];
+const ESSAY_TEXT = CIRCLE_TEXT.toUpperCase();
+
+// ─── Ink mask ─────────────────────────────────────────────────────────────────
+
+/** Rasterize a kanji character to a MASK_RES×MASK_RES Uint8Array (1 = ink). */
+function buildKanjiMask(char: string): Uint8Array {
+  const c = document.createElement('canvas');
+  c.width = MASK_RES;
+  c.height = MASK_RES;
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.clearRect(0, 0, MASK_RES, MASK_RES);
+  ctx.font = `900 ${MASK_RES * 0.85}px ${KANJI_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000';
+  ctx.fillText(char, MASK_RES / 2, MASK_RES / 2);
+  const data = ctx.getImageData(0, 0, MASK_RES, MASK_RES).data;
+  const mask = new Uint8Array(MASK_RES * MASK_RES);
+  for (let i = 0; i < MASK_RES * MASK_RES; i++) {
+    mask[i] = data[i * 4 + 3] > 30 ? 1 : 0;
+  }
+  return mask;
+}
+
+/**
+ * For a given text row (page coords), compute the 1-D ink profile:
+ * a boolean array of length MASK_RES where true = ink present in that column.
+ *
+ * We OR across all mask rows that overlap the text row's vertical extent.
+ */
+function rowInkProfile(
+  mask: Uint8Array,
+  kanjiPageTop: number,
+  kanjiPageBot: number,
+  rowPageTop: number,
+  rowPageBot: number,
+): Uint8Array {
+  const profile = new Uint8Array(MASK_RES);
+
+  // Map page y-range → mask y-range
+  const kanjiH = kanjiPageBot - kanjiPageTop;
+  const maskY0 = Math.max(0, Math.floor(((rowPageTop - kanjiPageTop) / kanjiH) * MASK_RES));
+  const maskY1 = Math.min(MASK_RES - 1, Math.ceil(((rowPageBot - kanjiPageTop) / kanjiH) * MASK_RES));
+
+  for (let my = maskY0; my <= maskY1; my++) {
+    const rowBase = my * MASK_RES;
+    for (let mx = 0; mx < MASK_RES; mx++) {
+      if (mask[rowBase + mx]) profile[mx] = 1;
+    }
+  }
+  return profile;
+}
+
+/**
+ * Given a 1-D ink profile and the kanji's page x-range,
+ * return an array of INK run intervals in PAGE coordinates.
+ * (Inverse of the old gapRuns — we want blocked regions, not open ones.)
+ */
+function inkRuns(
+  profile: Uint8Array,
+  kanjiPageLeft: number,
+  kanjiPageRight: number,
+): Array<{ x: number; w: number }> {
+  const kanjiW = kanjiPageRight - kanjiPageLeft;
+  const runs: Array<{ x: number; w: number }> = [];
+  let inInk = false;
+  let inkStart = 0;
+
+  for (let mx = 0; mx < MASK_RES; mx++) {
+    const isInk = profile[mx] === 1;
+    if (isInk && !inInk) {
+      inInk = true;
+      inkStart = mx;
+    } else if (!isInk && inInk) {
+      inInk = false;
+      const pageX = kanjiPageLeft + (inkStart / MASK_RES) * kanjiW;
+      const pageW = ((mx - inkStart) / MASK_RES) * kanjiW;
+      runs.push({ x: pageX, w: pageW });
+    }
+  }
+  if (inInk) {
+    const pageX = kanjiPageLeft + (inkStart / MASK_RES) * kanjiW;
+    const pageW = ((MASK_RES - inkStart) / MASK_RES) * kanjiW;
+    runs.push({ x: pageX, w: pageW });
+  }
+  return runs;
+}
+
+/**
+ * Subtract a list of blocked intervals from [start, end].
+ * Returns the remaining open segments as {x, w} pairs.
+ * Blocked intervals are merged/sorted internally.
+ */
+function subtractIntervals(
+  start: number,
+  end: number,
+  blocked: Array<{ x: number; w: number }>,
+): Array<{ x: number; w: number }> {
+  if (blocked.length === 0) return [{ x: start, w: end - start }];
+
+  // Sort and merge blocked intervals
+  const sorted = blocked
+    .map(b => ({ lo: b.x, hi: b.x + b.w }))
+    .sort((a, b) => a.lo - b.lo);
+
+  const merged: Array<{ lo: number; hi: number }> = [];
+  for (const seg of sorted) {
+    if (merged.length === 0 || seg.lo > merged[merged.length - 1].hi) {
+      merged.push({ ...seg });
+    } else {
+      merged[merged.length - 1].hi = Math.max(merged[merged.length - 1].hi, seg.hi);
+    }
+  }
+
+  // Subtract from [start, end]
+  const open: Array<{ x: number; w: number }> = [];
+  let cursor = start;
+  for (const { lo, hi } of merged) {
+    const segStart = Math.max(cursor, start);
+    const segEnd   = Math.min(lo, end);
+    if (segEnd > segStart) open.push({ x: segStart, w: segEnd - segStart });
+    cursor = Math.max(cursor, hi);
+  }
+  // Trailing segment after last blocked interval
+  if (cursor < end) open.push({ x: cursor, w: end - cursor });
+
+  return open;
+}
 
 // ─── ScrambleLabel ────────────────────────────────────────────────────────────
 function ScrambleLabel({ text, style }: { text: string; style: React.CSSProperties }) {
   const spanRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     const scheduleNext = () => {
@@ -32,7 +205,10 @@ function ScrambleLabel({ text, style }: { text: string; style: React.CSSProperti
       const letters = text.split('');
       const shuffle = () => {
         const a = [...letters];
-        for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
         return a.join('');
       };
       const tl = gsap.timeline({ onComplete: () => { if (!cancelled) scheduleNext(); } });
@@ -42,273 +218,220 @@ function ScrambleLabel({ text, style }: { text: string; style: React.CSSProperti
     scheduleNext();
     return () => { cancelled = true; if (timerRef.current) clearTimeout(timerRef.current); };
   }, [text]);
+
   return <span ref={spanRef} style={style}>{text}</span>;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const MONO_FONT  = "'PPSupplyMono-Regular', 'Courier New', monospace";
-const LABEL_FONT = "'OTNeueMontreal-SemiBoldSemiSqueezed', Arial, sans-serif";
-const FONT_SIZE  = 11;
-const LINE_H     = 13;
-const CELL_W     = 6.6;
-const SIDE_W     = 140;
-const DVD_SPEED  = 1.8;
-const FRICTION   = 0.97;
-const MIN_SPEED  = DVD_SPEED;
-const KANJI_FONT = '"Noto Serif JP", "Hiragino Mincho ProN", serif';
-const FACE_IMG   = '/images/lab/yohaku/yohaku-face.jpg';
-const DARK_THRESH = 80;
-const MID_THRESH  = 210;
-const KANJI_SEQUENCE = ['余', '白', '活', '字', '間', '墨'];
-// Mask canvas size — kanji rendered at this size for ink detection
-const MASK_SIZE = 512;
-// Throttle: only recompute grid if kanji moved more than this many pixels
-const MOVE_THRESH = 3;
-
-// ─── Build face pixel map (once) ─────────────────────────────────────────────
-async function buildFaceMap(pageW: number, pageH: number): Promise<Uint8Array> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = pageW; c.height = pageH;
-      const ctx = c.getContext('2d', { willReadFrequently: true })!;
-      const scale = pageH / img.naturalHeight;
-      const drawW = img.naturalWidth * scale;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, pageW, pageH);
-      ctx.drawImage(img, (pageW - drawW) / 2, 0, drawW, pageH);
-      const d = ctx.getImageData(0, 0, pageW, pageH).data;
-      const b = new Uint8Array(pageW * pageH);
-      for (let i = 0; i < pageW * pageH; i++) {
-        b[i] = Math.round(0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]);
-      }
-      resolve(b);
-    };
-    img.onerror = () => resolve(new Uint8Array(pageW * pageH).fill(255));
-    img.src = FACE_IMG;
-  });
-}
-
-// ─── Build kanji ink masks (once per character) ───────────────────────────────
-// Returns a Uint8Array of size MASK_SIZE*MASK_SIZE: 1=ink, 0=empty
-// Kanji is rendered centered in the mask canvas at MASK_SIZE px
-function buildKanjiMask(char: string, renderSize: number): Uint8Array {
-  const c = document.createElement('canvas');
-  c.width = MASK_SIZE; c.height = MASK_SIZE;
-  const ctx = c.getContext('2d', { willReadFrequently: true })!;
-  ctx.clearRect(0, 0, MASK_SIZE, MASK_SIZE);
-  ctx.font = `900 ${renderSize}px ${KANJI_FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#000';
-  ctx.fillText(char, MASK_SIZE / 2, MASK_SIZE / 2);
-  const d = ctx.getImageData(0, 0, MASK_SIZE, MASK_SIZE).data;
-  const mask = new Uint8Array(MASK_SIZE * MASK_SIZE);
-  for (let i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
-    mask[i] = d[i * 4 + 3] > 20 ? 1 : 0;
-  }
-  return mask;
-}
-
-// ─── Test if page pixel (px, py) is inside kanji at (kx, ky) ─────────────────
-function inKanji(
-  px: number, py: number,
-  kx: number, ky: number, ksize: number,
-  mask: Uint8Array,
-): boolean {
-  // Map page pixel to mask coordinates
-  // Kanji is centered at (kx, ky) with bounding box ksize × ksize
-  const half = ksize * 0.5;
-  const mx = Math.round(((px - kx + half) / ksize) * MASK_SIZE);
-  const my = Math.round(((py - ky + half) / ksize) * MASK_SIZE);
-  if (mx < 0 || mx >= MASK_SIZE || my < 0 || my >= MASK_SIZE) return false;
-  return mask[my * MASK_SIZE + mx] === 1;
-}
-
-// ─── Draw grid to canvas ──────────────────────────────────────────────────────
-function drawGrid(
-  canvas: HTMLCanvasElement,
-  faceMap: Uint8Array,
-  kanjiMask: Uint8Array,
-  kx: number, ky: number, ksize: number,
-  fgColor: string,
-) {
-  const cw = canvas.width;
-  const ch = canvas.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.clearRect(0, 0, cw, ch);
-
-  const cols = Math.floor(cw / CELL_W);
-  ctx.font = `${FONT_SIZE}px ${MONO_FONT}`;
-  ctx.textBaseline = 'top';
-
-  let bi = 0;
-  let fi = 0;
-  let rowIdx = 0;
-
-  for (let y = 0; y < ch; y += LINE_H) {
-    const sampleY = Math.round(y + LINE_H / 2);
-    const rowCells: Array<{ char: string; isFace: boolean }> = [];
-
-    for (let col = 0; col < cols; col++) {
-      const sampleX = Math.round(col * CELL_W + CELL_W / 2);
-
-      // Check kanji mask
-      if (inKanji(sampleX, sampleY, kx, ky, ksize, kanjiMask)) {
-        rowCells.push({ char: ' ', isFace: false });
-        continue;
-      }
-
-      // Sample face map
-      const bright = (sampleY >= 0 && sampleY < ch && sampleX >= 0 && sampleX < cw)
-        ? faceMap[sampleY * cw + sampleX]
-        : 255;
-
-      if (bright < DARK_THRESH) {
-        rowCells.push({ char: BODY_SEQ[bi % BODY_SEQ.length], isFace: true });
-        bi++;
-      } else if (bright < MID_THRESH) {
-        const density = 1 - (bright - DARK_THRESH) / (MID_THRESH - DARK_THRESH);
-        const threshold = Math.round(density * 9);
-        const pattern = (col + rowIdx * 3) % 10;
-        if (pattern < threshold) {
-          rowCells.push({ char: BODY_SEQ[bi % BODY_SEQ.length], isFace: true });
-          bi++;
-        } else {
-          rowCells.push({ char: FILLER_SEQ[fi % FILLER_SEQ.length], isFace: false });
-          fi++;
-        }
-      } else {
-        rowCells.push({ char: FILLER_SEQ[fi % FILLER_SEQ.length], isFace: false });
-        fi++;
-      }
-    }
-
-    // Draw filler chars at low opacity
-    ctx.globalAlpha = 0.38;
-    ctx.fillStyle = fgColor;
-    let fillerStr = '';
-    for (const cell of rowCells) fillerStr += cell.isFace ? ' ' : cell.char;
-    ctx.fillText(fillerStr, 0, y);
-
-    // Draw face chars at full opacity
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = fgColor;
-    let faceStr = '';
-    for (const cell of rowCells) faceStr += cell.isFace ? cell.char : ' ';
-    ctx.fillText(faceStr, 0, y);
-
-    rowIdx++;
-  }
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Yohaku() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const kanjiDivRef  = useRef<HTMLDivElement>(null);
   const rafRef       = useRef<number>(0);
 
-  // Physics state (mutable, not React state)
+  // Physics (mutable, no re-renders)
   const phys = useRef({ x: 0, y: 0, vx: DVD_SPEED, vy: DVD_SPEED * 0.75, size: 0, charIdx: 0 });
-  const lastGridPos = useRef({ x: -999, y: -999, charIdx: -1 });
+  const lastLayout = useRef({ x: -999, y: -999, charIdx: -1 });
 
-  // Cached data
-  const faceMapRef  = useRef<Uint8Array | null>(null);
-  const kanjiMasks  = useRef<Uint8Array[]>([]);
-  const pageSizeRef = useRef({ w: 0, h: 0 });
+  // Page dims
+  const pageDims = useRef({ w: 0, h: 0 });
+
+  // Pretext prepared text
+  const prepared = useRef<PreparedTextWithSegments | null>(null);
+
+  // Ink masks (one per kanji character)
+  const kanjiMasks = useRef<Uint8Array[]>([]);
 
   // Drag
-  const dragging    = useRef(false);
-  const dragOffset  = useRef({ x: 0, y: 0 });
-  const mouseHist   = useRef<Array<{ x: number; y: number; t: number }>>([]);
+  const dragging   = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const mouseHist  = useRef<Array<{ x: number; y: number; t: number }>>([]);
 
-  const [ready, setReady]       = useState(false);
-  const [charIdx, setCharIdx]   = useState(0);
+  const [ready, setReady]     = useState(false);
+  const [charIdx, setCharIdx] = useState(0);
 
-  // ── Init: load face map + build kanji masks ─────────────────────────────────
+  // ── Disable scroll on mount ─────────────────────────────────────────────────
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch    = document.body.style.touchAction;
+    document.body.style.overflow    = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow    = prevOverflow;
+      document.body.style.touchAction = prevTouch;
+    };
+  }, []);
+
+  // ── Init ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const cw = container.offsetWidth;
-    const ch = container.offsetHeight;
-    pageSizeRef.current = { w: cw, h: ch };
 
-    const ksize = Math.round(ch * 0.44);
-    phys.current = { x: cw * 0.62, y: ch * 0.42, vx: DVD_SPEED, vy: DVD_SPEED * 0.75, size: ksize, charIdx: 0 };
+    const measure = () => {
+      const cw = container.offsetWidth;
+      const ch = container.offsetHeight;
+      pageDims.current = { w: cw, h: ch };
+    };
 
-    // Build kanji masks (sync, fast — 6 small canvases)
-    kanjiMasks.current = KANJI_SEQUENCE.map(ch => buildKanjiMask(ch, ksize));
+    measure();
+    const { w: cw, h: ch } = pageDims.current;
 
-    // Load face map (async)
-    buildFaceMap(cw, ch).then((map) => {
-      faceMapRef.current = map;
-      setReady(true);
-    });
+    const ksize = Math.round(Math.min(cw, ch) * 0.55);
+    phys.current = { x: cw / 2, y: ch / 2, vx: DVD_SPEED, vy: DVD_SPEED * 0.75, size: ksize, charIdx: 0 };
+
+    // Build ink masks for all kanji
+    kanjiMasks.current = KANJI_SEQUENCE.map(ch => buildKanjiMask(ch));
+
+    // Prepare text with pretext
+    prepared.current = prepareWithSegments(ESSAY_TEXT, FONT_STR);
+
+    // Re-measure on resize
+    const onResize = () => {
+      measure();
+      lastLayout.current = { x: -999, y: -999, charIdx: -1 };
+    };
+    window.addEventListener('resize', onResize);
+
+    setReady(true);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // ── Draw grid (called when kanji moves enough) ──────────────────────────────
-  const drawIfMoved = useCallback(() => {
-    const canvas = canvasRef.current;
-    const faceMap = faceMapRef.current;
-    if (!canvas || !faceMap) return;
+  // ── Relayout ────────────────────────────────────────────────────────────────
+  const relayout = useCallback(() => {
+    const layer = textLayerRef.current;
+    if (!layer || !prepared.current) return;
 
     const p = phys.current;
-    const last = lastGridPos.current;
-    const dx = Math.abs(p.x - last.x);
-    const dy = Math.abs(p.y - last.y);
-    const charChanged = p.charIdx !== last.charIdx;
-
-    if (dx < MOVE_THRESH && dy < MOVE_THRESH && !charChanged) return;
-
-    lastGridPos.current = { x: p.x, y: p.y, charIdx: p.charIdx };
-
+    const { w: pageW, h: pageH } = pageDims.current;
     const mask = kanjiMasks.current[p.charIdx];
     if (!mask) return;
 
-    // Detect fg color from CSS variable
-    const fg = getComputedStyle(document.documentElement).getPropertyValue('--color-fg').trim() || '#1a1008';
-    drawGrid(canvas, faceMap, mask, p.x, p.y, p.size, fg);
+    // Centered text column bounds
+    const colLeft  = Math.round((pageW - COLUMN_W) / 2);
+    const colRight = colLeft + COLUMN_W;
+    if (colRight - colLeft < 20) return;
+
+    const kHalf = p.size * 0.5;
+    const kanjiPageLeft  = p.x - kHalf;
+    const kanjiPageRight = p.x + kHalf;
+    const kanjiPageTop   = p.y - kHalf;
+    const kanjiPageBot   = p.y + kHalf;
+
+    const html: string[] = [];
+    let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 };
+    // Text starts at IMG_TOP to align with image top and dialogue column padding
+    const textStartY = IMG_TOP;
+    const totalRows = Math.ceil((pageH - textStartY) / LINE_H);
+
+    for (let row = 0; row < totalRows; row++) {
+      const rowPageTop = textStartY + row * LINE_H;
+      const rowPageBot = rowPageTop + LINE_H;
+      const rowY = rowPageTop;
+
+      // ── Collect blocked intervals for this row ──────────────────────────
+      const blocked: Array<{ x: number; w: number }> = [];
+
+      // 1. Eyes image obstacle (rectangular)
+      const imgBot = IMG_TOP + IMG_H;
+      if (rowPageTop < imgBot && rowPageBot > IMG_TOP) {
+        // Block from colLeft to colLeft + IMG_W + IMG_GUTTER
+        blocked.push({ x: colLeft, w: IMG_W + IMG_GUTTER });
+      }
+
+      // 2. Kanji ink obstacle (per-stroke mask)
+      const kanjiOverlapsRow = kanjiPageTop < rowPageBot && kanjiPageBot > rowPageTop;
+      if (kanjiOverlapsRow) {
+        const profile = rowInkProfile(mask, kanjiPageTop, kanjiPageBot, rowPageTop, rowPageBot);
+        const runs = inkRuns(profile, kanjiPageLeft, kanjiPageRight);
+        for (const run of runs) {
+          // Only add if the ink run actually overlaps the column
+          const runRight = run.x + run.w;
+          if (runRight > colLeft && run.x < colRight) {
+            blocked.push({ x: run.x, w: run.w });
+          }
+        }
+      }
+
+      // ── Compute open segments ───────────────────────────────────────────
+      const segments = subtractIntervals(colLeft, colRight, blocked)
+        .filter(s => s.w >= MIN_GAP_W);
+
+      // If no usable segments, advance cursor by a phantom line and skip
+      if (segments.length === 0) {
+        const range = layoutNextLineRange(prepared.current, cursor, colRight - colLeft);
+        if (range) cursor = range.end;
+        continue;
+      }
+
+      // ── Lay text into each open segment ────────────────────────────────
+      for (const seg of segments) {
+        const range = layoutNextLineRange(prepared.current, cursor, seg.w);
+        if (!range) break;
+        const line = materializeLineRange(prepared.current, range);
+        cursor = range.end;
+        if (line.text.trim().length > 0) {
+          html.push(
+            `<span style="position:absolute;left:${seg.x.toFixed(1)}px;top:${rowY}px;white-space:pre;">${escHtml(line.text)}</span>`
+          );
+        }
+      }
+    }
+
+    layer.innerHTML = html.join('');
   }, []);
 
-  // ── Physics RAF loop ────────────────────────────────────────────────────────
+  // ── RAF physics + relayout ──────────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
-    const { w: cw, h: ch } = pageSizeRef.current;
-    const halfSize = phys.current.size * 0.44;
+    const kHalf = phys.current.size * 0.5;
 
     const tick = () => {
       if (!dragging.current) {
         const p = phys.current;
+        const { w, h } = pageDims.current;
+
         p.vx *= FRICTION;
         p.vy *= FRICTION;
         const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
         if (spd < MIN_SPEED) { const sc = MIN_SPEED / spd; p.vx *= sc; p.vy *= sc; }
         p.x += p.vx;
         p.y += p.vy;
-        if (p.x - halfSize < 0)  { p.x = halfSize;      p.vx =  Math.abs(p.vx); }
-        if (p.x + halfSize > cw) { p.x = cw - halfSize; p.vx = -Math.abs(p.vx); }
-        if (p.y - halfSize < 0)  { p.y = halfSize;      p.vy =  Math.abs(p.vy); }
-        if (p.y + halfSize > ch) { p.y = ch - halfSize; p.vy = -Math.abs(p.vy); }
+
+        if (p.x - kHalf < 0)    { p.x = kHalf;     p.vx =  Math.abs(p.vx); }
+        if (p.x + kHalf > w)    { p.x = w - kHalf;  p.vx = -Math.abs(p.vx); }
+        if (p.y - kHalf < 0)    { p.y = kHalf;     p.vy =  Math.abs(p.vy); }
+        if (p.y + kHalf > h)    { p.y = h - kHalf;  p.vy = -Math.abs(p.vy); }
       }
 
-      // Move kanji div every frame (smooth)
       if (kanjiDivRef.current) {
         kanjiDivRef.current.style.left = `${phys.current.x}px`;
         kanjiDivRef.current.style.top  = `${phys.current.y}px`;
       }
 
-      // Redraw grid only when needed
-      drawIfMoved();
+      const last = lastLayout.current;
+      const p = phys.current;
+      const dx = Math.abs(p.x - last.x);
+      const dy = Math.abs(p.y - last.y);
+      if (dx > MOVE_THRESH || dy > MOVE_THRESH || p.charIdx !== last.charIdx) {
+        lastLayout.current = { x: p.x, y: p.y, charIdx: p.charIdx };
+        relayout();
+      }
 
       rafRef.current = requestAnimationFrame(tick);
     };
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [ready, drawIfMoved]);
+  }, [ready, relayout]);
 
   // ── Drag ────────────────────────────────────────────────────────────────────
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -319,6 +442,7 @@ export default function Yohaku() {
   }, []);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
     const t = e.touches[0];
     dragging.current = true;
     mouseHist.current = [];
@@ -350,10 +474,10 @@ export default function Yohaku() {
       }
     };
     const mm = (e: MouseEvent) => onMove(e.clientX, e.clientY);
-    const tm = (e: TouchEvent) => onMove(e.touches[0].clientX, e.touches[0].clientY);
+    const tm = (e: TouchEvent) => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); };
     window.addEventListener('mousemove', mm);
     window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', tm, { passive: true });
+    window.addEventListener('touchmove', tm, { passive: false });
     window.addEventListener('touchend', onUp);
     return () => {
       window.removeEventListener('mousemove', mm);
@@ -363,40 +487,69 @@ export default function Yohaku() {
     };
   }, [ready]);
 
-  // ── Cycle kanji ─────────────────────────────────────────────────────────────
+  // ── Cycle kanji on background click ─────────────────────────────────────────
   const onBgClick = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-kanji]')) return;
     const next = (phys.current.charIdx + 1) % KANJI_SEQUENCE.length;
     phys.current.charIdx = next;
     setCharIdx(next);
-    // Force grid redraw
-    lastGridPos.current = { x: -999, y: -999, charIdx: -1 };
+    lastLayout.current = { x: -999, y: -999, charIdx: -1 };
   }, []);
 
-  const { w: cw, h: ch } = pageSizeRef.current;
   const ksize = phys.current.size;
 
+  // Compute colLeft for image positioning (needs pageW)
+  const colLeft = pageDims.current.w > 0
+    ? Math.round((pageDims.current.w - COLUMN_W) / 2)
+    : 0;
+
   return (
-    /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
     <div
       ref={containerRef}
+      role="button"
+      tabIndex={0}
+      aria-label="Click to cycle kanji"
       onClick={onBgClick}
-      style={{ position: 'absolute', inset: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none' }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onBgClick(e as unknown as React.MouseEvent); }}
+      style={{
+        position: 'absolute', inset: 0, overflow: 'hidden',
+        userSelect: 'none', WebkitUserSelect: 'none',
+        touchAction: 'none',
+      }}
     >
-      {/* ── Single canvas for entire character grid ──────────────────────── */}
-      <canvas
-        ref={canvasRef}
-        width={cw || 1}
-        height={ch || 1}
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      {/* ── Full-page text layer ─────────────────────────────────────────── */}
+      <div
+        ref={textLayerRef}
+        style={{
+          position: 'absolute', inset: 0,
+          pointerEvents: 'none',
+          fontFamily: FONT_STR,
+          fontSize: FONT_SIZE,
+          lineHeight: `${LINE_H}px`,
+          color: '#000',
+        }}
       />
 
-      {/* Loading */}
-      {!ready && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: LABEL_FONT, fontSize: '11px', color: 'var(--color-fg, #1a1008)', opacity: 0.4, letterSpacing: '0.1em',
-        }}>余白</div>
+      {/* ── Eyes image — top-left of text column ─────────────────────────── */}
+      {ready && (
+        <img
+          src="/images/lab/yohaku/eyes.jpg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: colLeft,
+            top: IMG_TOP,
+            width: IMG_W,
+            height: IMG_H,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            mixBlendMode: 'multiply',
+            pointerEvents: 'none',
+            zIndex: 10,
+            display: 'block',
+          }}
+        />
       )}
 
       {/* ── LEFT dialogue ────────────────────────────────────────────────── */}
@@ -429,7 +582,7 @@ export default function Yohaku() {
         ))}
       </div>
 
-      {/* ── Bouncing kanji div (moves every frame via direct DOM) ────────── */}
+      {/* ── Bouncing kanji ───────────────────────────────────────────────── */}
       {ready && ksize > 0 && (
         <div
           ref={kanjiDivRef}
@@ -448,7 +601,8 @@ export default function Yohaku() {
           }}
           style={{
             position: 'absolute',
-            left: phys.current.x, top: phys.current.y,
+            left: phys.current.x,
+            top: phys.current.y,
             transform: 'translate(-50%, -50%)',
             fontSize: `${ksize}px`,
             fontFamily: KANJI_FONT,

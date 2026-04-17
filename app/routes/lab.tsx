@@ -40,6 +40,7 @@ export interface Experiment {
   date?: string;
   order?: number;
   scrollable?: boolean;
+  uiTheme?: 'light' | 'dark';
   route?: string;
   songName?: string;
   songFile?: {

@@ -44,6 +44,7 @@ export const loader: LoaderFunction = async () => {
     date,
     order,
     scrollable,
+    uiTheme,
     route,
     songName,
     songFile { asset-> { url } }

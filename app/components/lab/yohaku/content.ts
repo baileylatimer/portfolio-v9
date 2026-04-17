@@ -1,51 +1,9 @@
-// Thematic kanji pool — white space, silence, breath, memory, presence/absence
-export const KANJI_POOL = '余白間墨字空沈黙呼吸存在不緊張文記憶静絆活字版組版';
-export const NUMBER_POOL = '0123456789';
+// ─── Circle body text ─────────────────────────────────────────────────────────
+// Expanded essay blending the user's paragraph with the side dialogue themes.
+// Long enough to fill a ~600px circle at 11px monospace.
+export const CIRCLE_TEXT = `Latimer Design presents 余白 (Yohaku): An exploration of negative space in digital typography. 2026. Mixed media. The white page is not empty. It is already full of meaning — the absence is what gives the mark its power. In Japanese aesthetics, what is left unsaid carries more weight than what is spoken. — Kenya Hara, White, 2007. 文字のない空間は、文字と同じくらい慎重にデザインされなければならない。 The space where there are no characters must be designed as carefully as the characters themselves. — Helmut Schmid, Typography Today, 1980. Typography is the discipline of arranging type so that language becomes visible. It is not decoration. It is not style. It is the architecture of thought made legible. Every decision — the weight of a stroke, the space between lines, the silence at the margin — is a decision about meaning. 余白は沈黙ではない。余白は呼吸である。存在と不在の間にある緊張のことだ。 The best decisions are the ones nobody notices. The page remembers everything you left out. Somebody picked up and it was just silence. The line went dead around 3 in the morning. Still there? います。 The mark and the space. Both. 両方。 It is the space between the notes — that is where the music lives. What Hara said — the absence is the design. You do not hear it until it stops. Language becomes visible. It is not decoration. It is not style. It is the weight of a stroke. The space between lines. The silence at the margin. 間。 Ma. The pause. Do you hear it? わかる？ Yeah. The silence carries weight. Not nothing. Breath. そう。 The space between the notes — that is where the music lives. 余白。 Right. 見えない。 That is the point. Every decision is a decision about meaning. 活字は思考の建築である。`;
 
-// Filler characters for outside-face cells
-export const FILLER_POOL: Array<{ char: string; weight: number }> = [
-  { char: '·', weight: 70 },
-  { char: '.', weight: 15 },
-  { char: '-', weight: 10 },
-  { char: '*', weight: 5 },
-];
-
-// Seeded random filler — pre-generate a large array so it's stable per render
-const FILLER_SEQ_LEN = 8192;
-export const FILLER_SEQ: string[] = (() => {
-  const pool: string[] = [];
-  for (const { char, weight } of FILLER_POOL) {
-    for (let i = 0; i < weight; i++) pool.push(char);
-  }
-  const seq: string[] = [];
-  // Simple LCG for deterministic sequence
-  let s = 0x9e3779b9;
-  for (let i = 0; i < FILLER_SEQ_LEN; i++) {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    seq.push(pool[s % pool.length]);
-  }
-  return seq;
-})();
-
-// Body text pool — kanji 80%, numbers 20%
-const BODY_SEQ_LEN = 16384;
-export const BODY_SEQ: string[] = (() => {
-  const kanji = KANJI_POOL.split('');
-  const nums = NUMBER_POOL.split('');
-  const seq: string[] = [];
-  let s = 0xdeadbeef;
-  for (let i = 0; i < BODY_SEQ_LEN; i++) {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    const pct = s % 100;
-    if (pct < 80) {
-      seq.push(kanji[s % kanji.length]);
-    } else {
-      seq.push(nums[s % nums.length]);
-    }
-  }
-  return seq;
-})();
-
+// ─── Side dialogue ─────────────────────────────────────────────────────────────
 export const LEFT_DIALOGUE: string[] = [
   '[ピー、ピー、ピー]',
   'もしもし。',
